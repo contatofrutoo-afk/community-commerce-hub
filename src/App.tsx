@@ -55,6 +55,14 @@ const AdminOnly = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+const B2BOnly = ({ children }: { children: JSX.Element }) => {
+  const { isB2B, loading, user } = useAuth();
+  if (loading) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isB2B) return <Navigate to="/feed" replace />;
+  return children;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
