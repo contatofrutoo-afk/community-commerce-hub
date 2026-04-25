@@ -74,7 +74,7 @@ const App = () => (
               <Route path="/content" element={<Protected><B2BOnly><NeedsTenant><Content /></NeedsTenant></B2BOnly></Protected>} />
               <Route path="/create" element={<Protected><B2BOnly><NeedsTenant><OwnerOnly><CreatePost /></OwnerOnly></NeedsTenant></B2BOnly></Protected>} />
               <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
-              <Route path="/admin" element={<Protected><B2BOnly><NeedsTenant><OwnerOnly><AdminLayout /></OwnerOnly></NeedsTenant></B2BOnly></Protected>}>
+              <Route path="/admin" element={<Protected><B2BOnly><NeedsTenant><AdminLayout /></NeedsTenant></B2BOnly></Protected>}>
                 <Route index element={<AdminOverview />} />
                 <Route path="revenue" element={<AdminRevenue />} />
                 <Route path="funnel" element={<AdminFunnel />} />
