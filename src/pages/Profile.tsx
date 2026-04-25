@@ -48,11 +48,12 @@ export default function Profile() {
     try {
       const ext = avatarFile.name.split(".").pop();
       const path = `avatars/${user.id}.${ext}`;
-      const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
+      const { data, error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
-      const { data } = supabase.storage.from("public").getPublicUrl(path);
-      await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("user_id", user.id);
-      setAvatar(data.publicUrl);
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      const avatarUrl = urlData.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
+      setAvatar(avatarUrl);
       return true;
     } catch (e: any) { toast.error(e.message); return false; }
   };
@@ -62,11 +63,12 @@ export default function Profile() {
     try {
       const ext = tenantLogoFile.name.split(".").pop();
       const path = `logos/${tenant.id}.${ext}`;
-      const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
+      const { data, error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
-      const { data } = supabase.storage.from("public").getPublicUrl(path);
-      await supabase.from("tenants").update({ logo_url: data.publicUrl }).eq("id", tenant.id);
-      setTenantLogo(data.publicUrl);
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      const logoUrl = urlData.publicUrl;
+      await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", tenant.id);
+      setTenantLogo(logoUrl);
       return true;
     } catch (e: any) { toast.error(e.message); return false; }
   };

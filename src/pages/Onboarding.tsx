@@ -34,10 +34,10 @@ export default function Onboarding() {
     try {
       const ext = logoFile.name.split(".").pop();
       const path = `logos/${tenantId}.${ext}`;
-      const { error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
+      const { data, error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return null; }
-      const { data } = supabase.storage.from("public").getPublicUrl(path);
-      return data.publicUrl;
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      return urlData.publicUrl;
     } catch (e: any) { toast.error(e.message); return null; }
   };
 
