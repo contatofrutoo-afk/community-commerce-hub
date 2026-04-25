@@ -45,26 +45,30 @@ export default function Profile() {
 
   const uploadAvatar = async (): Promise<boolean> => {
     if (!avatarFile || !user) return false;
-    const ext = avatarFile.name.split(".").pop();
-    const path = `avatars/${user.id}.${ext}`;
-    const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
-    if (error) { toast.error("Erro ao upload"); return false; }
-    const { data } = supabase.storage.from("public").getPublicUrl(path);
-    await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("user_id", user.id);
-    setAvatar(data.publicUrl);
-    return true;
+    try {
+      const ext = avatarFile.name.split(".").pop();
+      const path = `avatars/${user.id}.${ext}`;
+      const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
+      const { data } = supabase.storage.from("public").getPublicUrl(path);
+      await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("user_id", user.id);
+      setAvatar(data.publicUrl);
+      return true;
+    } catch (e: any) { toast.error(e.message); return false; }
   };
 
   const uploadTenantLogo = async (): Promise<boolean> => {
     if (!tenantLogoFile || !tenant) return false;
-    const ext = tenantLogoFile.name.split(".").pop();
-    const path = `logos/${tenant.id}.${ext}`;
-    const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
-    if (error) { toast.error("Erro ao upload"); return false; }
-    const { data } = supabase.storage.from("public").getPublicUrl(path);
-    await supabase.from("tenants").update({ logo_url: data.publicUrl }).eq("id", tenant.id);
-    setTenantLogo(data.publicUrl);
-    return true;
+    try {
+      const ext = tenantLogoFile.name.split(".").pop();
+      const path = `logos/${tenant.id}.${ext}`;
+      const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
+      const { data } = supabase.storage.from("public").getPublicUrl(path);
+      await supabase.from("tenants").update({ logo_url: data.publicUrl }).eq("id", tenant.id);
+      setTenantLogo(data.publicUrl);
+      return true;
+    } catch (e: any) { toast.error(e.message); return false; }
   };
 
   useEffect(() => {

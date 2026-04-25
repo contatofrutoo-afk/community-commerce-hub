@@ -31,12 +31,14 @@ export default function Onboarding() {
 
   const uploadLogo = async (tenantId: string): Promise<string | null> => {
     if (!logoFile) return null;
-    const ext = logoFile.name.split(".").pop();
-    const path = `logos/${tenantId}.${ext}`;
-    const { error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
-    if (error) { toast.error("Erro ao upload logo"); return null; }
-    const { data } = supabase.storage.from("public").getPublicUrl(path);
-    return data.publicUrl;
+    try {
+      const ext = logoFile.name.split(".").pop();
+      const path = `logos/${tenantId}.${ext}`;
+      const { error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return null; }
+      const { data } = supabase.storage.from("public").getPublicUrl(path);
+      return data.publicUrl;
+    } catch (e: any) { toast.error(e.message); return null; }
   };
 
   const slugify = (s: string) =>
