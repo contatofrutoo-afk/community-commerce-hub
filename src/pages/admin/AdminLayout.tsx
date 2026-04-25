@@ -22,7 +22,13 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-secondary/30 flex">
       <aside className="hidden md:flex w-60 bg-background border-r border-border flex-col p-4">
         <Link to="/feed" className="flex items-center gap-2 mb-8">
-          <ArrowLeft className="h-4 w-4" />
+          {tenant?.logo_url ? (
+            <img src={tenant.logo_url} alt={tenant.name} className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            <div className="h-8 w-8 rounded-lg bg-brand grid place-items-center text-primary-foreground font-bold">
+              {tenant?.name?.[0]?.toUpperCase() ?? "B"}
+            </div>
+          )}
           <span className="font-display text-xl">{tenant?.name}</span>
         </Link>
         <nav className="space-y-1 flex-1">
