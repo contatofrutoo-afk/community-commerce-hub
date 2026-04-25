@@ -59,7 +59,7 @@ export default function Auth() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Bem-vindo");
-    nav("/communities");
+    nav("/feed");
   };
 
   return (
