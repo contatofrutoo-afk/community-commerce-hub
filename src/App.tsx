@@ -67,7 +67,7 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/communities" element={<Protected><Communities /></Protected>} />
-              <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
+              <Route path="/onboarding" element={<Protected><B2BOnly><Onboarding /></B2BOnly></Protected>} />
               <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
               <Route path="/community" element={<Protected><NeedsTenant><Community /></NeedsTenant></Protected>} />
               <Route path="/messages" element={<Protected><NeedsTenant><Messages /></NeedsTenant></Protected>} />

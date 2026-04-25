@@ -31,10 +31,12 @@ CREATE TRIGGER trg_profiles_updated BEFORE UPDATE ON public.profiles FOR EACH RO
 -- Auto-criar profile no signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE account_type TEXT;
 BEGIN
+  account_type := COALESCE(NEW.raw_user_meta_data->>'account_type', 'b2c');
   INSERT INTO public.profiles (user_id, name, email)
   VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email,'@',1)), NEW.email);
-  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'b2c');
+  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, account_type);
   RETURN NEW;
 END; $$;
 
