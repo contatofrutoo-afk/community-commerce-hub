@@ -58,8 +58,8 @@ export default function Communities() {
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
         <div className="max-w-xl mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-brand overflow-hidden">
-              <img src="/favicon.ico" alt="Weaze" className="w-full h-full object-cover" />
+            <div className="h-7 w-7 rounded-lg bg-brand grid place-items-center text-primary-foreground font-bold">
+              W
             </div>
             <span className="font-display text-xl">Weaze</span>
           </div>
