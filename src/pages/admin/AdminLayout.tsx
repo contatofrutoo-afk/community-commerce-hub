@@ -6,12 +6,12 @@ import { ArrowLeft, BarChart3, DollarSign, Filter, Users, Building2, FileText, L
 import { cn } from "@/lib/utils";
 
 const items = [
-  { to: "/admin", icon: BarChart3, label: "Visão geral", end: true },
-  { to: "/admin/revenue", icon: DollarSign, label: "Receita" },
-  { to: "/admin/funnel", icon: Filter, label: "Funil de CTAs" },
-  { to: "/admin/users", icon: Users, label: "Usuários" },
-  { to: "/admin/tenants", icon: Building2, label: "Tenants" },
-  { to: "/admin/content", icon: FileText, label: "Conteúdo" },
+  { to: "/metrics", icon: BarChart3, label: "Visão geral", end: true },
+  { to: "/metrics/revenue", icon: DollarSign, label: "Receita" },
+  { to: "/metrics/funnel", icon: Filter, label: "Funil de CTAs" },
+  { to: "/metrics/users", icon: Users, label: "Usuários" },
+  { to: "/metrics/tenants", icon: Building2, label: "Tenants" },
+  { to: "/metrics/content", icon: FileText, label: "Conteúdo" },
 ];
 
 export default function AdminLayout() {

@@ -17,7 +17,7 @@ export default function BottomNav() {
     ...(isB2B ? [{ to: "/content", icon: LayoutGrid, label: "Conteúdo" }] : []),
     { to: "/community", icon: MessageSquare, label: "Conversas" },
     { to: "/messages", icon: MessageCircle, label: "Mensagens" },
-    ...(isB2B ? [{ to: "/admin", icon: BarChart3, label: "Métricas" }] : []),
+    ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
   ];
 

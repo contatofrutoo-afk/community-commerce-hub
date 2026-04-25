@@ -47,11 +47,11 @@ const OwnerOnly = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-const B2BOnly = ({ children }: { children: JSX.Element }) => {
-  const { isB2B, loading, user } = useAuth();
+const AdminOnly = ({ children }: { children: JSX.Element }) => {
+  const { isAdmin, loading, user } = useAuth();
   if (loading) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
   if (!user) return <Navigate to="/auth" replace />;
-  if (!isB2B) return <Navigate to="/feed" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -74,7 +74,8 @@ const App = () => (
               <Route path="/content" element={<Protected><B2BOnly><NeedsTenant><Content /></NeedsTenant></B2BOnly></Protected>} />
               <Route path="/create" element={<Protected><B2BOnly><NeedsTenant><OwnerOnly><CreatePost /></OwnerOnly></NeedsTenant></B2BOnly></Protected>} />
               <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
-              <Route path="/admin" element={<Protected><B2BOnly><NeedsTenant><AdminLayout /></NeedsTenant></B2BOnly></Protected>}>
+              <Route path="/admin" element={<Protected><AdminOnly><AdminLayout /></AdminOnly></Protected>} />
+              <Route path="/metrics" element={<Protected><B2BOnly><NeedsTenant><AdminLayout /></NeedsTenant></B2BOnly></Protected>}>
                 <Route index element={<AdminOverview />} />
                 <Route path="revenue" element={<AdminRevenue />} />
                 <Route path="funnel" element={<AdminFunnel />} />
