@@ -6,6 +6,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ChevronLeft, Upload } from "lucide-react";
 
@@ -14,7 +15,9 @@ export default function Onboarding() {
   const { selectTenant, refresh } = useTenant();
   const nav = useNavigate();
   const [name, setName] = useState("");
-  const [color, setColor] = useState("#d81e62");
+  const [city, setCity] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,6 +30,55 @@ export default function Onboarding() {
     if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setLogoFile(f);
     setLogo(URL.createObjectURL(f));
+  };
+
+  const uploadLogo = async (tenantId: string): Promise<string | null> => {
+    if (!logoFile) return null;
+    try {
+      const ext = logoFile.name.split(".").pop();
+      const path = `logos/${tenantId}.${ext}`;
+      const { data, error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return null; }
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (e: any) { toast.error(e.message); return null; }
+  };
+
+  const slugify = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim().length < 2) { toast.error("Nome muito curto"); return; }
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase.from("tenants").insert({
+      name: name.trim(),
+      slug: slugify(name),
+      primary_color: "#d81e62",
+      city: city.trim() || null,
+      phone: phone.trim() || null,
+      bio: bio.trim() || null,
+      created_by: user.id,
+    }).select().single();
+    if (error) { toast.error(error.message); setLoading(false); return; }
+
+    if (logoFile) {
+      const logoUrl = await uploadLogo(data.id);
+      if (logoUrl) {
+        await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", data.id);
+      }
+    }
+
+    const { data: free } = await supabase.from("plans").select("id").eq("name", "Free").maybeSingle();
+    if (free) await supabase.from("tenant_plans").insert({ tenant_id: data.id, plan_id: free.id });
+
+    await refresh();
+    selectTenant(data.id);
+    toast.success("Marca criada");
+    nav("/feed");
+    setLoading(false);
   };
 
   const uploadLogo = async (tenantId: string): Promise<string | null> => {
@@ -112,12 +164,16 @@ export default function Onboarding() {
             <Input id="t-name" placeholder="Ex: Estúdio Weaze" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="t-color">Cor de destaque</Label>
-            <div className="flex gap-2 items-center">
-              <input id="t-color" type="color" value={color} onChange={(e) => setColor(e.target.value)}
-                className="h-11 w-14 rounded-lg border border-input cursor-pointer" />
-              <Input value={color} onChange={(e) => setColor(e.target.value)} className="font-mono" />
-            </div>
+            <Label htmlFor="t-city">Cidade</Label>
+            <Input id="t-city" placeholder="Ex: São Paulo, SP" value={city} onChange={(e) => setCity(e.target.value)} maxLength={100} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="t-phone">Telefone</Label>
+            <Input id="t-phone" placeholder="(11) 99999-9999" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="t-bio">Biografia</Label>
+            <Textarea id="t-bio" placeholder="Conte um pouco sobre sua marca..." value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={3} />
           </div>
           <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
             {loading ? "Criando…" : "Criar marca"}
