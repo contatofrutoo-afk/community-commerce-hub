@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Upload } from "lucide-react";
 
 export default function Onboarding() {
   const { user } = useAuth();
@@ -15,7 +15,29 @@ export default function Onboarding() {
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [color, setColor] = useState("#d81e62");
+  const [logo, setLogo] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
+    setLogoFile(f);
+    setLogo(URL.createObjectURL(f));
+  };
+
+  const uploadLogo = async (tenantId: string): Promise<string | null> => {
+    if (!logoFile) return null;
+    const ext = logoFile.name.split(".").pop();
+    const path = `logos/${tenantId}.${ext}`;
+    const { error } = await supabase.storage.from("public").upload(path, logoFile, { upsert: true });
+    if (error) { toast.error("Erro ao upload logo"); return null; }
+    const { data } = supabase.storage.from("public").getPublicUrl(path);
+    return data.publicUrl;
+  };
 
   const slugify = (s: string) =>
     s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -30,6 +52,14 @@ export default function Onboarding() {
       name: name.trim(), slug: slugify(name), primary_color: color, created_by: user.id,
     }).select().single();
     if (error) { toast.error(error.message); setLoading(false); return; }
+
+    // Upload logo se existir
+    if (logoFile) {
+      const logoUrl = await uploadLogo(data.id);
+      if (logoUrl) {
+        await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", data.id);
+      }
+    }
 
     // membership owner é criada por trigger handle_new_tenant
     const { data: free } = await supabase.from("plans").select("id").eq("name", "Free").maybeSingle();
@@ -55,6 +85,26 @@ export default function Onboarding() {
         </p>
 
         <form onSubmit={create} className="bg-card rounded-2xl p-6 shadow-elevated border border-border space-y-4">
+          <div className="space-y-1.5">
+            <Label>Logotipo (opcional)</Label>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => fileRef.current?.click()} className="w-20 h-20 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary transition-colors overflow-hidden">
+                {logo ? (
+                  <img src={logo} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 mb-1" />
+                    <span className="text-xs">Upload</span>
+                  </>
+                )}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+              <div className="text-sm text-muted-foreground">
+                <p>PNG, JPG ou GIF</p>
+                <p>Máx. 5MB</p>
+              </div>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-name">Nome da marca</Label>
             <Input id="t-name" placeholder="Ex: Estúdio Weaze" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
