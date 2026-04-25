@@ -39,10 +39,10 @@ export default function BottomNav() {
               to={to}
               className={cn(
                 "flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[11px] transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                active ? "text-primary-custom" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.8} />
+              <Icon className={cn("h-[22px] w-[22px]", active && "text-primary-custom")} strokeWidth={active ? 2.4 : 1.8} />
               <span className="font-medium">{label}</span>
             </Link>
           );

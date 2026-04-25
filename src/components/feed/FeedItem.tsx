@@ -102,7 +102,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       {/* right rail */}
       <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-10">
         <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1">
-          <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary text-primary" : "text-background")} />
+          <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
           <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
         </button>
         <div className="flex flex-col items-center gap-1 opacity-90">
