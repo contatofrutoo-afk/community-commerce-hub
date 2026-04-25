@@ -5,8 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import FeedItem, { Post } from "@/components/feed/FeedItem";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 
 const PAGE = 8;
 
@@ -87,8 +85,7 @@ export default function Feed() {
           <div className="h-[calc(100dvh-3.5rem)] grid place-items-center px-6 text-center">
             <div>
               <h2 className="font-display text-3xl mb-2">Feed vazio</h2>
-              <p className="text-muted-foreground mb-4">Crie o primeiro post desta marca.</p>
-              <Button asChild><Link to="/create">Criar post</Link></Button>
+              <p className="text-muted-foreground mb-4">Nenhum post disponível ainda.</p>
             </div>
           </div>
         )}
