@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useDeviceType } from "@/hooks/use-device-type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
-import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function KPI({ label, value, hint, delta }: { label: string; value: string; hint?: string; delta?: number }) {
@@ -31,6 +33,7 @@ function KPI({ label, value, hint, delta }: { label: string; value: string; hint
 
 export default function Overview() {
   const { tenant } = useTenant();
+  const device = useDeviceType();
   const [data, setData] = useState({
     posts: 0, members: 0, mrr: 0, arr: 0,
     dau: 0, wau: 0, mau: 0,
@@ -93,10 +96,15 @@ export default function Overview() {
   }, [tenant?.id]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div>
-        <h1 className="font-display text-4xl">Visão geral</h1>
-        <p className="text-muted-foreground text-sm mt-1">Métricas-chave da sua marca nos últimos 30 dias.</p>
+    <div className={device === "mobile" ? "max-w-md mx-auto space-y-4 px-2 py-4" : device === "tablet" ? "max-w-3xl mx-auto space-y-6 px-4 py-6" : "max-w-6xl space-y-6"}>
+      <div className="flex items-center gap-2">
+        <Link to="/feed" className={device === "mobile" ? "p-2 -ml-2" : "hidden md:flex"}>
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Visão geral</h1>
+          <p className="text-muted-foreground text-sm mt-1">Métricas-chave da sua marca nos últimos 30 dias.</p>
+        </div>
       </div>
 
       {data.alerts.length > 0 && (
