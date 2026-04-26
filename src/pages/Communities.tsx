@@ -6,6 +6,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Plus, LogOut, Search, Users, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Logo from "@/components/Logo";
 
 type TenantCard = {
   id: string;

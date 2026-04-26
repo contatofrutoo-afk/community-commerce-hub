@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Users, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Logo from "@/components/Logo";
 
 const signupSchema = z.object({
   name: z.string().trim().min(2, "Nome muito curto").max(80),
