@@ -8,7 +8,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload } from "lucide-react";
+import { ArrowLeft, LogOut, BarChart3, Building2, ArrowLeftRight, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Profile() {
@@ -106,6 +106,7 @@ export default function Profile() {
       <TopBar />
       <div className="flex-1 max-w-xl mx-auto w-full px-4 py-6 pb-28 space-y-6">
         <div className="flex items-center gap-4">
+          <Link to="/feed" className="p-2 -ml-2"><ArrowLeft className="h-5 w-5" /></Link>
           <button type="button" onClick={() => fileRef.current?.click()} className="relative group">
             <div className="h-16 w-16 rounded-2xl bg-brand grid place-items-center text-primary-foreground text-2xl font-bold overflow-hidden">
               {avatar ? (

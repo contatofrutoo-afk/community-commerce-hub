@@ -24,6 +24,12 @@ const Messages = lazy(() => import("./pages/Messages"));
 const Content = lazy(() => import("./pages/Content"));
 const CreatePost = lazy(() => import("./pages/CreatePost"));
 const AdminContent = lazy(() => import("./pages/admin/Content"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminOverview = lazy(() => import("./pages/admin/Overview"));
+const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
+const AdminFunnel = lazy(() => import("./pages/admin/Funnel"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const Profile = lazy(() => import("./pages/Profile"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -60,6 +66,12 @@ const App = () => (
                 <Route path="/content" element={<Protected><NeedsTenant><Content /></NeedsTenant></Protected>} />
                 <Route path="/content/services" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
                 <Route path="/content/events" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
+                <Route path="/admin/*" element={<Protected><NeedsTenant><AdminLayout /></NeedsTenant></Protected>} />
+                <Route path="/metrics" element={<Protected><NeedsTenant><AdminOverview /></NeedsTenant></Protected>} />
+                <Route path="/metrics/revenue" element={<Protected><NeedsTenant><AdminRevenue /></NeedsTenant></Protected>} />
+                <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
+                <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
+                <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
                 <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
               </Routes>
