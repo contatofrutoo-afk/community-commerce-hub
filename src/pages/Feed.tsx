@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ const PAGE = 8;
 export default function Feed() {
   const { tenant, loading: tLoading } = useTenant();
   const { user, isB2B } = useAuth();
+  const location = useLocation();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -60,7 +61,7 @@ export default function Feed() {
         ).then(() => {});
       }
     }
-  }, [tenant?.id, user?.id]);
+  }, [tenant?.id, user?.id, location.pathname]);
 
   // Intersection Observer for active post and infinite scroll
   useEffect(() => {
