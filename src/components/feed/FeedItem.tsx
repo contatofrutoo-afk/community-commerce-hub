@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const [popHeart, setPopHeart] = useState(false);
   const [counts, setCounts] = useState({ likes: 0, comments: 0 });
   const [showComments, setShowComments] = useState(false);
+  const [muted, setMuted] = useState(true);
   const tappedRef = useRef<number>(0);
   const trackedView = useRef(false);
 
@@ -50,6 +51,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     const v = videoRef.current;
     if (!v) return;
     if (active) {
+      v.muted = muted;
       v.play().catch(() => {});
       if (!trackedView.current) {
         trackedView.current = true;
@@ -59,7 +61,13 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       v.pause();
       v.currentTime = 0;
     }
-  }, [active, post.tenant_id, post.id]);
+  }, [active, muted, post.tenant_id, post.id]);
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMuted(m => !m);
+    if (videoRef.current) videoRef.current.muted = !muted;
+  };
 
   // Video progress
   const [progress, setProgress] = useState(0);
@@ -111,8 +119,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     <article className="relative h-[100dvh] w-full snap-start bg-foreground text-background overflow-hidden" onClick={onTap}>
       {post.type === "video" && post.media_url ? (
         <video ref={videoRef} src={post.media_url} className="absolute inset-0 h-full w-full object-cover"
-          loop muted playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
-          onTimeUpdate={onTimeUpdate} />
+          loop muted={muted} playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
+          onTimeUpdate={onTimeUpdate} onClick={toggleMute} />
       ) : post.type === "image" && post.media_url ? (
         <img src={post.media_url} alt={post.description ?? ""} className="absolute inset-0 h-full w-full object-cover" />
       ) : (
@@ -130,6 +138,9 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
 
       {/* right rail */}
       <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-10">
+        <button onClick={toggleMute} className="flex flex-col items-center gap-1" aria-label={muted ? "Ativar som" : "Silenciar"}>
+          {muted ? <VolumeX className="h-6 w-6 drop-shadow-md text-background" /> : <Volume2 className="h-6 w-6 drop-shadow-md text-background" />}
+        </button>
         <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1" aria-label="Curtir">
           <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
           <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
