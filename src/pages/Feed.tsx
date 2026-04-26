@@ -7,16 +7,19 @@ import { Button } from "@/components/ui/button";
 import FeedItem, { Post } from "@/components/feed/FeedItem";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
+import CreateBrandDialog from "@/components/CreateBrandDialog";
+import { Sparkles, Plus, Compass } from "lucide-react";
 
 const PAGE = 8;
 
 export default function Feed() {
-  const { tenant, loading: tLoading } = useTenant();
-  const { user } = useAuth();
+  const { tenant, tenants, loading: tLoading } = useTenant();
+  const { user, isB2B, isB2C } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -39,7 +42,6 @@ export default function Feed() {
     setPosts([]); setDone(false); setActiveIdx(0);
     if (tenant) {
       load(0);
-      // Auto-join: garante que o usuário vire member ao acessar o feed da comunidade
       if (user) {
         supabase.from("memberships").upsert(
           { user_id: user.id, tenant_id: tenant.id, role: "member" },
@@ -67,15 +69,60 @@ export default function Feed() {
 
   if (tLoading) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
+  // B2B sem nenhum tenant → mostra prompt para criar marca (uma vez)
+  if (!tenant && isB2B && tenants.length === 0) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+        <TopBar />
+        <main className="flex-1 grid place-items-center px-6 py-10">
+          <div className="max-w-sm w-full text-center">
+            <div className="h-16 w-16 mx-auto rounded-2xl bg-brand grid place-items-center mb-5 shadow-elevated">
+              <Sparkles className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <h1 className="font-display text-3xl mb-2">Bem-vindo à Wenity</h1>
+            <p className="text-muted-foreground mb-6 text-pretty">
+              Para começar, crie sua marca. Em segundos você terá um ambiente próprio com feed, comunidade e métricas.
+            </p>
+            <Button
+              size="lg"
+              onClick={() => setShowCreate(true)}
+              className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Criar minha marca
+            </Button>
+          </div>
+        </main>
+        <CreateBrandDialog open={showCreate} onOpenChange={setShowCreate} />
+      </div>
+    );
+  }
+
+  // B2C ou B2B com tenants mas nenhum selecionado → manda escolher comunidade
   if (!tenant) {
     return (
-      <main className="min-h-screen grid place-items-center px-6 text-center">
-        <div>
-          <h1 className="font-display text-3xl mb-2">Sem marca ativa</h1>
-          <p className="text-muted-foreground mb-4">Crie uma marca para começar.</p>
-          <Button asChild><Link to="/onboarding">Criar marca</Link></Button>
-        </div>
-      </main>
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+        <TopBar />
+        <main className="flex-1 grid place-items-center px-6 py-10">
+          <div className="max-w-sm w-full text-center">
+            <div className="h-16 w-16 mx-auto rounded-2xl bg-brand-soft grid place-items-center mb-5">
+              <Compass className="h-7 w-7 text-primary" />
+            </div>
+            <h1 className="font-display text-3xl mb-2">
+              {isB2C ? "Descubra comunidades" : "Selecione uma marca"}
+            </h1>
+            <p className="text-muted-foreground mb-6 text-pretty">
+              {isB2C
+                ? "Entre em uma comunidade para ver o feed."
+                : "Escolha uma marca ativa para ver o feed."}
+            </p>
+            <Button asChild size="lg" className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full">
+              <Link to="/communities">Explorar comunidades</Link>
+            </Button>
+          </div>
+        </main>
+        <BottomNav />
+      </div>
     );
   }
 
