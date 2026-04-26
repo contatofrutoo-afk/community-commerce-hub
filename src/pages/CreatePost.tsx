@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { Video, Image as ImageIcon, Link, Upload, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type CtaType = "none" | "buy" | "schedule" | "quote" | "register" | "info";
 
@@ -22,6 +24,11 @@ const REGISTER_FIELDS = [
   { key: "notes", label: "Observação", required: false },
   { key: "custom", label: "Campo personalizado", required: false },
 ];
+
+const MAX_VIDEO_DURATION = 120; // 2 minutes in seconds
+const VIDEO_ASPECT_RATIO = "9:16";
+const VIDEO Resolution = "1080x1920";
+const IMAGE_ASPECT_RATIO = "1:1";
 
 export default function CreatePost() {
   const { tenant, isOwner } = useTenant();
@@ -59,6 +66,53 @@ export default function CreatePost() {
 
   const [loading, setLoading] = useState(false);
   const [usage, setUsage] = useState<{ posts: number; max: number } | null>(null);
+
+  // File upload state
+  const [mediaMode, setMediaMode] = useState<"url" | "upload">("url");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    
+    // Validate video duration
+    if (type === "video") {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        if (video.duration > MAX_VIDEO_DURATION) {
+          toast.error(`Vídeo deve ter no máximo ${MAX_VIDEO_DURATION / 60} minuto(s)`);
+          return;
+        }
+        setFile(f);
+      };
+      video.src = URL.createObjectURL(f);
+    } else if (type === "image") {
+      // Validate image aspect ratio will be done on preview
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        if (Math.abs(ratio - 1) > 0.1) { // Allow small tolerance
+          toast.warning("Imagem recomendada 1:1 (quadrado)");
+        }
+        setFile(f);
+      };
+      img.src = URL.createObjectURL(f);
+    } else {
+      setFile(f);
+    }
+  };
+
+  const uploadFile = async (f: File): Promise<string> => {
+    const ext = f.name.split(".").pop();
+    const path = `${tenant!.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("public").upload(path, f);
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from("public").getPublicUrl(path);
+    return publicUrl;
+  };
 
   useEffect(() => {
     if (!tenant) return;
@@ -130,9 +184,8 @@ export default function CreatePost() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenant || !user) return;
-    if (!isOwner) { toast.error("Apenas owners da marca podem postar"); return; }
-    if (usage && usage.posts >= usage.max) { toast.error(`Limite do plano atingido (${usage.max} posts)`); return; }
-    if (type !== "text" && !mediaUrl) { toast.error("URL de mídia obrigatória"); return; }
+    if (type !== "text" && !mediaUrl && !file) { toast.error("Adicione uma mídia (URL ou upload)"); return; }
+    if (type !== "text" && mediaMode === "upload" && !file) { toast.error("Selecione um arquivo para upload"); return; }
 
     let ctaConfig: any = null;
     if (ctaType !== "none") {
@@ -142,10 +195,27 @@ export default function CreatePost() {
     }
 
     setLoading(true);
+
+    // Upload file if in upload mode
+    let finalMediaUrl = mediaUrl;
+    let finalThumb = thumb;
+    
+    if (mediaMode === "upload" && file) {
+      try {
+        finalMediaUrl = await uploadFile(file);
+        // For images, use same URL as thumbnail
+        if (type === "image") finalThumb = finalMediaUrl;
+      } catch (err: any) {
+        toast.error(`Upload falhou: ${err.message}`);
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data: post, error } = await supabase.from("posts").insert({
       tenant_id: tenant.id, author_id: user.id, type,
-      media_url: type === "text" ? null : mediaUrl,
-      thumbnail_url: thumb || null,
+      media_url: type === "text" ? null : finalMediaUrl,
+      thumbnail_url: (type === "video" && finalThumb) || (type === "image" ? finalThumb : null),
       description: desc || null,
     }).select().single();
     if (error) { toast.error(error.message); setLoading(false); return; }
@@ -182,8 +252,114 @@ export default function CreatePost() {
           </div>
           {type !== "text" && (
             <>
-              <div><Label>URL da mídia</Label><Input value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://…" /></div>
-              <div><Label>Thumbnail (opcional)</Label><Input value={thumb} onChange={(e) => setThumb(e.target.value)} /></div>
+              {/* Media Mode Selector */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMediaMode("url")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
+                    mediaMode === "url" ? "bg-brand text-primary-foreground border-brand" : "bg-card border-border hover:bg-secondary/60"
+                  )}
+                >
+                  <Link className="h-4 w-4" />
+                  <span className="text-sm font-medium">URL</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMediaMode("upload")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all",
+                    mediaMode === "upload" ? "bg-brand text-primary-foreground border-brand" : "bg-card border-border hover:bg-secondary/60"
+                  )}
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="text-sm font-medium">Upload</span>
+                </button>
+              </div>
+
+              {mediaMode === "url" ? (
+                <div>
+                  <Label>
+                    {type === "video" ? "URL do vídeo" : "URL da imagem"}
+                    {type === "video" && <span className="text-xs text-muted-foreground ml-2">(provém de Vimeo, Cloudinary, etc)</span>}
+                  </Label>
+                  <Input 
+                    value={mediaUrl} 
+                    onChange={(e) => setMediaUrl(e.target.value)} 
+                    placeholder={type === "video" ? "https://player.vimeo.com/..." : "https://..."} 
+                  />
+                  {type === "video" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Proporção 9:16 (vertical) • Máx 2 min • 1080x1920px recomendado
+                    </p>
+                  )}
+                  {type === "image" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Proporção 1:1 (quadrado)
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept={type === "video" ? "video/*" : "image/*"}
+                    className="hidden"
+                  />
+                  {file ? (
+                    <div className="relative rounded-xl overflow-hidden border border-border">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 bg-background/80 rounded-full"
+                        onClick={() => setFile(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      {type === "video" ? (
+                        <video src={URL.createObjectURL(file)} className="w-full aspect-[9/16]" controls />
+                      ) : (
+                        <img src={URL.createObjectURL(file)} className="w-full aspect-square object-cover" alt="Preview" />
+                      )}
+                      <p className="p-2 text-xs text-muted-foreground bg-card">
+                        {file.name}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-12 border-2 border-dashed border-border rounded-xl flex flex-col items-center gap-3 hover:bg-secondary/40 transition-all"
+                    >
+                      {type === "video" ? (
+                        <Video className="h-8 w-8 text-muted-foreground" />
+                      ) : (
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      )}
+                      <div className="text-center">
+                        <p className="text-sm font-medium">Clique para carregar</p>
+                        <p className="text-xs text-muted-foreground">
+                          {type === "video" 
+                            ? `Vídeo ${VIDEO_ASPECT_RATIO} • até ${MAX_VIDEO_DURATION / 60} min` 
+                            : `Imagem ${IMAGE_ASPECT_RATIO}`}
+                        </p>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Thumbnail for video URL mode */}
+              {mediaMode === "url" && type === "video" && (
+                <div>
+                  <Label>Thumbnail (opcional)</Label>
+                  <Input value={thumb} onChange={(e) => setThumb(e.target.value)} placeholder="https://..." />
+                </div>
+              )}
             </>
           )}
           <div><Label>Descrição</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={1000} rows={3} /></div>
