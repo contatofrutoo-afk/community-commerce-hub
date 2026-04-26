@@ -38,6 +38,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     if (!user) {
       setTenants([]);
+      setTenant(null);
       setIsOwner(false);
       setLoading(false);
       return;
@@ -51,6 +52,21 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     (mems ?? []).forEach((m: any) => { roles[m.tenant_id] = m.role; });
     setMemRoles(roles);
     setTenants(list);
+    
+    // Auto-selecionar tenant
+    const savedId = localStorage.getItem("wenity:active_tenant");
+    if (savedId && list.find(t => t.id === savedId)) {
+      setTenant(list.find(t => t.id === savedId)!);
+      setIsOwner(roles[savedId] === "owner");
+    } else if (list.length > 0) {
+      // Se só tem 1, seleciona automaticamente
+      setTenant(list[0]);
+      setIsOwner(roles[list[0].id] === "owner");
+      localStorage.setItem("wenity:active_tenant", list[0].id);
+    } else {
+      setTenant(null);
+      setIsOwner(false);
+    }
     setLoading(false);
   }, [user]);
 
