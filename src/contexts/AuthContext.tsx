@@ -28,6 +28,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
 
+  console.log("AuthContext render:", { user: user?.id, loading, roleLoading, appRole });
+
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
       setSession(s);
@@ -85,6 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (!cancelled) {
+        console.log("AuthContext - roles buscados:", roles);
         setAppRole(newRole);
         setRoleLoading(false);
       }
