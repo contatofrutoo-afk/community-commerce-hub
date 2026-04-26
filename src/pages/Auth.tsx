@@ -63,15 +63,21 @@ export default function Auth() {
     // Verificar role para redirecionar corretamente
     // Usar as memberships como source principal (não depende de RLS complexa)
     if (data?.user) {
-      const { data: memberships } = await supabase
+      console.log("User ID apos login:", data.user.id);
+      
+      const { data: memberships, error: memError } = await supabase
         .from("memberships")
         .select("role")
         .eq("user_id", data.user.id);
       
-      const { data: roles } = await supabase
+      console.log("Memberships error:", memError, "data:", memberships);
+      
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id);
+      
+      console.log("Roles error:", rolesError, "data:", roles);
       
       const roleList = (roles ?? []).map((r) => r.role);
       const memberRoles = (memberships ?? []).map((m) => m.role);
@@ -80,7 +86,7 @@ export default function Auth() {
       const isB2B = roleList.includes("b2b") || roleList.includes("admin");
       const isOwner = memberRoles.includes("owner");
       
-      console.log("Debug - roles:", roleList, "memberships:", memberRoles);
+      console.log("Debug - roles:", roleList, "memberships:", memberRoles, "isB2B:", isB2B, "isOwner:", isOwner);
       
       // B2B/Admin vai para feed; owner vai para feed; B2C vai para comunidades
       if (isB2B || isOwner) {
