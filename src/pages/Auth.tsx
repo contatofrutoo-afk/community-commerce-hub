@@ -61,8 +61,21 @@ export default function Auth() {
     if (error) { toast.error(error.message); return; }
     toast.success("Bem-vindo");
     
-    // Todos vão para feed após login
-    nav("/feed");
+    // Verificar role para redirecionar corretamente
+    if (data?.user) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+      
+      const userRoles = (roles ?? []).map((r) => r.role);
+      const isB2B = userRoles.includes("b2b") || userRoles.includes("admin");
+      
+      // B2B vai para feed; B2C vai para comunidades
+      nav(isB2B ? "/feed" : "/communities");
+    } else {
+      nav("/feed");
+    }
   };
 
   return (
