@@ -46,8 +46,8 @@ export default function Auth() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Conta criada");
-    // B2B vai para criar marca; B2C vai descobrir comunidades
-    nav(parsed.data.account_type === "b2b" ? "/onboarding" : "/communities");
+    // Todos vão direto pro feed; B2B verá popup de criação de marca lá
+    nav("/feed");
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -651,33 +651,42 @@ export type Database = {
       }
       tenants: {
         Row: {
+          bio: string | null
+          city: string | null
           created_at: string
           created_by: string | null
           id: string
           logo_url: string | null
           name: string
+          phone: string | null
           primary_color: string | null
           secondary_color: string | null
           slug: string
           updated_at: string
         }
         Insert: {
+          bio?: string | null
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           logo_url?: string | null
           name: string
+          phone?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           slug: string
           updated_at?: string
         }
         Update: {
+          bio?: string | null
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          phone?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           slug?: string
