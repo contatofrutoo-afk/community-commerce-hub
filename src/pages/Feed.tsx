@@ -36,10 +36,11 @@ export default function Feed() {
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE - 1);
     setLoading(false);
-    if (error) return;
+    if (error) { console.error("Feed load error:", error); return; }
+    console.log("Loaded posts:", data?.length, "for tenant:", tenant.id);
     if (!data || data.length < PAGE) setDone(true);
     setPosts((p) => offset === 0 ? (data as any[]) : [...p, ...(data as any[])]);
-  }, [tenant, loading, done, refreshKey]);
+  }, [tenant?.id, loading, done]);
 
   // Track view when post becomes active
   const trackView = useCallback(async (postId: string) => {
@@ -53,20 +54,15 @@ export default function Feed() {
   }, [user, tenant]);
 
   useEffect(() => {
+    console.log("Feed effect running, tenant:", tenant?.id);
     setPosts([]); setDone(false); setActiveIdx(0);
-    // Check for timestamp in URL query params
     const t = searchParams.get("t");
     if (t) setRefreshKey(Number(t));
     if (tenant) {
+      console.log("Loading posts for tenant:", tenant.id);
       load(0);
-      if (user) {
-        supabase.from("memberships").upsert(
-          { user_id: user.id, tenant_id: tenant.id, role: "member" },
-          { onConflict: "user_id,tenant_id" } as any,
-        ).then(() => {});
-      }
     }
-  }, [tenant?.id, user?.id, location.pathname, searchParams.toString(), refreshKey]);
+  }, [tenant?.id, searchParams.toString(), refreshKey, load]);
 
   // Intersection Observer for active post and infinite scroll
   useEffect(() => {
