@@ -1,6 +1,6 @@
--- Create public storage bucket
+-- Create public storage bucket with larger limit for videos
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at)
-VALUES ('public', 'public', true, 5242880, NULL, now(), now())
+VALUES ('public', 'public', true, 104857600, NULL, now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies

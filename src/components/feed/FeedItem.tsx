@@ -61,6 +61,13 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     }
   }, [active, post.tenant_id, post.id]);
 
+  // Video progress
+  const [progress, setProgress] = useState(0);
+  const onTimeUpdate = () => {
+    const v = videoRef.current;
+    if (v && v.duration) setProgress((v.currentTime / v.duration) * 100);
+  };
+
   const onTap = async () => {
     const now = Date.now();
     if (now - tappedRef.current < 300) {
@@ -104,7 +111,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     <article className="relative h-[100dvh] w-full snap-start bg-foreground text-background overflow-hidden" onClick={onTap}>
       {post.type === "video" && post.media_url ? (
         <video ref={videoRef} src={post.media_url} className="absolute inset-0 h-full w-full object-cover"
-          loop muted playsInline preload="metadata" poster={post.thumbnail_url ?? undefined} />
+          loop muted playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
+          onTimeUpdate={onTimeUpdate} />
       ) : post.type === "image" && post.media_url ? (
         <img src={post.media_url} alt={post.description ?? ""} className="absolute inset-0 h-full w-full object-cover" />
       ) : (
@@ -138,6 +146,12 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
 
       {/* bottom info */}
       <div className="absolute left-0 right-0 bottom-20 px-5 z-10 max-w-md">
+        {/* progress bar for video */}
+        {post.type === "video" && (
+          <div className="h-1 bg-white/30 rounded-full mb-3 overflow-hidden">
+            <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        )}
         {post.profiles?.name && (
           <p className="font-semibold text-sm mb-2 drop-shadow-md">@{post.profiles.name}</p>
         )}

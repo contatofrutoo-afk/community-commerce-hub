@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
+import OnboardingTour from "@/components/OnboardingTour";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ const Loading = () => (
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Communities = lazy(() => import("./pages/Communities"));
 const Feed = lazy(() => import("./pages/Feed"));
 const Community = lazy(() => import("./pages/Community"));
@@ -45,9 +47,11 @@ const App = () => (
         <Suspense fallback={<Loading />}>
           <AuthProvider>
             <TenantProvider>
+              <OnboardingTour />
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
                 <Route path="/communities" element={<Protected><Communities /></Protected>} />
                 <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
                 <Route path="/community" element={<Protected><NeedsTenant><Community /></NeedsTenant></Protected>} />
