@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useDeviceType } from "@/hooks/use-device-type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Trash2 } from "lucide-react";
 export default function Content() {
   const { tenant } = useTenant();
   const location = useLocation();
+  const device = useDeviceType();
   const [tab, setTab] = useState<string>("services");
   const [services, setServices] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -102,23 +104,32 @@ export default function Content() {
   const wDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className={device === "mobile" ? "max-w-md mx-auto space-y-4 px-2 py-4" : device === "tablet" ? "max-w-3xl mx-auto space-y-6 px-4 py-6" : "max-w-5xl space-y-6"}>
       <div>
-        <h1 className="font-display text-4xl">Conteúdo</h1>
+        <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Conteúdo</h1>
         <p className="text-muted-foreground text-sm mt-1">Configure serviços (agenda) e eventos (inscrições) usados nos CTAs.</p>
       </div>
 
-      <Tabs defaultValue={tab} onValueChange={setTab}>
-        <TabsList><TabsTrigger value="services">Serviços</TabsTrigger><TabsTrigger value="events">Eventos</TabsTrigger></TabsList>
+      {device === "mobile" ? (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button onClick={() => setTab("services")} className={tab === "services" ? "shrink-0 px-4 py-2 bg-foreground text-background rounded-full text-sm font-medium" : "shrink-0 px-4 py-2 bg-secondary text-muted-foreground rounded-full text-sm"}>Serviços</button>
+          <button onClick={() => setTab("events")} className={tab === "events" ? "shrink-0 px-4 py-2 bg-foreground text-background rounded-full text-sm font-medium" : "shrink-0 px-4 py-2 bg-secondary text-muted-foreground rounded-full text-sm"}>Eventos</button>
+        </div>
+      ) : (
+        <Tabs defaultValue={tab} onValueChange={setTab}>
+          <TabsList><TabsTrigger value="services">Serviços</TabsTrigger><TabsTrigger value="events">Eventos</TabsTrigger></TabsList>
+        </Tabs>
+      )}
 
-        <TabsContent value="services" className="space-y-4">
+      {tab === "services" && (
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="font-display text-xl">Novo serviço</CardTitle></CardHeader>
-            <CardContent className="grid md:grid-cols-4 gap-3">
-              <div className="md:col-span-2"><Label>Nome</Label><Input value={sName} onChange={e => setSName(e.target.value)} /></div>
+            <CardContent className={device === "mobile" ? "grid grid-cols-1 gap-3" : "grid md:grid-cols-4 gap-3"}>
+              <div className={device === "mobile" ? "col-span-1" : "md:col-span-2"}><Label>Nome</Label><Input value={sName} onChange={e => setSName(e.target.value)} /></div>
               <div><Label>Duração (min)</Label><Input type="number" min={15} step={15} value={sDur} onChange={e => setSDur(Number(e.target.value))} /></div>
               <div><Label>Preço</Label><Input type="number" step="0.01" value={sPrice} onChange={e => setSPrice(e.target.value)} /></div>
-              <div className="md:col-span-4"><Button onClick={addService}>Criar serviço</Button></div>
+              <div className={device === "mobile" ? "col-span-1" : "md:col-span-4"}><Button onClick={addService} className="w-full">Criar serviço</Button></div>
             </CardContent>
           </Card>
 
@@ -142,7 +153,7 @@ export default function Content() {
               </Select>
               {selectedSvc && (
                 <>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className={device === "mobile" ? "grid grid-cols-2 gap-2" : "grid grid-cols-4 gap-2"}>
                     <Select value={rWeekday} onValueChange={setRWeekday}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{wDays.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}</SelectContent>
@@ -163,17 +174,19 @@ export default function Content() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="events" className="space-y-4">
+      {tab === "events" && (
+        <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="font-display text-xl">Novo evento</CardTitle></CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-3">
+            <CardContent className={device === "mobile" ? "grid grid-cols-1 gap-3" : "grid md:grid-cols-2 gap-3"}>
               <div><Label>Título</Label><Input value={eTitle} onChange={e => setETitle(e.target.value)} /></div>
               <div><Label>Data</Label><Input type="datetime-local" value={eDate} onChange={e => setEDate(e.target.value)} /></div>
-              <div className="md:col-span-2"><Label>Descrição</Label><Textarea rows={3} value={eDesc} onChange={e => setEDesc(e.target.value)} /></div>
+              <div className={device === "mobile" ? "col-span-1" : "md:col-span-2"}><Label>Descrição</Label><Textarea rows={3} value={eDesc} onChange={e => setEDesc(e.target.value)} /></div>
               <div><Label>Limite de vagas</Label><Input type="number" value={eLimit} onChange={e => setELimit(e.target.value)} /></div>
-              <div className="md:col-span-2"><Button onClick={addEvent}>Criar evento</Button></div>
+              <div className={device === "mobile" ? "col-span-1" : "md:col-span-2"}><Button onClick={addEvent} className="w-full">Criar evento</Button></div>
             </CardContent>
           </Card>
           <div className="space-y-2">
@@ -189,8 +202,8 @@ export default function Content() {
               </Card>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
