@@ -12,6 +12,8 @@ export type Tenant = {
   bio: string | null;
 };
 
+type TenantRoles = Record<string, "owner" | "member">;
+
 type TenantCtx = {
   tenant: Tenant | null;
   tenants: Tenant[];
@@ -32,7 +34,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [memRoles, setMemRoles] = useState<Record<string, "owner" | "member">({});
+  const [memRoles, setMemRoles] = useState<TenantRoles>({} as TenantRoles);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,7 +50,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       .select("tenant_id, role, tenants(*)")
       .eq("user_id", user.id);
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
-    const roles: Record<string, "owner" | "member"> = {};
+    const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
       const membership = m as { tenant_id: string; role: "owner" | "member" };
       roles[membership.tenant_id] = membership.role;
