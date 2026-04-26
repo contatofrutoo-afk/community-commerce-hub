@@ -8,7 +8,7 @@ import FeedItem, { Post } from "@/components/feed/FeedItem";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import CreateBrandDialog from "@/components/CreateBrandDialog";
-import { Sparkles, Plus, Compass } from "lucide-react";
+import { Sparkles, Plus, Play } from "lucide-react";
 
 const PAGE = 8;
 
@@ -69,8 +69,8 @@ export default function Feed() {
 
   if (tLoading) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
-  // B2B sem nenhum tenant → mostra prompt para criar marca (uma vez)
-  if (!tenant && isB2B && tenants.length === 0) {
+  // B2B sem nenhum tenant → mostra prompt para criar marca
+  if (!tenant && isB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
@@ -79,9 +79,9 @@ export default function Feed() {
             <div className="h-16 w-16 mx-auto rounded-2xl bg-brand grid place-items-center mb-5 shadow-elevated">
               <Sparkles className="h-7 w-7 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-3xl mb-2">Bem-vindo</h1>
+            <h1 className="font-display text-3xl mb-2">Crie sua marca</h1>
             <p className="text-muted-foreground mb-6 text-pretty">
-              Para começar, crie sua marca. Em segundos você terá um ambiente próprio com feed, comunidade e métricas.
+              Publique vídeos, construa comunidade e converta.
             </p>
             <Button
               size="lg"
@@ -89,7 +89,7 @@ export default function Feed() {
               className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full"
             >
               <Plus className="h-5 w-5 mr-2" />
-              Criar minha marca
+              Criar marca
             </Button>
           </div>
         </main>
@@ -98,50 +98,22 @@ export default function Feed() {
     );
   }
 
-  // B2B com tenants mas nenhum selecionado → seleciona o primeiro automaticamente (TenantContext já faz isso, mas fallback)
-  // B2C sem tenant → manda explorar comunidades
+  // B2C sem tenant selecionado → explorar comunidades
   if (!tenant) {
-    // B2B nunca deve ver "Explorar comunidades" — força criar/selecionar marca
-    if (isB2B) {
-      return (
-        <div className="min-h-[100dvh] flex flex-col bg-background">
-          <TopBar />
-          <main className="flex-1 grid place-items-center px-6 py-10">
-            <div className="max-w-sm w-full text-center">
-              <div className="h-16 w-16 mx-auto rounded-2xl bg-brand-soft grid place-items-center mb-5">
-                <Sparkles className="h-7 w-7 text-primary" />
-              </div>
-              <h1 className="font-display text-3xl mb-2">Selecione sua marca</h1>
-              <p className="text-muted-foreground mb-6 text-pretty">
-                Você é dono de uma marca. Acesse o painel para gerenciar conteúdo e métricas.
-              </p>
-              <Button
-                size="lg"
-                onClick={() => setShowCreate(true)}
-                className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full"
-              >
-                <Plus className="h-5 w-5 mr-2" />Nova marca
-              </Button>
-            </div>
-          </main>
-          <CreateBrandDialog open={showCreate} onOpenChange={setShowCreate} />
-        </div>
-      );
-    }
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
         <main className="flex-1 grid place-items-center px-6 py-10">
           <div className="max-w-sm w-full text-center">
             <div className="h-16 w-16 mx-auto rounded-2xl bg-brand-soft grid place-items-center mb-5">
-              <Compass className="h-7 w-7 text-primary" />
+              <Play className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="font-display text-3xl mb-2">Descubra comunidades</h1>
+            <h1 className="font-display text-3xl mb-2">Descubra conteúdo</h1>
             <p className="text-muted-foreground mb-6 text-pretty">
-              Entre em uma comunidade para ver o feed.
+              Entre em uma comunidade para ver vídeos.
             </p>
             <Button asChild size="lg" className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full">
-              <Link to="/communities">Explorar comunidades</Link>
+              <Link to="/communities">Explorar</Link>
             </Button>
           </div>
         </main>
