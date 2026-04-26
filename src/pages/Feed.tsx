@@ -28,15 +28,20 @@ export default function Feed() {
   const loadPosts = useCallback(async (offset = 0) => {
     if (!tenant || loading || done) return;
     setLoading(true);
+    console.log("Loading posts for tenant:", tenant.id, "offset:", offset);
+    
+    // Simple query first
     const { data, error } = await supabase
       .from("posts")
-      .select("*, post_cta(*), profiles:author_id(name, avatar_url)")
+      .select("*")
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE - 1);
+    
     setLoading(false);
     if (error) { console.error("Feed load error:", error); return; }
-    console.log("Loaded posts:", data?.length, "for tenant:", tenant.id);
+    console.log("Loaded posts raw:", data);
+    
     if (!data || data.length < PAGE) setDone(true);
     setPosts((p) => offset === 0 ? (data as any[]) : [...p, ...(data as any[])]);
   }, [tenant?.id, loading, done]);

@@ -218,7 +218,8 @@ export default function CreatePost() {
       thumbnail_url: (type === "video" && finalThumb) || (type === "image" ? finalThumb : null),
       description: desc || null,
     }).select().single();
-    if (error) { toast.error(error.message); setLoading(false); return; }
+    if (error) { console.error("Post insert error:", error); toast.error(error.message); setLoading(false); return; }
+    console.log("Post created:", post);
 
     if (ctaType !== "none") {
       const { error: ctaErr } = await supabase.from("post_cta").insert({
