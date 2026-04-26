@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -228,7 +228,8 @@ export default function CreatePost() {
     }
 
     toast.success("Post publicado");
-    nav("/feed");
+    // Navigate with timestamp to force refresh
+    nav(`/feed?t=${Date.now()}`);
   };
 
   return (

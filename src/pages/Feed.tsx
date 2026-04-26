@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,11 +16,13 @@ export default function Feed() {
   const { tenant, loading: tLoading } = useTenant();
   const { user, isB2B } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -37,7 +39,7 @@ export default function Feed() {
     if (error) return;
     if (!data || data.length < PAGE) setDone(true);
     setPosts((p) => offset === 0 ? (data as any[]) : [...p, ...(data as any[])]);
-  }, [tenant, loading, done]);
+  }, [tenant, loading, done, refreshKey]);
 
   // Track view when post becomes active
   const trackView = useCallback(async (postId: string) => {
@@ -52,6 +54,9 @@ export default function Feed() {
 
   useEffect(() => {
     setPosts([]); setDone(false); setActiveIdx(0);
+    // Check for timestamp in URL query params
+    const t = searchParams.get("t");
+    if (t) setRefreshKey(Number(t));
     if (tenant) {
       load(0);
       if (user) {
@@ -61,7 +66,7 @@ export default function Feed() {
         ).then(() => {});
       }
     }
-  }, [tenant?.id, user?.id, location.pathname]);
+  }, [tenant?.id, user?.id, location.pathname, searchParams.toString(), refreshKey]);
 
   // Intersection Observer for active post and infinite scroll
   useEffect(() => {
