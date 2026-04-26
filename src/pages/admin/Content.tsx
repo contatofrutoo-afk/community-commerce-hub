@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +14,19 @@ import { Trash2 } from "lucide-react";
 
 export default function Content() {
   const { tenant } = useTenant();
+  const location = useLocation();
+  const [tab, setTab] = useState<string>("services");
   const [services, setServices] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+
+  // Auto-select tab based on URL
+  useEffect(() => {
+    if (location.pathname.includes("/events")) {
+      setTab("events");
+    } else {
+      setTab("services");
+    }
+  }, [location]);
 
   // service form
   const [sName, setSName] = useState("");
@@ -96,7 +108,7 @@ export default function Content() {
         <p className="text-muted-foreground text-sm mt-1">Configure serviços (agenda) e eventos (inscrições) usados nos CTAs.</p>
       </div>
 
-      <Tabs defaultValue="services">
+      <Tabs defaultValue={tab} onValueChange={setTab}>
         <TabsList><TabsTrigger value="services">Serviços</TabsTrigger><TabsTrigger value="events">Eventos</TabsTrigger></TabsList>
 
         <TabsContent value="services" className="space-y-4">
