@@ -30,19 +30,50 @@ export default function Feed() {
     setLoading(true);
     console.log("Loading posts for tenant:", tenant.id, "offset:", offset);
     
+    // Fetch posts
     const { data, error } = await supabase
       .from("posts")
-      .select("*, post_cta(*)")
+      .select("*")
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE - 1);
     
     setLoading(false);
     if (error) { console.error("Feed load error:", error); return; }
-    console.log("Loaded posts with CTAs:", data);
+    console.log("Loaded posts:", data);
     
-    if (!data || data.length < PAGE) setDone(true);
-    setPosts((p) => offset === 0 ? (data as any[]) : [...p, ...(data as any[])]);
+    if (!data || data.length === 0) {
+      setDone(true);
+      setPosts([]);
+      return;
+    }
+    
+    // Fetch CTAs separately
+    const postIds = data.map(p => p.id);
+    console.log("Post IDs:", postIds);
+    
+    const { data: ctas } = await supabase
+      .from("post_cta")
+      .select("*")
+      .in("post_id", postIds);
+    
+    console.log("Loaded CTAs:", ctas);
+    
+    // Map CTAs to posts
+    const ctaMap: Record<string, any> = {};
+    (ctas || []).forEach((c: any) => {
+      ctaMap[c.post_id] = c;
+    });
+    
+    const postsWithCtas = data.map(p => ({
+      ...p,
+      post_cta: ctaMap[p.id] ? [ctaMap[p.id]] : []
+    }));
+    
+    console.log("Posts with CTAs:", postsWithCtas);
+    
+    if (data.length < PAGE) setDone(true);
+    setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
   }, [tenant?.id, loading, done]);
 
   // Track view when post becomes active

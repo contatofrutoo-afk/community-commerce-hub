@@ -107,9 +107,6 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     await track({ tenantId: post.tenant_id, postId: post.id, action: "like" });
   };
 
-  const cta = post.post_cta?.[0];
-  console.log("CTA for post:", post.id, "cta:", cta, "post_cta array:", post.post_cta);
-
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const url = `${window.location.origin}/feed?post=${post.id}`;
@@ -188,11 +185,11 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         {post.description && (
           <p className="text-sm leading-relaxed mb-4 line-clamp-3 text-pretty">{post.description}</p>
         )}
-        {cta && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <CTAButton cta={cta} postId={post.id} tenantId={post.tenant_id} />
+        {post.post_cta && post.post_cta.length > 0 ? (
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <CTAButton cta={post.post_cta[0]} postId={post.id} tenantId={post.tenant_id} />
           </div>
-        )}
+        ) : null}
       </div>
 
       <CommentsSheet
