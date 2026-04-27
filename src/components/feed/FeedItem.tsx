@@ -146,54 +146,34 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     if (!chatComment.trim()) { toast.error("Escreva um comentário"); return; }
     
     const thumbnailUrl = post.thumbnail_url || post.media_url;
-    const postInfo = `[Post ${post.type === 'image' ? '🖼️' : post.type === 'video' ? '🎬' : '📝'}](${thumbnailUrl || 'sem imagem'})`;
     
-    console.log("FeedItem: Starting comment send process", { tenantId: tenant.id, userId: user.id });
-    
-    const { data: mem, error: memError } = await supabase.from("memberships").select("id")
-      .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
-    
-    if (memError) {
-      console.error("FeedItem: Membership check error:", memError);
-    }
-    
-    if (!mem) {
-      console.log("FeedItem: Creating membership for user");
-      const { error: insertMemError } = await supabase.from("memberships").insert({ 
-        tenant_id: tenant.id, 
-        user_id: user.id, 
-        role: "member" 
+    try {
+      await supabase.from("memberships").upsert({
+        tenant_id: tenant.id,
+        user_id: user.id,
+        role: "member"
       });
-      if (insertMemError) {
-        console.error("FeedItem: Membership insert error:", insertMemError);
-      } else {
-        console.log("FeedItem: Membership created successfully");
+      
+      const messageContent = `[Post] ${chatComment.trim()}\n\n${thumbnailUrl || ''}\n\n${post.description?.slice(0, 100) || ''}`;
+      
+      const { error } = await supabase.from("community_messages").insert({
+        tenant_id: tenant.id,
+        user_id: user.id,
+        content: messageContent
+      });
+
+      if (error) {
+        toast.error(`Erro: ${error.message}`);
+        return;
       }
-    } else {
-      console.log("FeedItem: User already has membership", mem.id);
+
+      toast.success("Comentário enviado!");
+      setShowChatDialog(false);
+      setChatComment("");
+      nav("/community");
+    } catch (err) {
+      toast.error("Erro ao enviar");
     }
-
-    const contentToSend = `[Post] ${chatComment.trim()}\n\n${postInfo}\n\n${post.description?.slice(0, 100) || ''}`;
-    console.log("FeedItem: Inserting comment with content:", contentToSend.substring(0, 50) + "...");
-
-    const { error } = await supabase.from("community_messages").insert({
-      tenant_id: tenant.id,
-      user_id: user.id,
-      content: contentToSend
-    });
-
-    if (error) {
-      console.error("FeedItem: Comment insert error:", error);
-      toast.error(`Erro: ${error.message}`);
-      return;
-    }
-
-    console.log("FeedItem: Comment inserted successfully!");
-    toast.success("Comentário enviado para a comunidade!");
-    setShowChatDialog(false);
-    setChatComment("");
-    nav("/community");
-    track({ tenantId: post.tenant_id, postId: post.id, action: "click_cta", metadata: { kind: "comment_from_chat" } });
   };
 
   const goToCommunity = async () => {
