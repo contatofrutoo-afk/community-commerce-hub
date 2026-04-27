@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 
-type Msg = { id: string; user_id: string; content: string; created_at: string; profiles?: { name: string } | null };
+type Msg = { 
+  id: string; 
+  user_id: string; 
+  content: string; 
+  created_at: string; 
+  metadata_json?: Record<string, unknown> | null;
+  profiles?: { name: string } | null 
+};
 
 export default function Community() {
   const { tenant } = useTenant();
@@ -49,23 +56,46 @@ export default function Community() {
     if (error) toast.error(error.message);
   };
 
+  const isPostComment = (content: string, metadata?: Record<string, unknown> | null) => {
+    return content?.startsWith("[Post]") || metadata?.post_id;
+  };
+
   return (
     <div className="h-[100dvh] flex flex-col bg-background">
       <TopBar />
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-xl mx-auto w-full pb-24 space-y-3">
         <h1 className="font-display text-3xl mb-4">Comunidade</h1>
         {messages.length === 0 && <p className="text-muted-foreground text-sm">Seja o primeiro a escrever.</p>}
-        {messages.map((m) => (
-          <div key={m.id} className={`flex gap-2 ${m.user_id === user?.id ? "flex-row-reverse" : ""}`}>
-            <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
-              {m.profiles?.name?.[0]?.toUpperCase() ?? "?"}
+        {messages.map((m) => {
+          const isPost = isPostComment(m.content, m.metadata_json);
+          return (
+            <div key={m.id} className={`flex gap-2 ${m.user_id === user?.id ? "flex-row-reverse" : ""}`}>
+              <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
+                {m.profiles?.name?.[0]?.toUpperCase() ?? "?"}
+              </div>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.user_id === user?.id ? "bg-foreground text-background" : "bg-secondary"}`}>
+                <p className="text-xs opacity-70 mb-0.5">{m.profiles?.name ?? "Anônimo"}</p>
+                {isPost && m.metadata_json && (
+                  <div className="mb-2 rounded-lg overflow-hidden border border-border">
+                    <img 
+                      src={(m.metadata_json.post_thumbnail || m.metadata_json.post_media) as string} 
+                      alt="Post" 
+                      className="w-full h-32 object-cover"
+                    />
+                    {m.metadata_json.post_description && (
+                      <p className="text-xs p-2 bg-muted truncate">
+                        {String(m.metadata_json.post_description).slice(0, 80)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {isPost ? m.content.slice(6).trim() : m.content}
+                </p>
+              </div>
             </div>
-            <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${m.user_id === user?.id ? "bg-foreground text-background" : "bg-secondary"}`}>
-              <p className="text-xs opacity-70 mb-0.5">{m.profiles?.name ?? "Anônimo"}</p>
-              <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="fixed bottom-16 inset-x-0 px-4 py-3 bg-background/95 backdrop-blur border-t border-border">
         <div className="max-w-xl mx-auto flex gap-2">
