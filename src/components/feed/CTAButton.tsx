@@ -19,8 +19,9 @@ type CTA = {
   config_json: any;
 };
 
-export default function CTAButton({ cta, postId, tenantId }: { cta: CTA; postId: string; tenantId: string }) {
+export default function CTAButton({ cta, postId, tenantId, className }: { cta: CTA; postId: string; tenantId: string; className?: string }) {
   const [open, setOpen] = useState(false);
+  const buttonLabel = cta.label?.trim() || "Ver mais";
 
   const handleClick = async () => {
     await track({ tenantId, postId, ctaId: cta.id, action: "click_cta" });
@@ -28,13 +29,13 @@ export default function CTAButton({ cta, postId, tenantId }: { cta: CTA; postId:
   };
 
   return (
-    <div className="mt-3">
+    <div className={cn("w-full", className)}>
       <Button
         onClick={handleClick}
         size="lg"
-        className="w-full bg-white text-black hover:bg-gray-100 rounded-full font-bold shadow-lg border-2 border-white/20 text-base"
+        className="feed-cta-button w-full min-h-12 rounded-xl px-5 text-base font-bold text-primary-foreground shadow-brand pointer-events-auto"
       >
-        {cta.label || "Saiba mais"}
+        {buttonLabel}
       </Button>
       {open && <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />}
     </div>
