@@ -172,9 +172,13 @@
     position: absolute;
     left: 1rem;
     right: 1rem;
-    bottom: calc(var(--bottom-safe-area, 80px) + 1.5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(11rem + env(safe-area-inset-bottom, 0px));
     max-width: calc(100% - 2rem);
-    z-index: 40;
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
     pointer-events: auto;
   }
 
