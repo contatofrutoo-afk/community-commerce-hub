@@ -36,9 +36,7 @@ export default function CTAButton({ cta, postId, tenantId }: { cta: CTA; postId:
       >
         {cta.label}
       </Button>
-      {open && (
-        <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />
-      )}
+      <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

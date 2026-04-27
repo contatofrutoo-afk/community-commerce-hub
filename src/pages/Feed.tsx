@@ -76,25 +76,32 @@ export default function Feed() {
     }
   }, [searchParams.get("t"), tenant?.id]);
 
-  // Intersection Observer for active post and infinite scroll
+  // Re-observe items when posts change
   useEffect(() => {
     const c = containerRef.current;
-    if (!c) return;
+    if (!c || posts.length === 0) return;
+    
+    // Disconnect existing observer
+    const existingObs = c.__observer;
+    if (existingObs) existingObs.disconnect();
+    
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting && e.intersectionRatio > 0.6) {
           const idx = Number((e.target as HTMLElement).dataset.idx);
           setActiveIdx(idx);
-          // Track view after 2 seconds
-          const post = posts[idx];
-          if (post) {
-            setTimeout(() => trackView(post.id), 2000);
-          }
-          if (idx >= posts.length - 2) loadPosts(posts.length);
         }
       });
     }, { root: c, threshold: 0.6 });
-    itemRefs.current.forEach((el) => el && io.observe(el));
+    
+    c.__observer = io;
+    
+    itemRefs.current.forEach((el) => {
+      if (el) {
+        io.observe(el);
+      }
+    });
+    
     return () => io.disconnect();
   }, [posts.length]);
 
