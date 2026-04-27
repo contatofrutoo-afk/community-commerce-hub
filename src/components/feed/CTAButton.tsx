@@ -32,7 +32,7 @@ export default function CTAButton({ cta, postId, tenantId }: { cta: CTA; postId:
       <Button
         onClick={handleClick}
         size="lg"
-        className="w-full bg-background text-foreground hover:bg-background/90 rounded-full font-semibold shadow-elevated"
+        className="w-full bg-white text-black hover:bg-white/90 rounded-full font-bold shadow-lg border-2 border-white/20"
       >
         {cta.label}
       </Button>

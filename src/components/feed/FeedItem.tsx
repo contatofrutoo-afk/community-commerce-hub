@@ -108,7 +108,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   };
 
   const cta = post.post_cta?.[0];
-  console.log("CTA for post:", post.id, cta);
+  console.log("CTA for post:", post.id, "cta:", cta, "post_cta array:", post.post_cta);
 
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
