@@ -185,11 +185,12 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         {post.description && (
           <p className="text-sm leading-relaxed mb-4 line-clamp-3 text-pretty">{post.description}</p>
         )}
-        {post.post_cta && post.post_cta.length > 0 ? (
-          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+        {console.log("DEBUG post_cta:", post.post_cta, "for post:", post.id) || null}
+        {post.post_cta?.[0] && (
+          <div className="mt-3">
             <CTAButton cta={post.post_cta[0]} postId={post.id} tenantId={post.tenant_id} />
           </div>
-        ) : null}
+        )}
       </div>
 
       <CommentsSheet
