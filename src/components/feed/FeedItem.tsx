@@ -150,8 +150,11 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         <Heart className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 fill-primary text-primary animate-scale-pop pointer-events-none drop-shadow-[0_0_24px_hsl(var(--brand-to)/0.6)]" />
       )}
 
-      {/* right rail */}
-      <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-10">
+      {/* right rail - posicionado ACIMA do CTA */}
+      <div
+        className="absolute right-3 flex flex-col items-center gap-5 z-10"
+        style={{ bottom: "calc(11rem + 3.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <button onClick={toggleMute} className="flex flex-col items-center gap-1" aria-label={muted ? "Ativar som" : "Silenciar"}>
           {muted ? <VolumeX className="h-6 w-6 drop-shadow-md text-background" /> : <Volume2 className="h-6 w-6 drop-shadow-md text-background" />}
         </button>
