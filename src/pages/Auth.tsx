@@ -82,8 +82,8 @@ export default function Auth() {
     <main className="min-h-screen bg-background grid place-items-center px-6 py-10 relative overflow-hidden">
       <div className="absolute inset-0 bg-brand-soft pointer-events-none" />
       <div className="w-full max-w-sm relative">
-        <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
-          <Logo size={44} />
+        <Link to="/" className="flex items-center justify-center mb-10">
+          <Logo size={64} />
         </Link>
 
         <div className="bg-card rounded-2xl shadow-elevated p-6 border border-border">

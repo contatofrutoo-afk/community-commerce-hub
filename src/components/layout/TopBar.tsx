@@ -20,7 +20,7 @@ export default function TopBar() {
               <span className="font-display text-lg leading-none">{tenant.name}</span>
             </>
           ) : (
-            <Logo size={28} />
+            <Logo size={40} />
           )}
         </div>
         <div className="w-9" />
