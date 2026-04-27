@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, Trash2, MessageSquare } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import CTAButton from "./CTAButton";
 import CommentsSheet from "./CommentsSheet";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 export type Post = {
   id: string;
@@ -26,6 +27,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const videoRef = useRef<HTMLVideoElement>(null);
   const { user } = useAuth();
   const { tenant, isOwner } = useTenant();
+  const nav = useNavigate();
   const [liked, setLiked] = useState(false);
   const [popHeart, setPopHeart] = useState(false);
   const [counts, setCounts] = useState({ likes: 0, comments: 0 });
@@ -126,6 +128,23 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     }
   };
 
+  const startConversation = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !tenant) { nav("/auth"); return; }
+    const { data: t } = await supabase.from("message_threads").select("id")
+      .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
+    const threadId = t?.id;
+    if (threadId) {
+      nav("/messages");
+    } else {
+      const { data: newThread } = await supabase.from("message_threads")
+        .insert({ tenant_id: tenant.id, user_id: user.id })
+        .select("id").single();
+      if (newThread) nav("/messages");
+    }
+    track({ tenantId: post.tenant_id, postId: post.id, action: "click_cta", metadata: { kind: "message_brand" } });
+  };
+
   const postCta = post.post_cta?.[0] ?? null;
   console.log("CTA RECEBIDO:", postCta);
 
@@ -169,6 +188,10 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         <button onClick={onShare} className="flex flex-col items-center gap-1" aria-label="Compartilhar">
           <Share2 className="h-7 w-7 drop-shadow-md text-background" />
           <span className="text-xs font-semibold drop-shadow-md">Enviar</span>
+        </button>
+        <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Falar com a marca">
+          <MessageSquare className="h-7 w-7 drop-shadow-md text-background" />
+          <span className="text-xs font-semibold drop-shadow-md">Chat</span>
         </button>
         {isPostOwner && (
           <button onClick={deletePost} className="flex flex-col items-center gap-1" aria-label="Excluir">
