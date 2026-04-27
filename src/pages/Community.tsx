@@ -25,19 +25,22 @@ export default function Community() {
   const [text, setText] = useState("");
 
   useEffect(() => {
-    if (!tenant) return;
+    if (!tenant) { console.log("Community: no tenant"); return; }
+    console.log("Community: loading messages for tenant", tenant.id);
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("community_messages")
         .select("*, profiles:user_id(name)")
         .eq("tenant_id", tenant.id)
         .order("created_at", { ascending: true })
         .limit(200);
+      console.log("Community: loaded messages", data?.length, "error:", error);
       setMessages((data ?? []) as any);
     })();
     const ch = supabase.channel(`community-${tenant.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "community_messages", filter: `tenant_id=eq.${tenant.id}` },
         async (payload) => {
+          console.log("Community: realtime insert received", payload.new);
           const { data: prof } = await supabase.from("profiles").select("name").eq("user_id", (payload.new as any).user_id).maybeSingle();
           setMessages((m) => [...m, { ...(payload.new as any), profiles: prof }]);
         })

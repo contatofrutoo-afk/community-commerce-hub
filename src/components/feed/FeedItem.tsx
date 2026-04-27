@@ -148,26 +148,47 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     const thumbnailUrl = post.thumbnail_url || post.media_url;
     const postInfo = `[Post ${post.type === 'image' ? '🖼️' : post.type === 'video' ? '🎬' : '📝'}](${thumbnailUrl || 'sem imagem'})`;
     
-    console.log("Sending comment:", { postId: post.id, content: chatComment });
+    console.log("FeedItem: Starting comment send process", { tenantId: tenant.id, userId: user.id });
     
-    const { data: mem } = await supabase.from("memberships").select("id")
+    const { data: mem, error: memError } = await supabase.from("memberships").select("id")
       .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
-    if (!mem) {
-      await supabase.from("memberships").insert({ tenant_id: tenant.id, user_id: user.id, role: "member" });
+    
+    if (memError) {
+      console.error("FeedItem: Membership check error:", memError);
     }
+    
+    if (!mem) {
+      console.log("FeedItem: Creating membership for user");
+      const { error: insertMemError } = await supabase.from("memberships").insert({ 
+        tenant_id: tenant.id, 
+        user_id: user.id, 
+        role: "member" 
+      });
+      if (insertMemError) {
+        console.error("FeedItem: Membership insert error:", insertMemError);
+      } else {
+        console.log("FeedItem: Membership created successfully");
+      }
+    } else {
+      console.log("FeedItem: User already has membership", mem.id);
+    }
+
+    const contentToSend = `[Post] ${chatComment.trim()}\n\n${postInfo}\n\n${post.description?.slice(0, 100) || ''}`;
+    console.log("FeedItem: Inserting comment with content:", contentToSend.substring(0, 50) + "...");
 
     const { error } = await supabase.from("community_messages").insert({
       tenant_id: tenant.id,
       user_id: user.id,
-      content: `[Post] ${chatComment.trim()}\n\n${postInfo}\n\n${post.description?.slice(0, 100) || ''}`
+      content: contentToSend
     });
 
     if (error) {
-      console.error("Insert error:", error);
+      console.error("FeedItem: Comment insert error:", error);
       toast.error(`Erro: ${error.message}`);
       return;
     }
 
+    console.log("FeedItem: Comment inserted successfully!");
     toast.success("Comentário enviado para a comunidade!");
     setShowChatDialog(false);
     setChatComment("");
