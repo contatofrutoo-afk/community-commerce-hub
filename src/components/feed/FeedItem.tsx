@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 export type Post = {
   id: string;
   tenant_id: string;
+  author_id?: string | null;
   type: "video" | "image" | "text";
   media_url: string | null;
   thumbnail_url: string | null;
