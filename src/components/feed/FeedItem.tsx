@@ -142,8 +142,10 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   };
 
   const sendChatComment = async () => {
-    if (!user || !tenant) return;
+    if (!user || !tenant) { toast.error("Usuário não autenticado"); return; }
     if (!chatComment.trim()) { toast.error("Escreva um comentário"); return; }
+    
+    console.log("Sending comment:", { postId: post.id, content: chatComment, metadata: { post_id: post.id, post_type: post.type, post_media: post.media_url, post_thumbnail: post.thumbnail_url, post_description: post.description }});
     
     const { data: mem } = await supabase.from("memberships").select("id")
       .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
@@ -151,12 +153,18 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       await supabase.from("memberships").insert({ tenant_id: tenant.id, user_id: user.id, role: "member" });
     }
 
-    await supabase.from("community_messages").insert({
+    const { error } = await supabase.from("community_messages").insert({
       tenant_id: tenant.id,
       user_id: user.id,
       content: `[Post] ${chatComment.trim()}`,
       metadata_json: { post_id: post.id, post_type: post.type, post_media: post.media_url, post_thumbnail: post.thumbnail_url, post_description: post.description }
     });
+
+    if (error) {
+      console.error("Insert error:", error);
+      toast.error(`Erro: ${error.message}`);
+      return;
+    }
 
     toast.success("Comentário enviado para a comunidade!");
     setShowChatDialog(false);
