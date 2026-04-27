@@ -83,7 +83,7 @@ export default function Auth() {
       <div className="absolute inset-0 bg-brand-soft pointer-events-none" />
       <div className="w-full max-w-sm relative">
         <Link to="/" className="flex items-center justify-center mb-10">
-          <Logo size={96} />
+          <Logo size={160} />
         </Link>
 
         <div className="bg-card rounded-2xl shadow-elevated p-6 border border-border">

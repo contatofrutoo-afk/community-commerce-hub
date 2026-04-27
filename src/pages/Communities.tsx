@@ -59,7 +59,7 @@ export default function Communities() {
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
         <div className="max-w-xl mx-auto flex items-center justify-between px-4 h-14">
           <Link to="/" className="flex items-center gap-2">
-            <Logo size={56} />
+            <Logo size={72} />
           </Link>
           {user ? (
             <Button size="icon" variant="ghost" onClick={async () => { await signOut(); nav("/"); }}>
