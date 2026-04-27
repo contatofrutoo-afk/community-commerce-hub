@@ -9,6 +9,10 @@ import CTAButton from "./CTAButton";
 import CommentsSheet from "./CommentsSheet";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 export type Post = {
   id: string;
@@ -35,6 +39,9 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const [muted, setMuted] = useState(true);
   const tappedRef = useRef<number>(0);
   const trackedView = useRef(false);
+
+  const [showChatDialog, setShowChatDialog] = useState(false);
+  const [chatComment, setChatComment] = useState("");
 
   const isPostOwner = isOwner && post.author_id === user?.id;
 
@@ -131,11 +138,41 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const startConversation = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user || !tenant) { nav("/auth"); return; }
+    setShowChatDialog(true);
+  };
+
+  const sendChatComment = async () => {
+    if (!user || !tenant) return;
+    if (!chatComment.trim()) { toast.error("Escreva um comentário"); return; }
+    
     const { data: mem } = await supabase.from("memberships").select("id")
       .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
     if (!mem) {
       await supabase.from("memberships").insert({ tenant_id: tenant.id, user_id: user.id, role: "member" });
     }
+
+    await supabase.from("community_messages").insert({
+      tenant_id: tenant.id,
+      user_id: user.id,
+      content: `[Post] ${chatComment.trim()}`,
+      metadata_json: { post_id: post.id, post_type: post.type, post_media: post.media_url, post_thumbnail: post.thumbnail_url, post_description: post.description }
+    });
+
+    toast.success("Comentário enviado para a comunidade!");
+    setShowChatDialog(false);
+    setChatComment("");
+    nav("/community");
+    track({ tenantId: post.tenant_id, postId: post.id, action: "click_cta", metadata: { kind: "comment_from_chat" } });
+  };
+
+  const goToCommunity = async () => {
+    if (!user || !tenant) { nav("/auth"); return; }
+    const { data: mem } = await supabase.from("memberships").select("id")
+      .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
+    if (!mem) {
+      await supabase.from("memberships").insert({ tenant_id: tenant.id, user_id: user.id, role: "member" });
+    }
+    setShowChatDialog(false);
     nav("/community");
     track({ tenantId: post.tenant_id, postId: post.id, action: "click_cta", metadata: { kind: "message_brand" } });
   };
@@ -220,6 +257,45 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         tenantId={post.tenant_id}
         onCountChange={(d) => setCounts((c) => ({ ...c, comments: c.comments + d }))}
       />
+
+      <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Quer comentar sobre o post?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+              {post.type === "video" && post.media_url ? (
+                <video src={post.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+              ) : post.type === "image" && post.media_url ? (
+                <img src={post.media_url} alt="Post" className="w-full h-full object-cover" />
+              ) : post.type === "text" ? (
+                <div className="w-full h-full bg-brand flex items-center justify-center p-4">
+                  <p className="text-primary-foreground text-center text-sm">{post.description?.slice(0, 100)}</p>
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <label className="text-sm font-medium">Seu comentário</label>
+              <Textarea
+                value={chatComment}
+                onChange={(e) => setChatComment(e.target.value)}
+                placeholder="Escreva o que você achou do post..."
+                maxLength={500}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2">
+            <Button onClick={sendChatComment} className="w-full bg-brand text-primary-foreground hover:opacity-90">
+              Comentar no post
+            </Button>
+            <Button variant="outline" onClick={goToCommunity} className="w-full">
+              Só quero falar com a marca
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }
