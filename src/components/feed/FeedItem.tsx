@@ -183,7 +183,10 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         <CTAButton cta={postCta} postId={post.id} tenantId={post.tenant_id} className="feed-cta-container" />
       )}
 
-      <div className="absolute left-0 right-0 bottom-36 px-5 z-10 max-w-md">
+      <div
+        className="absolute left-0 right-0 px-5 z-10 max-w-md"
+        style={{ bottom: "calc(11rem + 3.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         {/* progress bar for video */}
         {post.type === "video" && (
           <div className="h-1 bg-white/30 rounded-full mb-3 overflow-hidden">
