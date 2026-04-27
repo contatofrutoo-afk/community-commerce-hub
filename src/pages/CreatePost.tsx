@@ -41,7 +41,16 @@ export default function CreatePost() {
   const [desc, setDesc] = useState("");
 
   const [ctaType, setCtaType] = useState<CtaType>("none");
-  const [ctaLabel, setCtaLabel] = useState("");
+
+  // Default CTA labels
+  const ctaLabels: Record<CtaType, string> = {
+    none: "",
+    buy: "Comprar",
+    schedule: "Agendar",
+    quote: "Solicitar Orçamento",
+    register: "Inscrever-se",
+    info: "Saiba mais",
+  };
 
   // BUY
   const [buyTitle, setBuyTitle] = useState("");
@@ -223,7 +232,7 @@ export default function CreatePost() {
 
     if (ctaType !== "none") {
       const { error: ctaErr } = await supabase.from("post_cta").insert({
-        post_id: post.id, type: ctaType, label: ctaLabel || "Saiba mais", config_json: ctaConfig,
+        post_id: post.id, type: ctaType, label: ctaLabels[ctaType], config_json: ctaConfig,
       });
       if (ctaErr) { toast.error(`CTA: ${ctaErr.message}`); setLoading(false); return; }
     }
@@ -383,11 +392,6 @@ export default function CreatePost() {
 
           {ctaType !== "none" && (
             <div className="space-y-4 rounded-xl bg-secondary/40 p-4">
-              <div>
-                <Label>Texto do botão</Label>
-                <Input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} maxLength={40} placeholder="Ex: Comprar agora" />
-              </div>
-
               {ctaType === "buy" && (
                 <>
                   <div><Label>Título do produto</Label><Input value={buyTitle} onChange={(e) => setBuyTitle(e.target.value)} maxLength={120} /></div>
