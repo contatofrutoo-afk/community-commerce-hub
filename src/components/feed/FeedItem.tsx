@@ -186,7 +186,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         </button>
         <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Falar com a marca">
           <MessageSquare className="h-7 w-7 drop-shadow-md text-background" />
-          <span className="text-xs font-semibold drop-shadow-md">Chat</span>
+          <span className="text-xs font-semibold drop-shadow-md">Falar</span>
         </button>
         {isPostOwner && (
           <button onClick={deletePost} className="flex flex-col items-center gap-1" aria-label="Excluir">
