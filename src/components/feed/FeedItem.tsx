@@ -126,14 +126,17 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     }
   };
 
+  const postCta = post.post_cta?.[0] ?? null;
+  console.log("CTA RECEBIDO:", postCta);
+
   return (
     <article className="relative h-[100dvh] w-full snap-start bg-foreground text-background overflow-hidden" onClick={onTap}>
       {post.type === "video" && post.media_url ? (
-        <video ref={videoRef} src={post.media_url} className="absolute inset-0 h-full w-full object-cover"
+        <video ref={videoRef} src={post.media_url} className="feed-media absolute inset-0 h-full w-full object-cover"
           loop muted={muted} playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
           onTimeUpdate={onTimeUpdate} onClick={toggleMute} />
       ) : post.type === "image" && post.media_url ? (
-        <img src={post.media_url} alt={post.description ?? ""} className="absolute inset-0 h-full w-full object-cover" />
+        <img src={post.media_url} alt={post.description ?? ""} className="feed-media absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-brand grid place-items-center px-8">
           <p className="font-display text-3xl text-balance text-center text-primary-foreground">{post.description}</p>
@@ -173,7 +176,11 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       </div>
 
       {/* bottom info */}
-      <div className="absolute left-0 right-0 bottom-20 px-5 z-10 max-w-md">
+      {postCta !== null && (
+        <CTAButton cta={postCta} postId={post.id} tenantId={post.tenant_id} className="feed-cta-container" />
+      )}
+
+      <div className="absolute left-0 right-0 bottom-36 px-5 z-10 max-w-md">
         {/* progress bar for video */}
         {post.type === "video" && (
           <div className="h-1 bg-white/30 rounded-full mb-3 overflow-hidden">
@@ -185,11 +192,6 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         )}
         {post.description && (
           <p className="text-sm leading-relaxed mb-4 line-clamp-3 text-pretty">{post.description}</p>
-        )}
-        {post.post_cta?.[0] && (
-          <div className="mt-3">
-            <CTAButton cta={post.post_cta[0]} postId={post.id} tenantId={post.tenant_id} />
-          </div>
         )}
       </div>
 

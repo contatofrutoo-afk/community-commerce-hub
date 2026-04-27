@@ -164,5 +164,29 @@
     scroll-snap-stop: always;
   }
 
+  .feed-media {
+    z-index: 1;
+  }
+
+  .feed-cta-container {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 5rem;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .feed-cta-button {
+    min-height: 3rem;
+    background: var(--gradient-brand);
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(var(--primary-foreground) / 0.18);
+  }
+
+  .feed-cta-button:hover {
+    opacity: 0.96;
+  }
+
   .safe-bottom { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
 }
