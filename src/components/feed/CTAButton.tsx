@@ -28,16 +28,16 @@ export default function CTAButton({ cta, postId, tenantId }: { cta: CTA; postId:
   };
 
   return (
-    <>
+    <div className="mt-3">
       <Button
         onClick={handleClick}
         size="lg"
-        className="w-full bg-white text-black hover:bg-white/90 rounded-full font-bold shadow-lg border-2 border-white/20"
+        className="w-full bg-white text-black hover:bg-gray-100 rounded-full font-bold shadow-lg border-2 border-white/20 text-base"
       >
-        {cta.label}
+        {cta.label || "Saiba mais"}
       </Button>
-      <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />
-    </>
+      {open && <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />}
+    </div>
   );
 }
 
@@ -55,8 +55,10 @@ function CTADialog({ cta, postId, tenantId, open, onClose }: { cta: CTA; postId:
 function BuyDialog({ cta, postId, tenantId, open, onClose }: any) {
   const c = cta.config_json ?? {};
   const go = async () => {
-    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "buy" } });
-    if (c.checkout_url) window.open(c.checkout_url, "_blank", "noopener");
+    if (c.checkout_url) {
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "buy" } });
+      window.open(c.checkout_url, "_blank", "noopener,noreferrer");
+    }
     onClose();
   };
   return (
@@ -325,12 +327,26 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
 /* ===================== INFO ===================== */
 function InfoDialog({ cta, postId, tenantId, open, onClose }: any) {
   const c = cta.config_json ?? {};
-  if (c.type === "external" && c.url) {
-    track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "info_external" } });
-    window.open(c.url, "_blank", "noopener");
+  const goExternal = async () => {
+    if (c.url) {
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "info_external" } });
+      window.open(c.url, "_blank", "noopener,noreferrer");
+    }
     onClose();
-    return null;
+  };
+  
+  if (c.type === "external" && c.url) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-display text-2xl">{cta.label}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">Você será redirecionado para um link externo.</p>
+          <Button onClick={goExternal} className="w-full bg-brand text-primary-foreground hover:opacity-90">Ir para link</Button>
+        </DialogContent>
+      </Dialog>
+    );
   }
+  
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
