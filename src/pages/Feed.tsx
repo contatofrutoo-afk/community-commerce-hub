@@ -116,7 +116,7 @@ export default function Feed() {
     if (!c || posts.length === 0) return;
     
     // Disconnect existing observer
-    const existingObs = c.__observer;
+    const existingObs = (c as any).__observer as IntersectionObserver | undefined;
     if (existingObs) existingObs.disconnect();
     
     const io = new IntersectionObserver((entries) => {
@@ -128,7 +128,7 @@ export default function Feed() {
       });
     }, { root: c, threshold: 0.6 });
     
-    c.__observer = io;
+    (c as any).__observer = io;
     
     itemRefs.current.forEach((el) => {
       if (el) {
