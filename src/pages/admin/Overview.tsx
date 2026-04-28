@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useDeviceType } from "@/hooks/use-device-type";
@@ -44,6 +44,7 @@ type CtaStats = { type: string; clicks: number; conversions: number };
 
 export default function Overview() {
   const { tenant } = useTenant();
+  const navigate = useNavigate();
   const device = useDeviceType();
   const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
   const [data, setData] = useState({
@@ -162,20 +163,26 @@ export default function Overview() {
   }, [tenant?.id, period]);
 
   return (
-    <div className={device === "mobile" ? "max-w-md mx-auto space-y-4 px-2 py-4" : device === "tablet" ? "max-w-3xl mx-auto space-y-6 px-4 py-6" : "max-w-6xl space-y-6"}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Métricas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Desempenho da sua comunidade.</p>
-        </div>
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
-          {(["7d", "30d", "90d"] as const).map((p) => (
-            <button key={p} onClick={() => setPeriod(p)} className={cn("px-3 py-1 text-xs rounded-md transition-colors", period === p ? "bg-background shadow" : "text-muted-foreground")}>
-              {p}
-            </button>
-          ))}
+    <div className="min-h-screen bg-background pb-20 md:pb-6">
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+        <div className="max-w-md mx-auto flex items-center gap-3">
+          <button onClick={() => navigate("/feed")} className="flex items-center justify-center w-10 h-10 rounded-full bg-muted hover:bg-muted/80 transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="font-display text-xl">Métricas</h1>
+          </div>
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            {(["7d", "30d", "90d"] as const).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)} className={cn("px-2 py-1 text-xs rounded transition-colors", period === p ? "bg-background shadow" : "text-muted-foreground")}>
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      <div className="max-w-md mx-auto space-y-4 px-3 py-4">
 
       {data.alerts.length > 0 && (
         <Card className="border-destructive/30 bg-destructive/5">
@@ -189,7 +196,7 @@ export default function Overview() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPI label="Membros" value={data.members.toString()} hint="total" icon={Users} />
         <KPI label="Novos" value={data.newMembers.toString()} delta={data.memberGrowth} icon={Users} />
         <KPI label="Curtidas" value={data.likes.toString()} icon={Heart} />
@@ -200,11 +207,11 @@ export default function Overview() {
         <KPI label="MAU" value={data.mau.toString()} hint={period} delta={data.growth30} />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="space-y-4">
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">Engajamento</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-base">Engajamento</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={data.interactions30}>
                 <defs>
                   <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
@@ -213,8 +220,8 @@ export default function Overview() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
                 <Area type="monotone" dataKey="count" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#g1)" />
               </AreaChart>
@@ -223,7 +230,7 @@ export default function Overview() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">CTA Funil</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-base">CTA Funil</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {data.ctaStats.length > 0 ? (
               data.ctaStats.map((cta) => (
@@ -250,7 +257,7 @@ export default function Overview() {
 
       {data.topPosts.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">Posts Mais Engajados</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-base">Posts Mais Engajados</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {data.topPosts.map((post, i) => (
               <div key={post.id} className="flex items-center gap-3">
