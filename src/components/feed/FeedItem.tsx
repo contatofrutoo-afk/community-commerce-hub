@@ -195,18 +195,6 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     }
   };
 
-  const goToCommunity = async () => {
-    if (!user || !tenant) { nav("/auth"); return; }
-    const { data: mem } = await supabase.from("memberships").select("id")
-      .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
-    if (!mem) {
-      await supabase.from("memberships").insert({ tenant_id: tenant.id, user_id: user.id, role: "member" });
-    }
-    setShowChatDialog(false);
-    nav("/community");
-    track({ tenantId: post.tenant_id, postId: post.id, action: "click_cta", metadata: { kind: "message_brand" } });
-  };
-
   const postCta = post.post_cta?.[0] ?? null;
   console.log("CTA RECEBIDO:", postCta);
 
@@ -319,9 +307,6 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
           <DialogFooter className="flex-col gap-2">
             <Button onClick={sendChatComment} className="w-full bg-brand text-primary-foreground hover:opacity-90">
               Comentar no post
-            </Button>
-            <Button variant="outline" onClick={goToCommunity} className="w-full">
-              Só quero falar com a marca
             </Button>
           </DialogFooter>
         </DialogContent>
