@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
  * Bottom navigation dentro de uma comunidade.
  * - B2C: Feed / Conversas / Mensagens / Perfil
  * - B2B: Feed / Conteúdo / Conversas / Mensagens / Métricas / Perfil
+ * - Admin: vai para /admin via URL direta
  */
 export default function BottomNav() {
   const { pathname } = useLocation();

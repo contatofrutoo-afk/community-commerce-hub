@@ -30,6 +30,7 @@ const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
 const AdminFunnel = lazy(() => import("./pages/admin/Funnel"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
+const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
 const Profile = lazy(() => import("./pages/Profile"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -72,6 +73,7 @@ const App = () => (
                 <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
                 <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
                 <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
+                <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
                 <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
               </Routes>

@@ -29,7 +29,7 @@ export type Post = {
 
 export default function FeedItem({ post, active }: { post: Post; active: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { user } = useAuth();
+  const { user, appRole } = useAuth();
   const { tenant, isOwner } = useTenant();
   const nav = useNavigate();
   const [liked, setLiked] = useState(false);
@@ -37,7 +37,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const [counts, setCounts] = useState({ likes: 0, comments: 0 });
   const [showComments, setShowComments] = useState(false);
   const [muted, setMuted] = useState(true);
-  const tappedRef = useRef<number>(0);
+  const tappedRef = useRef(0);
   const trackedView = useRef(false);
 
   const [showChatDialog, setShowChatDialog] = useState(false);
@@ -47,6 +47,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const heartIdRef = useRef(0);
 
   const isPostOwner = isOwner && post.author_id === user?.id;
+  
+  const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
   useEffect(() => {
     // counts
@@ -242,46 +244,63 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       )}
 
       {/* right rail - posicionado ACIMA do CTA */}
+      {/* B2B: mostra apenas Likes (número) e Comentários */}
+      {/* B2C/Admin: mostra todas as ações sociais */}
       <div
         className="absolute right-3 flex flex-col items-center gap-5 z-10"
         style={{ bottom: "calc(9.5rem + 5.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
-        <button onClick={toggleMute} className="flex flex-col items-center gap-1" aria-label={muted ? "Ativar som" : "Silenciar"}>
-          {muted ? <VolumeX className="h-6 w-6 drop-shadow-md text-background" /> : <Volume2 className="h-6 w-6 drop-shadow-md text-background" />}
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1 relative" aria-label="Curtir">
-          <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
-          <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
-          {hearts.length > 0 && (
-            <div className="absolute pointer-events-none" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 200 }}>
-              {hearts.map((heart) => (
-                <span
-                  key={heart.id}
-                  className="absolute"
-                  style={{
-                    fontSize: 16,
-                    animation: `float-heart 1s ease-out ${heart.delay}ms forwards`,
-                    transform: `translateX(${heart.x}px)`,
-                  }}
-                >
-                  ❤️
-                </span>
-              ))}
-            </div>
-          )}
-        </button>
+        {showSocialActions && (
+          <>
+            <button onClick={toggleMute} className="flex flex-col items-center gap-1" aria-label={muted ? "Ativar som" : "Silenciar"}>
+              {muted ? <VolumeX className="h-6 w-6 drop-shadow-md text-background" /> : <Volume2 className="h-6 w-6 drop-shadow-md text-background" />}
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1 relative" aria-label="Curtir">
+              <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
+              <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
+              {hearts.length > 0 && (
+                <div className="absolute pointer-events-none" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 200 }}>
+                  {hearts.map((heart) => (
+                    <span
+                      key={heart.id}
+                      className="absolute"
+                      style={{
+                        fontSize: 16,
+                        animation: `float-heart 1s ease-out ${heart.delay}ms forwards`,
+                        transform: `translateX(${heart.x}px)`,
+                      }}
+                    >
+                      ❤️
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+          </>
+        )}
+        {/* Likes count sempre visível para B2B */}
+        {!showSocialActions && (
+          <button onClick={(e) => { e.stopPropagation(); }} className="flex flex-col items-center gap-1" aria-label="Curtidas">
+            <Heart className={cn("h-7 w-7 drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
+            <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
+          </button>
+        )}
         <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }} className="flex flex-col items-center gap-1" aria-label="Comentar">
           <MessageCircle className="h-7 w-7 drop-shadow-md text-background" />
           <span className="text-xs font-semibold drop-shadow-md">{counts.comments}</span>
         </button>
-        <button onClick={onShare} className="flex flex-col items-center gap-1" aria-label="Compartilhar">
-          <Share2 className="h-7 w-7 drop-shadow-md text-background" />
-          <span className="text-xs font-semibold drop-shadow-md">Enviar</span>
-        </button>
-        <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Falar com a marca">
-          <MessageSquare className="h-7 w-7 drop-shadow-md text-background" />
-          <span className="text-xs font-semibold drop-shadow-md">Falar</span>
-        </button>
+        {showSocialActions && (
+          <>
+            <button onClick={onShare} className="flex flex-col items-center gap-1" aria-label="Compartilhar">
+              <Share2 className="h-7 w-7 drop-shadow-md text-background" />
+              <span className="text-xs font-semibold drop-shadow-md">Enviar</span>
+            </button>
+            <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Falar com a marca">
+              <MessageSquare className="h-7 w-7 drop-shadow-md text-background" />
+              <span className="text-xs font-semibold drop-shadow-md">Falar</span>
+            </button>
+          </>
+        )}
         {isPostOwner && (
           <button onClick={deletePost} className="flex flex-col items-center gap-1" aria-label="Excluir">
             <Trash2 className="h-7 w-7 drop-shadow-md text-background" />
