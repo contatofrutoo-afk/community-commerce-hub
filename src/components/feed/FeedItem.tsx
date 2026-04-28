@@ -240,24 +240,6 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       {popHeart && (
         <Heart className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 fill-primary text-primary animate-scale-pop pointer-events-none drop-shadow-[0_0_24px_hsl(var(--brand-to)/0.6)]" />
       )}
-      
-      {hearts.length > 0 && (
-        <div className="absolute pointer-events-none" style={{ right: 16, bottom: 140, zIndex: 100 }}>
-          {hearts.map((heart) => (
-            <span
-              key={heart.id}
-              className="absolute"
-              style={{
-                fontSize: 20,
-                animation: `float-heart 1s ease-out ${heart.delay}ms forwards`,
-                transform: `translateX(${heart.x}px)`,
-              }}
-            >
-              ❤️
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* right rail - posicionado ACIMA do CTA */}
       <div
@@ -267,9 +249,26 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         <button onClick={toggleMute} className="flex flex-col items-center gap-1" aria-label={muted ? "Ativar som" : "Silenciar"}>
           {muted ? <VolumeX className="h-6 w-6 drop-shadow-md text-background" /> : <Volume2 className="h-6 w-6 drop-shadow-md text-background" />}
         </button>
-        <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1" aria-label="Curtir">
+        <button onClick={(e) => { e.stopPropagation(); like(); }} className="flex flex-col items-center gap-1 relative" aria-label="Curtir">
           <Heart className={cn("h-7 w-7 transition-all drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
           <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
+          {hearts.length > 0 && (
+            <div className="absolute pointer-events-none" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 200 }}>
+              {hearts.map((heart) => (
+                <span
+                  key={heart.id}
+                  className="absolute"
+                  style={{
+                    fontSize: 16,
+                    animation: `float-heart 1s ease-out ${heart.delay}ms forwards`,
+                    transform: `translateX(${heart.x}px)`,
+                  }}
+                >
+                  ❤️
+                </span>
+              ))}
+            </div>
+          )}
         </button>
         <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }} className="flex flex-col items-center gap-1" aria-label="Comentar">
           <MessageCircle className="h-7 w-7 drop-shadow-md text-background" />
