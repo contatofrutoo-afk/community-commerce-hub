@@ -16,6 +16,7 @@ type Msg = {
   content: string;
   created_at: string;
   author_name?: string | null;
+  author_avatar?: string | null;
 };
 
 export default function Community() {
@@ -23,15 +24,15 @@ export default function Community() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
-  const profileCache = useRef<Map<string, string>>(new Map());
+  const profileCache = useRef<Map<string, { name: string; avatar: string }>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const fetchProfileName = async (userId: string): Promise<string | null> => {
+  const fetchProfile = async (userId: string): Promise<{ name: string; avatar: string } | null> => {
     if (profileCache.current.has(userId)) return profileCache.current.get(userId)!;
-    const { data } = await supabase.from("profiles").select("name").eq("user_id", userId).maybeSingle();
-    const name = data?.name ?? null;
-    if (name) profileCache.current.set(userId, name);
-    return name;
+    const { data } = await supabase.from("profiles").select("name,avatar_url").eq("user_id", userId).maybeSingle();
+    const profile = { name: data?.name ?? null, avatar: data?.avatar_url ?? null };
+    if (profile.name) profileCache.current.set(userId, profile);
+    return profile;
   };
 
   useEffect(() => {
@@ -53,12 +54,15 @@ export default function Community() {
       const rows = (data ?? []) as Msg[];
       const uniqueUserIds = Array.from(new Set(rows.map(m => m.user_id)));
       if (uniqueUserIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("user_id,name").in("user_id", uniqueUserIds);
-        (profs ?? []).forEach(p => profileCache.current.set(p.user_id, p.name));
+        const { data: profs } = await supabase.from("profiles").select("user_id,name,avatar_url").in("user_id", uniqueUserIds);
+        (profs ?? []).forEach(p => profileCache.current.set(p.user_id, { name: p.name, avatar: p.avatar_url }));
       }
 
       if (cancelled) return;
-      setMessages(rows.map(m => ({ ...m, author_name: profileCache.current.get(m.user_id) ?? null })));
+      setMessages(rows.map(m => {
+        const p = profileCache.current.get(m.user_id);
+        return { ...m, author_name: p?.name ?? null, author_avatar: p?.avatar ?? null };
+      }));
     };
 
     loadMessages();
@@ -70,10 +74,10 @@ export default function Community() {
         { event: "INSERT", schema: "public", table: "community_messages", filter: `tenant_id=eq.${tenant.id}` },
         async (payload) => {
           const row = payload.new as Msg;
-          const name = await fetchProfileName(row.user_id);
+          const profile = await fetchProfile(row.user_id);
           setMessages(prev => {
             if (prev.some(m => m.id === row.id)) return prev;
-            return [...prev, { ...row, author_name: name }];
+            return [...prev, { ...row, author_name: profile?.name ?? null, author_avatar: profile?.avatar ?? null }];
           });
         },
       )
@@ -141,14 +145,21 @@ export default function Community() {
         {messages.map((m) => {
           const isPost = isPostComment(m.content);
           const isMine = m.user_id === user?.id;
+          const authorInitial = m.author_name?.[0]?.toUpperCase() || "?";
 
           if (isPost) {
             const { mediaUrl, text: postText } = parsePostMessage(m.content);
             const isVideo = mediaUrl ? /\.mp4(\?|$)/i.test(mediaUrl) : false;
             return (
               <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
-                <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
-                  {m.author_name?.[0]?.toUpperCase() || "?"}
+                <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
+                  {m.author_avatar ? (
+                    <img src={m.author_avatar} alt={m.author_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-secondary grid place-items-center text-xs font-medium">
+                      {authorInitial}
+                    </div>
+                  )}
                 </div>
                 <div className="max-w-[85%] rounded-2xl p-3 bg-muted text-foreground">
                   <p className="text-xs opacity-70 mb-1.5">{m.author_name || "Anônimo"}</p>
@@ -167,8 +178,14 @@ export default function Community() {
 
           return (
             <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
-              <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
-                {m.author_name?.[0]?.toUpperCase() || "?"}
+              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
+                {m.author_avatar ? (
+                  <img src={m.author_avatar} alt={m.author_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-secondary grid place-items-center text-xs font-medium">
+                    {authorInitial}
+                  </div>
+                )}
               </div>
               <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-foreground text-background" : "bg-secondary"}`}>
                 <p className="text-xs opacity-70 mb-0.5">{m.author_name || "Anônimo"}</p>
