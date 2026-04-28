@@ -240,21 +240,24 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       {popHeart && (
         <Heart className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 fill-primary text-primary animate-scale-pop pointer-events-none drop-shadow-[0_0_24px_hsl(var(--brand-to)/0.6)]" />
       )}
-      {hearts.map((heart) => (
-        <Heart
-          key={heart.id}
-          className="absolute pointer-events-none animate-float-heart"
-          style={{
-            right: 16,
-            bottom: 120,
-            animationDelay: `${heart.delay}ms`,
-            transform: `translateX(${heart.x}px) scale(${heart.size})`,
-            fill: "#d81e62",
-            color: "#d81e62",
-            filter: "drop-shadow(0 0 8px rgba(216, 30, 98, 0.6))",
-          }}
-        />
-      ))}
+      
+      {hearts.length > 0 && (
+        <div className="absolute pointer-events-none" style={{ right: 16, bottom: 140, zIndex: 100 }}>
+          {hearts.map((heart) => (
+            <span
+              key={heart.id}
+              className="absolute"
+              style={{
+                fontSize: 20,
+                animation: `float-heart 1s ease-out ${heart.delay}ms forwards`,
+                transform: `translateX(${heart.x}px)`,
+              }}
+            >
+              ❤️
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* right rail - posicionado ACIMA do CTA */}
       <div
