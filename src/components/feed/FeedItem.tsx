@@ -277,12 +277,13 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       />
 
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-display">Quer comentar sobre o post?</DialogTitle>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-gray-100">
+            <DialogTitle className="text-lg font-semibold">Falar com a comunidade</DialogTitle>
+            <p className="text-sm text-muted-foreground font-normal mt-1">Seu comentário será visível na comunidade.</p>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+          <div className="space-y-4 px-5 py-4">
+            <div className="aspect-video rounded-xl overflow-hidden bg-gray-100 shadow-inner">
               {post.type === "video" && post.media_url ? (
                 <video src={post.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
               ) : post.type === "image" && post.media_url ? (
@@ -294,19 +295,25 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
               ) : null}
             </div>
             <div>
-              <label className="text-sm font-medium">Seu comentário</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Seu comentário</label>
               <Textarea
                 value={chatComment}
                 onChange={(e) => setChatComment(e.target.value)}
                 placeholder="Escreva o que você achou do post..."
                 maxLength={500}
-                rows={3}
+                rows={4}
+                className="bg-gray-50 border-0 rounded-xl px-4 py-3 resize-none focus:ring-2 focus:ring-brand/30"
               />
+              <p className="text-xs text-muted-foreground mt-1.5 text-right">{chatComment.length}/500</p>
             </div>
           </div>
-          <DialogFooter className="flex-col gap-2">
-            <Button onClick={sendChatComment} className="w-full bg-brand text-primary-foreground hover:opacity-90">
-              Comentar no post
+          <DialogFooter className="px-5 pb-5 pt-2">
+            <Button 
+              onClick={sendChatComment} 
+              disabled={sending || !chatComment.trim()}
+              className="w-full h-12 bg-gradient-to-r from-[#630091] to-[#d81e62] text-white hover:opacity-90 transition-opacity rounded-xl font-medium disabled:opacity-50"
+            >
+              {sending ? "Enviando..." : "Comentar no post"}
             </Button>
           </DialogFooter>
         </DialogContent>

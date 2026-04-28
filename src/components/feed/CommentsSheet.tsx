@@ -138,12 +138,12 @@ export default function CommentsSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
-          <DialogTitle>Comentários</DialogTitle>
+      <DialogContent className="max-w-md p-0 overflow-hidden bg-white">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-gray-100">
+          <DialogTitle className="text-lg font-semibold">Comentários</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[55vh] overflow-y-auto px-5 py-3 space-y-3">
+        <div className="max-h-[50vh] overflow-y-auto px-5 py-4 space-y-4 bg-gray-50/50">
           {loading && <p className="text-sm text-muted-foreground text-center py-6">Carregando…</p>}
           {!loading && list.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-6">Seja o primeiro a comentar.</p>
@@ -181,18 +181,26 @@ export default function CommentsSheet({
           })}
         </div>
 
-        <div className="border-t border-border p-3 flex gap-2">
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={user ? "Adicione um comentário…" : "Entre para comentar"}
-            disabled={!user || sending}
-            maxLength={500}
-            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          />
-          <Button onClick={send} disabled={!user || sending || !text.trim()} size="icon" className="bg-brand text-primary-foreground shrink-0">
-            <Send className="h-4 w-4" />
-          </Button>
+        <div className="border-t border-gray-100 p-4">
+          <div className="flex gap-3 items-center">
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={user ? "Escreva seu comentário…" : "Entre para comentar"}
+              disabled={!user || sending}
+              maxLength={500}
+              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+              className="flex-1 h-11 bg-gray-50 border-0 rounded-xl px-4 focus:ring-2 focus:ring-brand/30"
+            />
+            <Button 
+              onClick={send} 
+              disabled={!user || sending || !text.trim()} 
+              size="icon"
+              className="h-11 w-11 shrink-0 bg-gradient-to-r from-[#630091] to-[#d81e62] text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
