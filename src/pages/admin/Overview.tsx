@@ -281,17 +281,6 @@ export default function Overview() {
   );
 }
 
-export default function Overview() {
-  const { tenant } = useTenant();
-  const device = useDeviceType();
-  const [data, setData] = useState({
-    posts: 0, members: 0, mrr: 0, arr: 0,
-    dau: 0, wau: 0, mau: 0,
-    interactions30: [] as { date: string; count: number }[],
-    growth30: 0,
-    alerts: [] as string[],
-  });
-
   useEffect(() => {
     if (!tenant) return;
     (async () => {
