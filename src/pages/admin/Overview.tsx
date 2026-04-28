@@ -8,6 +8,13 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, A
 import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft, Users, Heart, MessageCircle, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const CTA_LABELS: Record<string, string> = {
+  BUY: "Comprar",
+  SCHEDULE: "Agendar",
+  QUOTE: "Orçamento",
+  REGISTER: "Inscrição",
+};
+
 function KPI({ label, value, hint, delta, icon: Icon }: { label: string; value: string; hint?: string; delta?: number; icon?: React.ElementType }) {
   return (
     <Card>
@@ -158,8 +165,8 @@ export default function Overview() {
     <div className={device === "mobile" ? "max-w-md mx-auto space-y-4 px-2 py-4" : device === "tablet" ? "max-w-3xl mx-auto space-y-6 px-4 py-6" : "max-w-6xl space-y-6"}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Metrics</h1>
-          <p className="text-muted-foreground text-sm mt-1">Your community performance.</p>
+          <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Métricas</h1>
+          <p className="text-muted-foreground text-sm mt-1">Desempenho da sua comunidade.</p>
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {(["7d", "30d", "90d"] as const).map((p) => (
@@ -183,19 +190,19 @@ export default function Overview() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPI label="Members" value={data.members.toString()} hint="total" icon={Users} />
-        <KPI label="New" value={data.newMembers.toString()} delta={data.memberGrowth} icon={Users} />
-        <KPI label="Likes" value={data.likes.toString()} icon={Heart} />
-        <KPI label="Comments" value={data.comments.toString()} icon={MessageCircle} />
+        <KPI label="Membros" value={data.members.toString()} hint="total" icon={Users} />
+        <KPI label="Novos" value={data.newMembers.toString()} delta={data.memberGrowth} icon={Users} />
+        <KPI label="Curtidas" value={data.likes.toString()} icon={Heart} />
+        <KPI label="Comentários" value={data.comments.toString()} icon={MessageCircle} />
         <KPI label="Posts" value={data.posts.toString()} icon={Target} />
-        <KPI label="Engagement" value={`${data.engagementRate.toFixed(1)}%`} icon={TrendingUp} />
+        <KPI label="Engajamento" value={`${data.engagementRate.toFixed(1)}%`} icon={TrendingUp} />
         <KPI label="DAU" value={data.dau.toString()} hint="24h" />
         <KPI label="MAU" value={data.mau.toString()} hint={period} delta={data.growth30} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">Engagement</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-lg">Engajamento</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={data.interactions30}>
@@ -216,20 +223,20 @@ export default function Overview() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">CTA Funnel</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-lg">CTA Funil</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {data.ctaStats.length > 0 ? (
               data.ctaStats.map((cta) => (
                 <div key={cta.type} className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{cta.type}</span>
+                  <span className="text-sm font-medium">{CTA_LABELS[cta.type] || cta.type}</span>
                   <div className="flex gap-4 text-xs">
-                    <span>{cta.clicks} clicks</span>
-                    <span className="text-muted-foreground">{cta.conversions} conversions</span>
+                    <span>{cta.clicks} cliques</span>
+                    <span className="text-muted-foreground">{cta.conversions} conversões</span>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No CTAs found</p>
+              <p className="text-sm text-muted-foreground">Nenhum CTA encontrado</p>
             )}
             <div className="pt-2 border-t">
               <div className="flex justify-between">
@@ -243,7 +250,7 @@ export default function Overview() {
 
       {data.topPosts.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="font-display text-lg">Top Posts</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-lg">Posts Mais Engajados</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {data.topPosts.map((post, i) => (
               <div key={post.id} className="flex items-center gap-3">
