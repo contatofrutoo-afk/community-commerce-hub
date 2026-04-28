@@ -13,6 +13,7 @@ type Msg = {
   id: string;
   thread_id: string;
   sender_id: string;
+  sender_type?: "b2b" | "b2c";
   content: string;
   created_at: string;
   author_name?: string | null;
@@ -156,12 +157,15 @@ export default function Messages() {
             {isOwner && <Button variant="ghost" size="sm" onClick={() => setThreadId(null)}>← Conversas</Button>}
             {messages.map((m) => {
               const isMine = m.sender_id === user?.id;
-              const authorInitial = m.author_name?.[0]?.toUpperCase() || "?";
+              const isFromBrand = isOwner && m.sender_id === user?.id;
+              const avatar = isFromBrand ? tenant?.logo_url : m.author_avatar;
+              const name = isFromBrand ? tenant?.name : m.author_name;
+              const authorInitial = name?.[0]?.toUpperCase() || "?";
               return (
                 <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
                   <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
-                    {m.author_avatar ? (
-                      <img src={m.author_avatar} alt={m.author_name} className="w-full h-full object-cover" />
+                    {avatar ? (
+                      <img src={avatar} alt={name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-secondary grid place-items-center text-xs font-medium">
                         {authorInitial}
@@ -169,7 +173,7 @@ export default function Messages() {
                     )}
                   </div>
                   <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-gray-200 text-gray-900" : "bg-gray-100"}`}>
-                    <p className="text-xs opacity-70 mb-0.5">{m.author_name || "Anônimo"}</p>
+                    <p className="text-xs opacity-70 mb-0.5">{name || "Anônimo"}</p>
                     <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                   </div>
                 </div>
