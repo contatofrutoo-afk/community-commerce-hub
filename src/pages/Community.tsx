@@ -107,15 +107,27 @@ export default function Community() {
   };
 
   const isPostComment = (content: string) => content?.startsWith("[Post]");
-  const extractImage = (content: string) => {
+
+  const parsePostMessage = (content: string) => {
     const lines = content.split("\n");
-    for (const line of lines) {
-      const t = line.trim();
-      if (t.startsWith("http") && /\.(jpg|jpeg|png|gif|webp|mp4)(\?|$)/i.test(t)) {
-        return t;
+    let mediaUrl: string | null = null;
+    const textLines: string[] = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line === "[Post]") continue;
+      if (line.startsWith("[media]")) {
+        mediaUrl = line.slice(7).trim();
+        continue;
       }
+      // Legado: linha com URL bruta — tratar como mídia, nunca exibir como texto
+      if (/^https?:\/\/\S+$/i.test(line) && /\.(jpg|jpeg|png|gif|webp|mp4)(\?|$)/i.test(line)) {
+        if (!mediaUrl) mediaUrl = line;
+        continue;
+      }
+      textLines.push(raw);
     }
-    return null;
+    return { mediaUrl, text: textLines.join("\n").trim() };
   };
 
   return (
@@ -128,26 +140,39 @@ export default function Community() {
         )}
         {messages.map((m) => {
           const isPost = isPostComment(m.content);
-          const imageUrl = isPost ? extractImage(m.content) : null;
-          const isVideo = imageUrl ? /\.mp4(\?|$)/i.test(imageUrl) : false;
-          const displayText = isPost
-            ? m.content.replace(/\[Post\]\s*/, "").split("\n").filter(l => !l.trim().startsWith("http")).join("\n").trim()
-            : m.content;
+          const isMine = m.user_id === user?.id;
+
+          if (isPost) {
+            const { mediaUrl, text: postText } = parsePostMessage(m.content);
+            const isVideo = mediaUrl ? /\.mp4(\?|$)/i.test(mediaUrl) : false;
+            return (
+              <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
+                <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
+                  {m.author_name?.[0]?.toUpperCase() || "?"}
+                </div>
+                <div className="max-w-[85%] rounded-2xl p-3 bg-muted text-foreground">
+                  <p className="text-xs opacity-70 mb-1.5">{m.author_name || "Anônimo"}</p>
+                  {mediaUrl && (
+                    isVideo ? (
+                      <video src={mediaUrl} className="w-full max-h-56 rounded-lg mb-2 object-cover" muted loop playsInline />
+                    ) : (
+                      <img src={mediaUrl} alt="Post" className="w-full max-h-56 object-cover rounded-lg mb-2" />
+                    )
+                  )}
+                  {postText && <p className="text-sm whitespace-pre-wrap break-words">{postText}</p>}
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <div key={m.id} className={`flex gap-2 ${m.user_id === user?.id ? "flex-row-reverse" : ""}`}>
+            <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
               <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-medium shrink-0">
                 {m.author_name?.[0]?.toUpperCase() || "?"}
               </div>
-              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.user_id === user?.id ? "bg-foreground text-background" : "bg-secondary"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-foreground text-background" : "bg-secondary"}`}>
                 <p className="text-xs opacity-70 mb-0.5">{m.author_name || "Anônimo"}</p>
-                {imageUrl && (
-                  isVideo ? (
-                    <video src={imageUrl} className="w-full max-h-48 rounded-lg mb-2" muted loop playsInline controls />
-                  ) : (
-                    <img src={imageUrl} alt="Post" className="w-full max-h-48 object-cover rounded-lg mb-2" />
-                  )
-                )}
-                {displayText && <p className="text-sm whitespace-pre-wrap break-words">{displayText}</p>}
+                <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
               </div>
             </div>
           );
