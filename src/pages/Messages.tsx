@@ -131,7 +131,7 @@ export default function Messages() {
           <div className="space-y-2">
             {threads.length === 0 && <p className="text-muted-foreground text-sm">Sem conversas ainda.</p>}
             {threads.map((t: any) => (
-              <button key={t.id} onClick={() => setThreadId(t.id)} className="w-full text-left bg-card hover:bg-secondary p-3 rounded-xl shadow-soft">
+              <button key={t.id} onClick={() => setThreadId(t.id)} className="w-full text-left bg-gray-100 hover:bg-gray-200 p-3 rounded-xl shadow-soft">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
                     {t.author_avatar ? (
@@ -168,7 +168,7 @@ export default function Messages() {
                       </div>
                     )}
                   </div>
-                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-foreground text-background" : "bg-secondary"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-gray-200 text-gray-900" : "bg-gray-100"}`}>
                     <p className="text-xs opacity-70 mb-0.5">{m.author_name || "Anônimo"}</p>
                     <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                   </div>

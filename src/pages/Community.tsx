@@ -187,7 +187,7 @@ export default function Community() {
                   </div>
                 )}
               </div>
-              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-foreground text-background" : "bg-secondary"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-gray-200 text-gray-900" : "bg-gray-100"}`}>
                 <p className="text-xs opacity-70 mb-0.5">{m.author_name || "Anônimo"}</p>
                 <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
               </div>
