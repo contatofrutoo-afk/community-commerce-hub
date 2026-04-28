@@ -229,8 +229,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
           loop muted={muted} playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
           onTimeUpdate={onTimeUpdate} onClick={toggleMute} />
       ) : post.type === "image" && post.media_url ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-          <img src={post.media_url} alt={post.description ?? ""} className="max-h-[85vh] w-auto max-w-full object-contain aspect-[4/5]" />
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+          <img src={post.media_url} alt={post.description ?? ""} className="w-full h-full object-cover" style={{ aspectRatio: "4/5" }} />
         </div>
       ) : (
         <div className="absolute inset-0 bg-brand grid place-items-center px-8">
