@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
-import { useDeviceType } from "@/hooks/use-device-type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
 import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft, Users, Heart, MessageCircle, Target } from "lucide-react";
@@ -45,7 +44,6 @@ type CtaStats = { type: string; clicks: number; conversions: number };
 export default function Overview() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
-  const device = useDeviceType();
   const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
   const [data, setData] = useState({
     members: 0,
