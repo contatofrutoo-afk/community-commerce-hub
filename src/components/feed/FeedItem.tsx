@@ -168,9 +168,10 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         }
       }
 
-      // Payload consistente: prefixo [Post], thumbnail (se houver) em linha própria, depois texto
+      // Payload: marcador [Post], texto puro do usuário, e mídia em linha técnica [media]<url>
+      // Os marcadores são consumidos pelo renderer e nunca exibidos.
       const parts = ["[Post]", trimmed];
-      if (thumbnailUrl) parts.push(thumbnailUrl);
+      if (thumbnailUrl) parts.push(`[media]${thumbnailUrl}`);
       const messageContent = parts.join("\n");
 
       const { error } = await supabase.from("community_messages").insert({
