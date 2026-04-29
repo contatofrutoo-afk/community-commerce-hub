@@ -308,46 +308,41 @@ export default function Topics() {
             )}
           </div>
         ) : (
-          <div className="p-3 space-y-2">
+          <div className="divide-y divide-border">
             {topics.map((topic) => (
               <div
                 key={topic.id}
-                className="bg-card border border-border rounded-2xl p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
                 onClick={() => loadTopicMessages(topic)}
               >
-                {topic.is_pinned && (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-600 mb-2">
-                    <Pin className="h-3 w-3" />
-                    <span className="font-medium">Fixado</span>
-                  </div>
-                )}
-                
-                {topic.related_post_id && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                    <ExternalLink className="h-3 w-3" />
-                    <span>Baseado em um post</span>
-                  </div>
-                )}
-                
-                <h3 className="font-medium mb-3 line-clamp-2">{topic.title}</h3>
-                {(topic.first_message?.content) && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {topic.first_message.content}
-                  </p>
-                )}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="h-3 w-3" />
-                      {topic.replies_count} respostas
-                    </span>
-                    <span>•</span>
-                    <span>{formatTime(topic.last_activity_at)}</span>
+                <div className="p-4 flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    {topic.is_pinned && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 mb-1">
+                        <Pin className="h-3 w-3" />
+                        <span className="font-medium">Fixado</span>
+                      </div>
+                    )}
+                    
+                    <h3 className="font-medium text-base mb-1 truncate">{topic.title}</h3>
+                    {(topic.first_message?.content) && (
+                      <p className="text-sm text-gray-500 line-clamp-1 mb-2">
+                        {topic.first_message.content}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" />
+                        {topic.replies_count} respostas
+                      </span>
+                      <span>•</span>
+                      <span>{formatTime(topic.last_activity_at)}</span>
+                    </div>
                   </div>
                   
                   {topic.profiles && (
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-8 w-8">
                       <AvatarImage src={topic.profiles.avatar_url ?? ""} />
                       <AvatarFallback className="text-xs">
                         {topic.profiles.name?.[0]?.toUpperCase() || "?"}
@@ -432,31 +427,31 @@ export default function Topics() {
                 <div 
                   key={msg.id} 
                   className={cn(
-                    "bg-muted rounded-2xl p-4",
-                    msg.parent_id && "ml-8 border-l-2 border-border"
+                    "bg-gray-100 rounded-lg p-4",
+                    msg.parent_id && "ml-8 border-l-2 border-gray-300"
                   )}
                 >
                   <div className="flex gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={msg.profiles?.avatar_url ?? ""} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gray-300 text-gray-600">
                         {msg.profiles?.name?.[0]?.toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{msg.profiles?.name || "Usuário"}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="font-medium text-sm text-gray-800">{msg.profiles?.name || "Usuário"}</span>
+                        <span className="text-xs text-gray-400">
                           {formatTime(msg.created_at)}
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      <div className="flex items-center gap-4 mt-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.content}</p>
+                      <div className="flex items-center gap-4 mt-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); likeMessage(msg.id); }}
                           className={cn(
                             "flex items-center gap-1 text-xs",
-                            likedMessages.has(msg.id) ? "text-red-500" : "text-muted-foreground"
+                            likedMessages.has(msg.id) ? "text-red-500" : "text-gray-400"
                           )}
                         >
                           <Heart className={cn("h-3.5 w-3.5", likedMessages.has(msg.id) && "fill-current")} />
