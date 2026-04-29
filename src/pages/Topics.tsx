@@ -26,6 +26,7 @@ type Topic = {
   created_at: string;
   profiles?: { name: string; avatar_url: string | null } | null;
   posts?: { media_url: string | null } | null;
+  first_message?: { content: string } | null;
 };
 
 type TopicMessage = {
@@ -83,7 +84,7 @@ export default function Topics() {
     
     let query = supabase
       .from("topics")
-      .select("*, profiles:profiles!topics_created_by_fkey(name, avatar_url), posts:posts!topics_related_post_id_fkey(media_url)")
+      .select("*, profiles:profiles!topics_created_by_fkey(name, avatar_url), posts:posts!topics_related_post_id_fkey(media_url), first_message:topic_messages(content)")
       .eq("tenant_id", tenant.id);
     
     if (postId) {
@@ -98,11 +99,23 @@ export default function Topics() {
       query = query.order("last_activity_at", { ascending: false });
     }
     
-    const { data, error } = await query.limit(30);
-    setLoading(false);
+    const { data: topicsData, error: topicsError } = await query.limit(30);
     
-    if (error) { console.error("Load topics error:", error); return; }
-    setTopics(data || []);
+    if (topicsError) { console.error("Load topics error:", topicsError); setLoading(false); return; }
+    
+    const topicsWithMessages = await Promise.all((topicsData || []).map(async (topic) => {
+      const { data: firstMsg } = await supabase
+        .from("topic_messages")
+        .select("content")
+        .eq("topic_id", topic.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .single();
+      return { ...topic, first_message: firstMsg };
+    }));
+    
+    setTopics(topicsWithMessages);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -135,17 +148,35 @@ export default function Topics() {
     if (!tenant || !user || !newTitle.trim()) return;
     setCreating(true);
     
-    const { error } = await supabase.from("topics").insert({
+    const content = newTitle.trim();
+    
+    const { data: topicData, error: topicError } = await supabase.from("topics").insert({
       tenant_id: tenant.id,
       related_post_id: postId,
-      title: newTitle.trim(),
+      title: content.substring(0, 100),
       created_by: user.id,
+    }).select().single();
+    
+    if (topicError) {
+      setCreating(false);
+      toast.error(topicError.message);
+      return;
+    }
+    
+    const { error: msgError } = await supabase.from("topic_messages").insert({
+      topic_id: topicData.id,
+      user_id: user.id,
+      content: content,
     });
     
     setCreating(false);
-    if (error) { toast.error(error.message); return; }
+    if (msgError) { 
+      console.error("Error creating message:", msgError);
+      toast.error("Erro ao criar mensagem");
+      return; 
+    }
     
-    toast.success("Tópico criado!");
+    toast.success("Conversa criada!");
     setShowCreate(false);
     setNewTitle("");
     loadTopics();
@@ -290,6 +321,11 @@ export default function Topics() {
                 )}
                 
                 <h3 className="font-medium mb-3 line-clamp-2">{topic.title}</h3>
+                {(topic.first_message?.content) && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                    {topic.first_message.content}
+                  </p>
+                )}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
