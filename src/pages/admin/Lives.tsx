@@ -130,9 +130,14 @@ export default function Lives() {
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
         <main className="flex-1 grid place-items-center px-4">
-          <p className="text-muted-foreground text-center">
-            Você não tem permissão para gerenciar lives.
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-muted-foreground">
+              Você não tem permissão para gerenciar lives.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Debug: tenant={tenant?.id ? "ok" : "null"} canManage={String(canManage)}
+            </p>
+          </div>
         </main>
         <BottomNav />
       </div>
