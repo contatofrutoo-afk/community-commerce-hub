@@ -168,14 +168,21 @@ export default function Topics() {
     setSelectedTopic(topic);
     setLoadingMessages(true);
     
+    console.log("Loading messages for topic:", topic.id);
+    
     const { data, error } = await supabase
       .from("topic_messages")
       .select("*, profiles:profiles!topic_messages_user_id_fkey(name, avatar_url)")
       .eq("topic_id", topic.id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
+    
+    console.log("Messages loaded:", data, "error:", error);
     
     setLoadingMessages(false);
-    if (error) { return; }
+    if (error) { 
+      console.error("Load messages error:", error);
+      return; 
+    }
     setMessages(data || []);
   };
 
@@ -183,15 +190,28 @@ export default function Topics() {
     if (!selectedTopic || !user || !newReply.trim()) return;
     setSendingReply(true);
     
-    await supabase.from("topic_messages").insert({
+    const content = newReply.trim();
+    
+    const { error: insertError } = await supabase.from("topic_messages").insert({
       topic_id: selectedTopic.id,
       user_id: user.id,
-      content: newReply.trim(),
+      content: content,
     });
+    
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      setSendingReply(false);
+      toast.error("Erro ao enviar");
+      return;
+    }
+    
+    await supabase.from("topics").update({
+      last_activity_at: new Date().toISOString(),
+    }).eq("id", selectedTopic.id);
     
     setSendingReply(false);
     setNewReply("");
-    loadTopicMessages(selectedTopic);
+    await loadTopicMessages(selectedTopic);
     loadTopics();
   };
 
