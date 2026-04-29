@@ -108,16 +108,53 @@ export default function Topics() {
     setLoading(false);
   };
 
+  const loadDirectTopic = async () => {
+    if (topicIdFromParams) {
+      setLoadingMessages(true);
+      setSelectedTopic(null);
+      setMessages([]);
+      
+      console.log("Loading direct topic:", topicIdFromParams);
+      
+      const { data: topic, error: topicError } = await supabase
+        .from("topics")
+        .select("*")
+        .eq("id", topicIdFromParams)
+        .single();
+      
+      if (topicError) { 
+        console.error("Topic load error:", topicError);
+        setLoadingMessages(false); 
+        return; 
+      }
+      
+      console.log("Topic found:", topic);
+      setSelectedTopic(topic);
+      
+      const { data: msgs, error: msgError } = await supabase
+        .from("topic_messages")
+        .select("*, profiles:profiles!topic_messages_user_id_fkey(name, avatar_url)")
+        .eq("topic_id", topicIdFromParams)
+        .order("created_at", { ascending: false });
+      
+      console.log("Messages loaded:", msgs, "error:", msgError);
+      
+      setLoadingMessages(false);
+      if (msgError) { 
+        console.error("Load messages error:", msgError);
+        return; 
+      }
+      setMessages(msgs || []);
+    }
+  };
+
   useEffect(() => {
     if (tenant) loadTopics();
   }, [tenant]);
 
   useEffect(() => {
-    if (topicIdFromParams && topics.length > 0) {
-      const topic = topics.find(t => t.id === topicIdFromParams);
-      if (topic) loadTopicMessages(topic);
-    }
-  }, [topicIdFromParams, topics]);
+    loadDirectTopic();
+  }, [topicIdFromParams]);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -333,14 +370,15 @@ export default function Topics() {
         </DialogContent>
       </Dialog>
 
-      {/* Topic Detail View */}
-      {selectedTopic && (
+      {/* Topic Detail View - Always render if we have a selectedTopic or messages */}
+      {(selectedTopic || messages.length > 0) && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          {console.log("RENDER: selectedTopic=", selectedTopic, "messages=", messages.length)}
           {/* Topic Header */}
           <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center gap-3">
             <button onClick={closeTopic} className="text-gray-500 p-1">←</button>
             <h2 className="text-base font-medium text-gray-900 flex-1 truncate">
-              {selectedTopic.title}
+              {selectedTopic?.title || "Carregando..."}
             </h2>
           </div>
           
