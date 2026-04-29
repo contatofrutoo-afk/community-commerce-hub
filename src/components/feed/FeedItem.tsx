@@ -326,7 +326,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
         {/* Discussion button - appears if discussion_enabled */}
         {post.discussion_enabled && (
           <button 
-            onClick={(e) => { e.stopPropagation(); nav(`/topics?post=${post.id}`); }} 
+            onClick={(e) => { e.stopPropagation(); nav(`/conversas?post=${post.id}`); }} 
             className="flex flex-col items-center gap-1" 
             aria-label="Discutir"
           >

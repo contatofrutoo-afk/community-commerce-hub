@@ -13,8 +13,7 @@ export default function BottomNav() {
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },
     ...(isB2B ? [{ to: "/content", icon: LayoutGrid, label: "Criar" }] : []),
-    { to: "/community", icon: MessageSquare, label: "Conversas" },
-    { to: "/topics", icon: MessageSquareText, label: "Tópicos" },
+    { to: "/conversas", icon: MessageSquare, label: "Conversas" },
     { to: "/notifications", icon: Bell, label: "Notificações" },
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
     ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),

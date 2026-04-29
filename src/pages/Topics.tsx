@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,7 +59,9 @@ export default function Topics() {
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const params = useParams();
   const postId = searchParams.get("post");
+  const topicIdFromParams = params.topicId;
   
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +108,22 @@ export default function Topics() {
   useEffect(() => {
     if (tenant) loadTopics();
   }, [tenant, activeTab, postId]);
+
+  // Load topic from URL params
+  useEffect(() => {
+    if (topicIdFromParams && topics.length > 0) {
+      const topic = topics.find(t => t.id === topicIdFromParams);
+      if (topic) loadTopicMessages(topic);
+    }
+  }, [topicIdFromParams, topics]);
+
+  // Redirect from old paths to /conversas
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/topics" || path === "/community") {
+      navigate("/conversas", { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0 && messagesEndRef.current) {

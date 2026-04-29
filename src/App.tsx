@@ -65,7 +65,6 @@ const App = () => (
                 <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
                 <Route path="/communities" element={<Protected><Communities /></Protected>} />
                 <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
-                <Route path="/community" element={<Protected><NeedsTenant><Community /></NeedsTenant></Protected>} />
                 <Route path="/messages" element={<Protected><NeedsTenant><Messages /></NeedsTenant></Protected>} />
                 <Route path="/content" element={<Protected><NeedsTenant><Content /></NeedsTenant></Protected>} />
                 <Route path="/content/services" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
@@ -79,6 +78,8 @@ const App = () => (
                 <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
                 <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
                 <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
+                <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                 <Route path="/topics" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                 <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
