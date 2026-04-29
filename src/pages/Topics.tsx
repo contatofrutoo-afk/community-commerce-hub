@@ -287,15 +287,24 @@ export default function Topics() {
         ) : topics.length === 0 ? (
           <div className="p-8 text-center">
             <MessageCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground/20" />
-            <h3 className="font-medium text-lg mb-2">Seja o primeiro a iniciar uma conversa</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Comente em um post para começar uma discussão
-            </p>
-            {isB2B && (
-              <Button onClick={() => setShowCreate(true)} className="bg-brand">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar conversa
-              </Button>
+            {isB2B ? (
+              <>
+                <h3 className="font-display text-xl mb-2">Inicie uma conversa com sua comunidade</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Crie discussões, faça perguntas e engaje seus membros
+                </p>
+                <Button onClick={() => setShowCreate(true)} className="bg-brand h-12 px-6">
+                  <Plus className="h-5 w-5 mr-2" />
+                  Criar conversa
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-medium text-lg mb-2">Seja o primeiro a participar</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Comente em um post para começar uma discussão
+                </p>
+              </>
             )}
           </div>
         ) : (
@@ -353,7 +362,7 @@ export default function Topics() {
       </main>
 
       {/* Create Button - only for B2B */}
-      {isB2B && topics.length > 0 && (
+      {isB2B && (
         <div className="fixed bottom-20 left-4 right-4 md:hidden">
           <Button 
             onClick={() => setShowCreate(true)} 
