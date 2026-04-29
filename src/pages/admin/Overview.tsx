@@ -66,6 +66,7 @@ export default function Overview() {
     interactions30: [] as { date: string; count: number }[],
     growth30: 0,
     alerts: [] as string[],
+    insights: null as { best_post: string; best_hour: number; active_users: number; best_cta: string } | null,
   });
 
   const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : 90;
@@ -157,6 +158,7 @@ export default function Overview() {
         interactions30,
         growth30,
         alerts,
+        insights: null,
       });
     })();
   }, [tenant?.id, period]);
@@ -370,6 +372,63 @@ export default function Overview() {
                 <span className="text-xs text-muted-foreground">{post.engagement}</span>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Insights Automáticos */}
+      {data.insights && (
+        <Card className="bg-gradient-to-br from-brand/10 to-brand/5 border-brand/20">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2">
+              <span className="text-brand">💡</span> Insights Automáticos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {data.insights.best_post && (
+              <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                <span className="text-2xl">📈</span>
+                <div>
+                  <p className="text-sm font-medium">Melhor post</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {data.insights.best_post}
+                  </p>
+                </div>
+              </div>
+            )}
+            {data.insights.best_hour && (
+              <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                <span className="text-2xl">🕐</span>
+                <div>
+                  <p className="text-sm font-medium">Melhor horário</p>
+                  <p className="text-xs text-muted-foreground">
+                    {data.insights.best_hour}:00
+                  </p>
+                </div>
+              </div>
+            )}
+            {data.insights.active_users !== undefined && (
+              <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                <span className="text-2xl">👥</span>
+                <div>
+                  <p className="text-sm font-medium">Usuários ativos</p>
+                  <p className="text-xs text-muted-foreground">
+                    {data.insights.active_users}
+                  </p>
+                </div>
+              </div>
+            )}
+            {data.insights.best_cta && (
+              <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <p className="text-sm font-medium">CTA mais clicado</p>
+                  <p className="text-xs text-muted-foreground">
+                    {CTA_LABELS[data.insights.best_cta] || data.insights.best_cta}
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

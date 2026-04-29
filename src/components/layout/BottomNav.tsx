@@ -1,13 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, MessageSquareText } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, MessageSquareText, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Bottom navigation dentro de uma comunidade.
- * - B2C: Feed / Conversas / Tópicos / Mensagens / Perfil
- * - B2B: Feed / Conteúdo / Conversas / Tópicos / Mensagens / Métricas / Perfil
- * - Admin: vai para /admin via URL direta
+ * - B2C: Feed / Conversas / Tópicos / Notificações / Mensagens / Perfil
+ * - B2B: Feed / Conteúdo / Conversas / Tópicos / Notificações / Mensagens / Métricas / Perfil
  */
 export default function BottomNav() {
   const { pathname } = useLocation();
@@ -18,6 +17,7 @@ export default function BottomNav() {
     ...(isB2B ? [{ to: "/content", icon: LayoutGrid, label: "Conteúdo" }] : []),
     { to: "/community", icon: MessageSquare, label: "Conversas" },
     { to: "/topics", icon: MessageSquareText, label: "Tópicos" },
+    { to: "/notifications", icon: Bell, label: "Notificações" },
     { to: "/messages", icon: MessageCircle, label: "Mensagens" },
     ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
@@ -28,7 +28,7 @@ export default function BottomNav() {
       <div
         className={cn(
           "mx-auto max-w-xl grid px-1 pt-2 safe-bottom",
-          isB2B ? "grid-cols-7" : "grid-cols-5",
+          isB2B ? "grid-cols-8" : "grid-cols-6",
         )}
       >
         {items.map(({ to, icon: Icon, label }) => {

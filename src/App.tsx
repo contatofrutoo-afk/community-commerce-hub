@@ -33,6 +33,7 @@ const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Topics = lazy(() => import("./pages/Topics"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
                 <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                 <Route path="/topics" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
               </Routes>
             </TenantProvider>
