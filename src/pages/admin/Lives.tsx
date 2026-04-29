@@ -25,7 +25,7 @@ type Live = {
 };
 
 export default function Lives() {
-  const { tenant, canManage } = useTenant();
+  const { tenant, canManage, loading: tenantLoading } = useTenant();
   const [lives, setLives] = useState<Live[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -99,7 +99,33 @@ export default function Lives() {
     loadLives();
   };
 
-  if (!tenant || !canManage) {
+  if (tenantLoading) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+        <TopBar />
+        <main className="flex-1 grid place-items-center px-4">
+          <p className="text-muted-foreground">Carregando...</p>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+        <TopBar />
+        <main className="flex-1 grid place-items-center px-4">
+          <p className="text-muted-foreground text-center">
+            Selecione uma marca primeiro.
+          </p>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!canManage) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
