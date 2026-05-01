@@ -96,7 +96,7 @@ export default function Overview() {
       const wau = uniques(interactions ?? [], new Date(now.getTime() - 7 * 86400_000).toISOString());
       const mau = uniques(interactions ?? [], dCurrent);
 
-      const topPosts = (posts ?? [])
+      const topPosts = ((posts ?? []) as any[])
         .map((p) => ({
           id: p.id,
           description: p.description?.slice(0, 50) ?? "Post",
@@ -273,11 +273,11 @@ export default function Overview() {
   return (
     <div className={device === "tablet" ? "max-w-3xl mx-auto space-y-6 px-4 py-6" : "max-w-6xl space-y-6"}>
       <div className="flex items-center gap-2">
-        <Link to="/feed" className={device === "mobile" ? "p-2 -ml-2" : "hidden md:flex"}>
+        <Link to="/feed" className={(device as string) === "mobile" ? "p-2 -ml-2" : "hidden md:flex"}>
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className={device === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Métricas</h1>
+          <h1 className={(device as string) === "mobile" ? "font-display text-2xl" : "font-display text-4xl"}>Métricas</h1>
           <p className="text-muted-foreground text-sm mt-1">Desempenho da sua comunidade.</p>
         </div>
         <div className="flex-1" />
