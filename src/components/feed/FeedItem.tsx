@@ -181,7 +181,42 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const startConversation = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user || !tenant) { nav("/auth"); return; }
-    setShowChatDialog(true);
+
+    try {
+      const { data: existingTopic } = await supabase
+        .from("topics")
+        .select("id")
+        .eq("related_post_id", post.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingTopic) {
+        nav(`/conversas/${existingTopic.id}`);
+        return;
+      }
+
+      const { data: newTopic, error: createError } = await supabase
+        .from("topics")
+        .insert({
+          tenant_id: tenant.id,
+          related_post_id: post.id,
+          title: "Discussão sobre este post",
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (createError) {
+        toast.error("Erro ao criar discussão");
+        return;
+      }
+
+      if (newTopic) {
+        nav(`/conversas/${newTopic.id}`);
+      }
+    } catch (err) {
+      toast.error("Erro ao abrir discussão");
+    }
   };
 
   const sendChatComment = async () => {
@@ -340,9 +375,9 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
               <Share2 className="h-7 w-7 drop-shadow-md text-background" />
               <span className="text-xs font-semibold drop-shadow-md">Enviar</span>
             </button>
-            <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Falar com a marca">
+            <button onClick={startConversation} className="flex flex-col items-center gap-1" aria-label="Conversar">
               <MessageSquare className="h-7 w-7 drop-shadow-md text-background" />
-              <span className="text-xs font-semibold drop-shadow-md">Falar</span>
+              <span className="text-xs font-semibold drop-shadow-md">Conversar</span>
             </button>
           </>
         )}
