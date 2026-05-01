@@ -440,6 +440,56 @@ export default function Topics() {
     loadTopics();
   };
 
+  const startEdit = (msg: TopicMessage) => {
+    setEditingId(msg.id);
+    setEditingContent(msg.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingContent("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !user) return;
+    const trimmed = editingContent.trim();
+    if (!trimmed) { toast.error("Mensagem vazia"); return; }
+    setSavingEdit(true);
+    const mentions = extractMentions(trimmed);
+    const { error } = await supabase
+      .from("topic_messages")
+      .update({ content: trimmed, mentions: mentions as any, edited_at: new Date().toISOString() } as any)
+      .eq("id", editingId)
+      .eq("user_id", user.id);
+    setSavingEdit(false);
+    if (error) { toast.error("Não foi possível editar"); return; }
+    setMessages((prev) => prev.map((m) => m.id === editingId ? { ...m, content: trimmed, mentions, edited_at: new Date().toISOString() } : m));
+    cancelEdit();
+    toast.success("Mensagem editada");
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || !user) return;
+    setDeleting(true);
+    const isOwn = deleteTarget.user_id === user.id;
+    if (!isOwn && !canModerate) {
+      setDeleting(false);
+      toast.error("Sem permissão");
+      return;
+    }
+    let q = supabase
+      .from("topic_messages")
+      .update({ deleted_at: new Date().toISOString() } as any)
+      .eq("id", deleteTarget.id);
+    if (!canModerate) q = q.eq("user_id", user.id);
+    const { error } = await q;
+    setDeleting(false);
+    if (error) { toast.error("Não foi possível excluir"); return; }
+    setMessages((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    toast.success("Mensagem removida");
+  };
+
   const closeTopic = () => {
     setSelectedTopic(null);
     setMessages([]);
