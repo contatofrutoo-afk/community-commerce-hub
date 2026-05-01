@@ -43,6 +43,7 @@ type TopicMessage = {
   deleted_at?: string | null;
   mentions?: Mention[];
   profiles?: { name: string; avatar_url: string | null } | null;
+  is_brand?: boolean;
 };
 
 type MentionUser = { user_id: string; name: string; avatar_url: string | null };
@@ -286,17 +287,27 @@ export default function Topics() {
       const rows = msgs || [];
       const userIds = Array.from(new Set(rows.map((m: any) => m.user_id).filter(Boolean)));
       let profilesMap = new Map<string, { name: string; avatar_url: string | null }>();
+      let brandUserIds = new Set<string>();
+      
       if (userIds.length > 0) {
         const { data: profs } = await supabase
           .from("profiles")
           .select("user_id, name, avatar_url")
           .in("user_id", userIds);
         (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { name: p.name, avatar_url: p.avatar_url }));
+        
+        const { data: memberships } = await supabase
+          .from("memberships")
+          .select("user_id, role")
+          .in("user_id", userIds)
+          .eq("role", "b2b");
+        (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
       }
 
       setMessages(rows.map((m: any) => ({
         ...m,
         profiles: m.user_id ? profilesMap.get(m.user_id) ?? null : null,
+        is_brand: brandUserIds.has(m.user_id),
       })));
       setLoadingMessages(false);
     }
@@ -379,17 +390,27 @@ export default function Topics() {
     const rows = data || [];
     const userIds = Array.from(new Set(rows.map((m: any) => m.user_id).filter(Boolean)));
     let profilesMap = new Map<string, { name: string; avatar_url: string | null }>();
+    let brandUserIds = new Set<string>();
+    
     if (userIds.length > 0) {
       const { data: profs } = await supabase
         .from("profiles")
         .select("user_id, name, avatar_url")
         .in("user_id", userIds);
       (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { name: p.name, avatar_url: p.avatar_url }));
+      
+      const { data: memberships } = await supabase
+        .from("memberships")
+        .select("user_id, role")
+        .in("user_id", userIds)
+        .eq("role", "b2b");
+      (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
     }
 
     setMessages(rows.map((m: any) => ({
       ...m,
       profiles: m.user_id ? profilesMap.get(m.user_id) ?? null : null,
+      is_brand: brandUserIds.has(m.user_id),
     })));
     setLoadingMessages(false);
   };
@@ -563,6 +584,18 @@ export default function Topics() {
                   <p className="text-xs text-gray-500 mt-1 line-clamp-1">
                     {topic.first_message?.content || "Sem mensagens"}
                   </p>
+                  {/* Status Tags */}
+                  <div className="flex gap-1 mt-1">
+                    {topic.replies_count > 10 && (
+                      <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">🔥 Em alta</span>
+                    )}
+                    {topic.replies_count === 0 && (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">📭 Sem respostas</span>
+                    )}
+                    {topic.related_post_id && (
+                      <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">💬 Do post</span>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Right - Stats & Avatar */}
@@ -619,6 +652,15 @@ export default function Topics() {
               {selectedTopic?.title || "Carregando..."}
             </h2>
           </div>
+
+          {/* Question Highlight */}
+          {(selectedTopic?.title?.includes("?") || selectedTopic?.related_post_id) && (
+            <div className="bg-yellow-50 border-y border-yellow-200 px-4 py-3">
+              <p className="text-sm font-medium text-yellow-800">
+                💬 {selectedTopic?.title}
+              </p>
+            </div>
+          )}
           
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -629,13 +671,18 @@ export default function Topics() {
                 <p>Seja o primeiro a participar!</p>
               </div>
             ) : (
+              <>
+                {/* Social Proof */}
+                <p className="text-xs text-gray-500 mb-2">
+                  👥 {messages.length} {messages.length === 1 ? "pessoa participou" : "pessoas já responderam"}
+                </p>
               messages.map((msg) => {
                 const isOwn = !!user && msg.user_id === user.id;
                 const canDelete = isOwn || canModerate;
                 const canEdit = isOwn;
                 const isEditing = editingId === msg.id;
                 return (
-                <div key={msg.id} className="flex gap-3">
+                <div key={msg.id} className={`flex gap-3 ${msg.is_brand ? "border-l-4 border-purple-600 bg-purple-50 rounded-r-lg pr-3 py-2" : ""}`}>
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || ""} />
                     <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
@@ -647,6 +694,9 @@ export default function Topics() {
                       <span className="text-sm font-medium text-gray-800">
                         {msg.profiles?.name || "Usuário"}
                       </span>
+                      {msg.is_brand && (
+                        <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">🏢 Marca</span>
+                      )}
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
                         {msg.edited_at && <span className="ml-1 italic">(editado)</span>}
@@ -761,7 +811,7 @@ export default function Topics() {
                     const el = e.currentTarget;
                     handleReplyChange({ target: el } as any);
                   }}
-                  placeholder="Escreva sua resposta... use @ para mencionar"
+                  placeholder="Responda aqui... ou tire sua dúvida"
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") { setMentionOpen(false); return; }
