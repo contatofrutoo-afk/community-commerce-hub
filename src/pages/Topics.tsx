@@ -581,11 +581,15 @@ export default function Topics() {
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
                       </span>
+                      <button
+                        onClick={() => startReplyTo(msg.profiles?.name)}
+                        className="text-xs text-blue-600 hover:underline ml-auto"
+                      >
+                        Responder
+                      </button>
                     </div>
                     <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      <MessageContent content={msg.content} mentions={msg.mentions} />
                     </div>
                   </div>
                 </div>
