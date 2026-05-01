@@ -80,9 +80,9 @@ const App = () => (
                 <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                 <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                 <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
-                <Route path="/topics" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                 <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                <Route path="*" element={<Navigate to="/feed" replace />} />
               </Routes>
             </TenantProvider>
           </AuthProvider>
