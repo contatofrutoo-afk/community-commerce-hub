@@ -229,6 +229,7 @@ export default function Topics() {
         .from("topic_messages")
         .select("content")
         .eq("topic_id", topic.id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: true })
         .limit(1)
         .single();
