@@ -83,7 +83,7 @@ export default function Overview() {
         supabase.from("memberships").select("*", { count: "exact", head: true }).eq("tenant_id", tenant.id),
         supabase.from("memberships").select("*", { count: "exact", head: true }).eq("tenant_id", tenant.id).gte("joined_at", dCurrent),
         supabase.from("interactions").select("user_id, created_at, action_type").eq("tenant_id", tenant.id).gte("created_at", dCurrent),
-        supabase.from("posts").select("id, description, likes_count, comments_count, views_count, cta_clicks, conversions").eq("tenant_id", tenant.id).gte("created_at", dCurrent).order("created_at", { ascending: false }),
+        supabase.from("posts").select("*").eq("tenant_id", tenant.id).gte("created_at", dCurrent).order("created_at", { ascending: false }),
       ]);
 
       const totalLikes = (interactions ?? []).filter((i) => i.action_type === "like").length;
