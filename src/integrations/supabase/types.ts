@@ -694,6 +694,114 @@ export type Database = {
         }
         Relationships: []
       }
+      topic_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          parent_id: string | null
+          topic_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_id?: string | null
+          topic_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_id?: string | null
+          topic_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "topic_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_messages_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topics: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_locked: boolean | null
+          is_pinned: boolean | null
+          last_activity_at: string | null
+          likes_count: number | null
+          related_post_id: string | null
+          replies_count: number | null
+          score: number | null
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          likes_count?: number | null
+          related_post_id?: string | null
+          replies_count?: number | null
+          score?: number | null
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_activity_at?: string | null
+          likes_count?: number | null
+          related_post_id?: string | null
+          replies_count?: number | null
+          score?: number | null
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topics_related_post_id_fkey"
+            columns: ["related_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_tracking: {
         Row: {
           count: number
@@ -770,10 +878,6 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      compute_topic_score: {
-        Args: { topic_id: string }
-        Returns: number
-      }
     }
     Enums: {
       app_role: "admin" | "b2b" | "b2c"
@@ -781,7 +885,7 @@ export type Database = {
       cta_type: "buy" | "schedule" | "quote" | "register" | "info"
       interaction_type: "view" | "like" | "comment" | "click_cta" | "conversion"
       post_type: "video" | "image" | "text"
-      tenant_role: "owner" | "member"
+      tenant_role: "owner" | "member" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -914,7 +1018,7 @@ export const Constants = {
       cta_type: ["buy", "schedule", "quote", "register", "info"],
       interaction_type: ["view", "like", "comment", "click_cta", "conversion"],
       post_type: ["video", "image", "text"],
-      tenant_role: ["owner", "member"],
+      tenant_role: ["owner", "member", "admin"],
     },
   },
 } as const
