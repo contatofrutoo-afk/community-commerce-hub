@@ -94,8 +94,9 @@ function formatTime(dateStr: string): string {
 }
 
 export default function Topics() {
-  const { tenant } = useTenant();
+  const { tenant, isOwner } = useTenant();
   const { user, isB2B } = useAuth();
+  const canModerate = isB2B && isOwner;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const params = useParams();
