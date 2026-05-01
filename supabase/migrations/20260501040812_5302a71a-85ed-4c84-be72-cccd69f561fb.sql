@@ -1,0 +1,1 @@
+ALTER TABLE public.topic_messages ADD COLUMN IF NOT EXISTS mentions JSONB NOT NULL DEFAULT '[]'::jsonb;
