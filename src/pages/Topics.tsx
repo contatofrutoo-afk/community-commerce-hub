@@ -405,7 +405,7 @@ export default function Topics() {
       {/* Topic Detail View - Always render if we have a selectedTopic or messages */}
       {(selectedTopic || messages.length > 0) && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          {console.log("RENDER: selectedTopic=", selectedTopic, "messages=", messages.length)}
+          
           {/* Topic Header */}
           <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center gap-3">
             <button onClick={closeTopic} className="text-gray-500 p-1">←</button>
