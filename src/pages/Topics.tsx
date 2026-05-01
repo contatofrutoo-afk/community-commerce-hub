@@ -672,17 +672,16 @@ export default function Topics() {
               </div>
             ) : (
               <>
-                {/* Social Proof */}
                 <p className="text-xs text-gray-500 mb-2">
                   👥 {messages.length} {messages.length === 1 ? "pessoa participou" : "pessoas já responderam"}
                 </p>
-              messages.map((msg) => {
-                const isOwn = !!user && msg.user_id === user.id;
-                const canDelete = isOwn || canModerate;
-                const canEdit = isOwn;
-                const isEditing = editingId === msg.id;
+                {messages.map((msg) => {
+                  const isOwn = !!user && msg.user_id === user.id;
+                  const canDelete = isOwn || canModerate;
+                  const canEdit = isOwn;
+                  const isEditing = editingId === msg.id;
                 return (
-                <div key={msg.id} className={`flex gap-3 ${msg.is_brand ? "border-l-4 border-purple-600 bg-purple-50 rounded-r-lg pr-3 py-2" : ""}`}>
+                  <div key={msg.id} className={`flex gap-3 ${msg.is_brand ? "border-l-4 border-purple-600 bg-purple-50 rounded-r-lg pr-3 py-2" : ""}`}>
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || ""} />
                     <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
@@ -770,7 +769,8 @@ export default function Topics() {
                   </div>
                 </div>
                 );
-              })
+              })}
+              </>
             )}
             <div ref={messagesEndRef} />
           </div>
