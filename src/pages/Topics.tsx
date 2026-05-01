@@ -629,7 +629,12 @@ export default function Topics() {
                 <p>Seja o primeiro a participar!</p>
               </div>
             ) : (
-              messages.map((msg) => (
+              messages.map((msg) => {
+                const isOwn = !!user && msg.user_id === user.id;
+                const canDelete = isOwn || canModerate;
+                const canEdit = isOwn;
+                const isEditing = editingId === msg.id;
+                return (
                 <div key={msg.id} className="flex gap-3">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || ""} />
@@ -644,20 +649,78 @@ export default function Topics() {
                       </span>
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
+                        {msg.edited_at && <span className="ml-1 italic">(editado)</span>}
                       </span>
-                      <button
-                        onClick={() => startReplyTo(msg.profiles?.name)}
-                        className="text-xs text-blue-600 hover:underline ml-auto"
-                      >
-                        Responder
-                      </button>
+                      <div className="ml-auto flex items-center gap-2">
+                        {!isEditing && (
+                          <button
+                            onClick={() => startReplyTo(msg.profiles?.name)}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Responder
+                          </button>
+                        )}
+                        {(canEdit || canDelete) && !isEditing && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="text-gray-400 hover:text-gray-600 p-1" aria-label="Ações">
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-white">
+                              {canEdit && (
+                                <DropdownMenuItem onClick={() => startEdit(msg)}>
+                                  <Pencil className="h-4 w-4 mr-2" /> Editar
+                                </DropdownMenuItem>
+                              )}
+                              {canDelete && (
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteTarget(msg)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
-                    <div className="bg-gray-100 rounded-lg p-3">
-                      <MessageContent content={msg.content} mentions={msg.mentions} />
-                    </div>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm resize-none"
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={cancelEdit}
+                            disabled={savingEdit}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={saveEdit}
+                            disabled={savingEdit || !editingContent.trim()}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50"
+                          >
+                            {savingEdit ? "Salvando..." : "Salvar"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-100 rounded-lg p-3">
+                        <MessageContent content={msg.content} mentions={msg.mentions} />
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
             <div ref={messagesEndRef} />
           </div>
