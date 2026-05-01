@@ -27,6 +27,8 @@ type Topic = {
   first_message?: { content: string } | null;
 };
 
+type Mention = { user_id: string; name: string };
+
 type TopicMessage = {
   id: string;
   topic_id: string;
@@ -35,8 +37,42 @@ type TopicMessage = {
   parent_id: string | null;
   likes_count: number;
   created_at: string;
+  mentions?: Mention[];
   profiles?: { name: string; avatar_url: string | null } | null;
 };
+
+type MentionUser = { user_id: string; name: string; avatar_url: string | null };
+
+function slugifyMention(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+}
+
+function MessageContent({ content, mentions }: { content: string; mentions?: Mention[] }) {
+  const handles = (mentions || []).map((m) => slugifyMention(m.name)).filter(Boolean);
+  const pattern = handles.length
+    ? new RegExp(`(@(?:${handles.join("|")})|@[\\p{L}0-9_]+)`, "gu")
+    : /(@[\p{L}0-9_]+)/gu;
+  const parts = content.split(pattern);
+  return (
+    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+      {parts.map((part, i) => {
+        if (part?.startsWith("@")) {
+          const handle = part.slice(1);
+          const isKnown = handles.includes(handle.toLowerCase());
+          return (
+            <span
+              key={i}
+              className={isKnown ? "text-blue-600 font-medium" : "text-blue-500"}
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
+}
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
