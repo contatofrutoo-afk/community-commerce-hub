@@ -600,17 +600,51 @@ export default function Topics() {
           
           {/* Reply Input */}
           {selectedTopic && !selectedTopic.is_locked && (
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-4 border-t border-gray-200 bg-white relative">
+              {mentionOpen && filteredMentionUsers.length > 0 && (
+                <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10">
+                  {filteredMentionUsers.map((u) => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); selectMention(u); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 text-left"
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={u.avatar_url || ""} />
+                        <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
+                          {u.name?.[0]?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900">{u.name}</span>
+                        <span className="text-xs text-gray-400">@{slugifyMention(u.name)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
+                  ref={replyInputRef}
                   type="text"
                   value={newReply}
-                  onChange={(e) => setNewReply(e.target.value)}
-                  placeholder="Escreva sua resposta..."
+                  onChange={handleReplyChange}
+                  onKeyUp={(e) => {
+                    const el = e.currentTarget;
+                    handleReplyChange({ target: el } as any);
+                  }}
+                  placeholder="Escreva sua resposta... use @ para mencionar"
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendReply())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { setMentionOpen(false); return; }
+                    if (e.key === "Enter" && !e.shiftKey && !mentionOpen) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
                 />
-                <button 
+                <button
                   onClick={sendReply}
                   disabled={sendingReply || !newReply.trim()}
                   className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-lg disabled:opacity-50"
