@@ -808,6 +808,7 @@ export type Database = {
           created_at: string | null
           id: string
           likes_count: number | null
+          mentions: Json
           parent_id: string | null
           topic_id: string
           user_id: string
@@ -817,6 +818,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           likes_count?: number | null
+          mentions?: Json
           parent_id?: string | null
           topic_id: string
           user_id: string
@@ -826,6 +828,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           likes_count?: number | null
+          mentions?: Json
           parent_id?: string | null
           topic_id?: string
           user_id?: string

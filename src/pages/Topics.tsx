@@ -27,6 +27,8 @@ type Topic = {
   first_message?: { content: string } | null;
 };
 
+type Mention = { user_id: string; name: string };
+
 type TopicMessage = {
   id: string;
   topic_id: string;
@@ -35,8 +37,42 @@ type TopicMessage = {
   parent_id: string | null;
   likes_count: number;
   created_at: string;
+  mentions?: Mention[];
   profiles?: { name: string; avatar_url: string | null } | null;
 };
+
+type MentionUser = { user_id: string; name: string; avatar_url: string | null };
+
+function slugifyMention(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+}
+
+function MessageContent({ content, mentions }: { content: string; mentions?: Mention[] }) {
+  const handles = (mentions || []).map((m) => slugifyMention(m.name)).filter(Boolean);
+  const pattern = handles.length
+    ? new RegExp(`(@(?:${handles.join("|")})|@[\\p{L}0-9_]+)`, "gu")
+    : /(@[\p{L}0-9_]+)/gu;
+  const parts = content.split(pattern);
+  return (
+    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+      {parts.map((part, i) => {
+        if (part?.startsWith("@")) {
+          const handle = part.slice(1);
+          const isKnown = handles.includes(handle.toLowerCase());
+          return (
+            <span
+              key={i}
+              className={isKnown ? "text-blue-600 font-medium" : "text-blue-500"}
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
+}
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -73,6 +109,95 @@ export default function Topics() {
   const [newReply, setNewReply] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const replyInputRef = useRef<HTMLInputElement>(null);
+
+  const [tenantUsers, setTenantUsers] = useState<MentionUser[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStart, setMentionStart] = useState<number>(-1);
+
+  useEffect(() => {
+    if (!tenant) return;
+    (async () => {
+      const { data: mbs } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", tenant.id);
+      const ids = Array.from(new Set((mbs || []).map((m: any) => m.user_id)));
+      if (ids.length === 0) { setTenantUsers([]); return; }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, name, avatar_url")
+        .in("user_id", ids);
+      setTenantUsers((profs || []) as MentionUser[]);
+    })();
+  }, [tenant?.id]);
+
+  const filteredMentionUsers = tenantUsers
+    .filter((u) => u.name && (mentionQuery === "" || u.name.toLowerCase().includes(mentionQuery.toLowerCase())))
+    .slice(0, 6);
+
+  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewReply(value);
+    const caret = e.target.selectionStart ?? value.length;
+    const upToCaret = value.slice(0, caret);
+    const match = upToCaret.match(/(?:^|\s)@([\p{L}0-9_]*)$/u);
+    if (match) {
+      setMentionOpen(true);
+      setMentionQuery(match[1]);
+      setMentionStart(caret - match[1].length - 1);
+    } else {
+      setMentionOpen(false);
+      setMentionQuery("");
+      setMentionStart(-1);
+    }
+  };
+
+  const selectMention = (u: MentionUser) => {
+    if (mentionStart < 0) return;
+    const handle = slugifyMention(u.name);
+    const before = newReply.slice(0, mentionStart);
+    const after = newReply.slice(mentionStart + 1 + mentionQuery.length);
+    const inserted = `@${handle} `;
+    const next = before + inserted + after;
+    setNewReply(next);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionStart(-1);
+    requestAnimationFrame(() => {
+      const el = replyInputRef.current;
+      if (el) {
+        const pos = (before + inserted).length;
+        el.focus();
+        el.setSelectionRange(pos, pos);
+      }
+    });
+  };
+
+  const extractMentions = (text: string): Mention[] => {
+    const handles = Array.from(text.matchAll(/@([\p{L}0-9_]+)/gu)).map((m) => m[1].toLowerCase());
+    const seen = new Set<string>();
+    const result: Mention[] = [];
+    for (const h of handles) {
+      if (seen.has(h)) continue;
+      const u = tenantUsers.find((x) => slugifyMention(x.name) === h);
+      if (u) { seen.add(h); result.push({ user_id: u.user_id, name: u.name }); }
+    }
+    return result;
+  };
+
+  const startReplyTo = (name: string | null | undefined) => {
+    if (!name) return;
+    const handle = slugifyMention(name);
+    if (!handle) return;
+    const prefix = `@${handle} `;
+    setNewReply((cur) => (cur.startsWith(prefix) ? cur : prefix + cur));
+    requestAnimationFrame(() => {
+      const el = replyInputRef.current;
+      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    });
+  };
 
   const loadTopics = async () => {
     if (!tenant) return;
@@ -260,24 +385,41 @@ export default function Topics() {
     setSendingReply(true);
     
     const content = newReply.trim();
-    
+    const mentions = extractMentions(content);
+
     const { error: insertError } = await supabase.from("topic_messages").insert({
       topic_id: selectedTopic.id,
       user_id: user.id,
       content: content,
-    });
-    
+      mentions: mentions as any,
+    } as any);
+
     if (insertError) {
       console.error("Insert error:", insertError);
       setSendingReply(false);
       toast.error("Erro ao enviar");
       return;
     }
-    
+
     await supabase.from("topics").update({
       last_activity_at: new Date().toISOString(),
     }).eq("id", selectedTopic.id);
-    
+
+    if (mentions.length && tenant) {
+      const rows = mentions
+        .filter((m) => m.user_id !== user.id)
+        .map((m) => ({
+          tenant_id: tenant.id,
+          user_id: m.user_id,
+          type: "mention",
+          title: "Você foi mencionado",
+          body: content.slice(0, 140),
+          priority: "medium",
+          data: { topic_id: selectedTopic.id, from_user: user.id },
+        }));
+      if (rows.length) await supabase.from("notifications").insert(rows as any);
+    }
+
     setSendingReply(false);
     setNewReply("");
     await loadTopicMessages(selectedTopic);
@@ -439,11 +581,15 @@ export default function Topics() {
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
                       </span>
+                      <button
+                        onClick={() => startReplyTo(msg.profiles?.name)}
+                        className="text-xs text-blue-600 hover:underline ml-auto"
+                      >
+                        Responder
+                      </button>
                     </div>
                     <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {msg.content}
-                      </p>
+                      <MessageContent content={msg.content} mentions={msg.mentions} />
                     </div>
                   </div>
                 </div>
@@ -454,17 +600,51 @@ export default function Topics() {
           
           {/* Reply Input */}
           {selectedTopic && !selectedTopic.is_locked && (
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-4 border-t border-gray-200 bg-white relative">
+              {mentionOpen && filteredMentionUsers.length > 0 && (
+                <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10">
+                  {filteredMentionUsers.map((u) => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); selectMention(u); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 text-left"
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={u.avatar_url || ""} />
+                        <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
+                          {u.name?.[0]?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900">{u.name}</span>
+                        <span className="text-xs text-gray-400">@{slugifyMention(u.name)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
+                  ref={replyInputRef}
                   type="text"
                   value={newReply}
-                  onChange={(e) => setNewReply(e.target.value)}
-                  placeholder="Escreva sua resposta..."
+                  onChange={handleReplyChange}
+                  onKeyUp={(e) => {
+                    const el = e.currentTarget;
+                    handleReplyChange({ target: el } as any);
+                  }}
+                  placeholder="Escreva sua resposta... use @ para mencionar"
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendReply())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { setMentionOpen(false); return; }
+                    if (e.key === "Enter" && !e.shiftKey && !mentionOpen) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
                 />
-                <button 
+                <button
                   onClick={sendReply}
                   disabled={sendingReply || !newReply.trim()}
                   className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-lg disabled:opacity-50"
