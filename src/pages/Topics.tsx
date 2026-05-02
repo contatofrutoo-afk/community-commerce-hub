@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { MessageCircle, Plus, Send, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { awardPoints } from "@/lib/gamification";
 
 type Topic = {
   id: string;
@@ -29,8 +28,6 @@ type Topic = {
   first_message?: { content: string } | null;
 };
 
-type Mention = { user_id: string; name: string };
-
 type TopicMessage = {
   id: string;
   topic_id: string;
@@ -39,45 +36,8 @@ type TopicMessage = {
   parent_id: string | null;
   likes_count: number;
   created_at: string;
-  edited_at?: string | null;
-  deleted_at?: string | null;
-  mentions?: Mention[];
   profiles?: { name: string; avatar_url: string | null } | null;
-  is_brand?: boolean;
 };
-
-type MentionUser = { user_id: string; name: string; avatar_url: string | null };
-
-function slugifyMention(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-}
-
-function MessageContent({ content, mentions }: { content: string; mentions?: Mention[] }) {
-  const handles = (mentions || []).map((m) => slugifyMention(m.name)).filter(Boolean);
-  const pattern = handles.length
-    ? new RegExp(`(@(?:${handles.join("|")})|@[\\p{L}0-9_]+)`, "gu")
-    : /(@[\p{L}0-9_]+)/gu;
-  const parts = content.split(pattern);
-  return (
-    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-      {parts.map((part, i) => {
-        if (part?.startsWith("@")) {
-          const handle = part.slice(1);
-          const isKnown = handles.includes(handle.toLowerCase());
-          return (
-            <span
-              key={i}
-              className={isKnown ? "text-blue-600 font-medium" : "text-blue-500"}
-            >
-              {part}
-            </span>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </p>
-  );
-}
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -95,9 +55,8 @@ function formatTime(dateStr: string): string {
 }
 
 export default function Topics() {
-  const { tenant, isOwner } = useTenant();
+  const { tenant } = useTenant();
   const { user, isB2B } = useAuth();
-  const canModerate = isB2B && isOwner;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const params = useParams();
@@ -115,101 +74,6 @@ export default function Topics() {
   const [newReply, setNewReply] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const replyInputRef = useRef<HTMLInputElement>(null);
-
-  const [tenantUsers, setTenantUsers] = useState<MentionUser[]>([]);
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionStart, setMentionStart] = useState<number>(-1);
-
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<TopicMessage | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    if (!tenant) return;
-    (async () => {
-      const { data: mbs } = await supabase
-        .from("memberships")
-        .select("user_id")
-        .eq("tenant_id", tenant.id);
-      const ids = Array.from(new Set((mbs || []).map((m: any) => m.user_id)));
-      if (ids.length === 0) { setTenantUsers([]); return; }
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("user_id, name, avatar_url")
-        .in("user_id", ids);
-      setTenantUsers((profs || []) as MentionUser[]);
-    })();
-  }, [tenant?.id]);
-
-  const filteredMentionUsers = tenantUsers
-    .filter((u) => u.name && (mentionQuery === "" || u.name.toLowerCase().includes(mentionQuery.toLowerCase())))
-    .slice(0, 6);
-
-  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNewReply(value);
-    const caret = e.target.selectionStart ?? value.length;
-    const upToCaret = value.slice(0, caret);
-    const match = upToCaret.match(/(?:^|\s)@([\p{L}0-9_]*)$/u);
-    if (match) {
-      setMentionOpen(true);
-      setMentionQuery(match[1]);
-      setMentionStart(caret - match[1].length - 1);
-    } else {
-      setMentionOpen(false);
-      setMentionQuery("");
-      setMentionStart(-1);
-    }
-  };
-
-  const selectMention = (u: MentionUser) => {
-    if (mentionStart < 0) return;
-    const handle = slugifyMention(u.name);
-    const before = newReply.slice(0, mentionStart);
-    const after = newReply.slice(mentionStart + 1 + mentionQuery.length);
-    const inserted = `@${handle} `;
-    const next = before + inserted + after;
-    setNewReply(next);
-    setMentionOpen(false);
-    setMentionQuery("");
-    setMentionStart(-1);
-    requestAnimationFrame(() => {
-      const el = replyInputRef.current;
-      if (el) {
-        const pos = (before + inserted).length;
-        el.focus();
-        el.setSelectionRange(pos, pos);
-      }
-    });
-  };
-
-  const extractMentions = (text: string): Mention[] => {
-    const handles = Array.from(text.matchAll(/@([\p{L}0-9_]+)/gu)).map((m) => m[1].toLowerCase());
-    const seen = new Set<string>();
-    const result: Mention[] = [];
-    for (const h of handles) {
-      if (seen.has(h)) continue;
-      const u = tenantUsers.find((x) => slugifyMention(x.name) === h);
-      if (u) { seen.add(h); result.push({ user_id: u.user_id, name: u.name }); }
-    }
-    return result;
-  };
-
-  const startReplyTo = (name: string | null | undefined) => {
-    if (!name) return;
-    const handle = slugifyMention(name);
-    if (!handle) return;
-    const prefix = `@${handle} `;
-    setNewReply((cur) => (cur.startsWith(prefix) ? cur : prefix + cur));
-    requestAnimationFrame(() => {
-      const el = replyInputRef.current;
-      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
-    });
-  };
 
   const loadTopics = async () => {
     if (!tenant) return;
@@ -230,7 +94,6 @@ export default function Topics() {
         .from("topic_messages")
         .select("content")
         .eq("topic_id", topic.id)
-        .is("deleted_at", null)
         .order("created_at", { ascending: true })
         .limit(1)
         .single();
@@ -247,70 +110,71 @@ export default function Topics() {
   };
 
   const loadDirectTopic = async () => {
-    if (topicIdFromParams) {
-      setLoadingMessages(true);
-      setSelectedTopic(null);
-      setMessages([]);
-      
-      console.log("Loading direct topic:", topicIdFromParams);
-      
-      const { data: topic, error: topicError } = await supabase
-        .from("topics")
-        .select("*")
-        .eq("id", topicIdFromParams)
-        .single();
-      
-      if (topicError) { 
-        console.error("Topic load error:", topicError);
-        setLoadingMessages(false); 
-        return; 
-      }
-      
-      console.log("Topic found:", topic);
-      setSelectedTopic(topic);
-      
-      const { data: msgs, error: msgError } = await supabase
-        .from("topic_messages")
-        .select("*")
-        .eq("topic_id", topicIdFromParams)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true });
-      
-      console.log("MESSAGES:", msgs, "error:", msgError);
-      
-      if (msgError) { 
-        console.error("Load messages error:", msgError);
-        setLoadingMessages(false);
-        return; 
-      }
-
-      const rows = msgs || [];
-      const userIds = Array.from(new Set(rows.map((m: any) => m.user_id).filter(Boolean)));
-      let profilesMap = new Map<string, { name: string; avatar_url: string | null }>();
-      let brandUserIds = new Set<string>();
-      
-      if (userIds.length > 0) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id, name, avatar_url")
-          .in("user_id", userIds);
-        (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { name: p.name, avatar_url: p.avatar_url }));
-        
-        const { data: memberships } = await supabase
-          .from("memberships")
-          .select("user_id, role")
-          .in("user_id", userIds)
-          .eq("role", "b2b");
-        (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
-      }
-
-      setMessages(rows.map((m: any) => ({
-        ...m,
-        profiles: m.user_id ? profilesMap.get(m.user_id) ?? null : null,
-        is_brand: brandUserIds.has(m.user_id),
-      })));
-      setLoadingMessages(false);
+    if (!tenant || !topicIdFromParams) return;
+    
+    setLoadingMessages(true);
+    setSelectedTopic(null);
+    setMessages([]);
+    
+    console.log("Loading direct topic:", topicIdFromParams, "tenant:", tenant.id);
+    
+    const { data: topic, error: topicError } = await supabase
+      .from("topics")
+      .select("*")
+      .eq("id", topicIdFromParams)
+      .single();
+    
+    if (topicError) { 
+      console.error("Topic load error:", topicError);
+      setLoadingMessages(false); 
+      return; 
     }
+    
+    console.log("Topic found:", topic);
+    setSelectedTopic(topic);
+    
+    // Simple query without join
+    const { data: msgs, error: msgError } = await supabase
+      .from("topic_messages")
+      .select("*")
+      .eq("topic_id", topicIdFromParams)
+      .order("created_at", { ascending: false });
+    
+    console.log("Messages loaded:", msgs, "error:", msgError);
+    
+    if (msgError || !msgs) {
+      console.error("Load messages error:", msgError);
+      setLoadingMessages(false);
+      setMessages([]);
+      return;
+    }
+    
+    // Fetch profiles separately
+    const userIds = [...new Set(msgs.map(m => m.user_id).filter(Boolean))];
+    let profilesMap: Record<string, { name: string; avatar_url: string }> = {};
+    
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name, avatar_url")
+        .in("user_id", userIds);
+      
+      if (profiles) {
+        profiles.forEach(p => {
+          profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
+        });
+      }
+    }
+    
+    // Add profile data to messages
+    const msgsWithProfiles = msgs.map(m => ({
+      ...m,
+      profiles: profilesMap[m.user_id] || null
+    }));
+    
+    console.log("Messages with profiles:", msgsWithProfiles);
+    setLoadingMessages(false);
+    setMessages(msgsWithProfiles);
   };
 
   useEffect(() => {
@@ -318,8 +182,11 @@ export default function Topics() {
   }, [tenant]);
 
   useEffect(() => {
-    loadDirectTopic();
-  }, [topicIdFromParams]);
+    console.log("EFFECT: topicIdFromParams=", topicIdFromParams, "tenant=", !!tenant);
+    if (topicIdFromParams && tenant) {
+      loadDirectTopic();
+    }
+  }, [topicIdFromParams, tenant]);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -374,45 +241,18 @@ export default function Topics() {
     
     const { data, error } = await supabase
       .from("topic_messages")
-      .select("*")
+      .select("*, profiles:profiles!topic_messages_user_id_fkey(name, avatar_url)")
       .eq("topic_id", topic.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
     
-    console.log("MESSAGES:", data, "error:", error);
+    console.log("Messages loaded:", data, "error:", error);
     
+    setLoadingMessages(false);
     if (error) { 
       console.error("Load messages error:", error);
-      setLoadingMessages(false);
       return; 
     }
-
-    const rows = data || [];
-    const userIds = Array.from(new Set(rows.map((m: any) => m.user_id).filter(Boolean)));
-    let profilesMap = new Map<string, { name: string; avatar_url: string | null }>();
-    let brandUserIds = new Set<string>();
-    
-    if (userIds.length > 0) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("user_id, name, avatar_url")
-        .in("user_id", userIds);
-      (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { name: p.name, avatar_url: p.avatar_url }));
-      
-      const { data: memberships } = await supabase
-        .from("memberships")
-        .select("user_id, role")
-        .in("user_id", userIds)
-        .eq("role", "b2b");
-      (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
-    }
-
-    setMessages(rows.map((m: any) => ({
-      ...m,
-      profiles: m.user_id ? profilesMap.get(m.user_id) ?? null : null,
-      is_brand: brandUserIds.has(m.user_id),
-    })));
-    setLoadingMessages(false);
+    setMessages(data || []);
   };
 
   const sendReply = async () => {
@@ -420,95 +260,29 @@ export default function Topics() {
     setSendingReply(true);
     
     const content = newReply.trim();
-    const mentions = extractMentions(content);
-
+    
     const { error: insertError } = await supabase.from("topic_messages").insert({
       topic_id: selectedTopic.id,
       user_id: user.id,
       content: content,
-      mentions: mentions as any,
-    } as any);
-
+    });
+    
     if (insertError) {
       console.error("Insert error:", insertError);
       setSendingReply(false);
       toast.error("Erro ao enviar");
       return;
     }
-
+    
     await supabase.from("topics").update({
       last_activity_at: new Date().toISOString(),
     }).eq("id", selectedTopic.id);
-
-    if (mentions.length && tenant) {
-      const rows = mentions
-        .filter((m) => m.user_id !== user.id)
-        .map((m) => ({
-          tenant_id: tenant.id,
-          user_id: m.user_id,
-          type: "mention",
-          title: "Você foi mencionado",
-          body: content.slice(0, 140),
-          priority: "medium",
-          data: { topic_id: selectedTopic.id, from_user: user.id },
-        }));
-      if (rows.length) await supabase.from("notifications").insert(rows as any);
-    }
-
+    
     setSendingReply(false);
     setNewReply("");
     await loadTopicMessages(selectedTopic);
     loadTopics();
-  };
-
-  const startEdit = (msg: TopicMessage) => {
-    setEditingId(msg.id);
-    setEditingContent(msg.content);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditingContent("");
-  };
-
-  const saveEdit = async () => {
-    if (!editingId || !user) return;
-    const trimmed = editingContent.trim();
-    if (!trimmed) { toast.error("Mensagem vazia"); return; }
-    setSavingEdit(true);
-    const mentions = extractMentions(trimmed);
-    const { error } = await supabase
-      .from("topic_messages")
-      .update({ content: trimmed, mentions: mentions as any, edited_at: new Date().toISOString() } as any)
-      .eq("id", editingId)
-      .eq("user_id", user.id);
-    setSavingEdit(false);
-    if (error) { toast.error("Não foi possível editar"); return; }
-    setMessages((prev) => prev.map((m) => m.id === editingId ? { ...m, content: trimmed, mentions, edited_at: new Date().toISOString() } : m));
-    cancelEdit();
-    toast.success("Mensagem editada");
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget || !user) return;
-    setDeleting(true);
-    const isOwn = deleteTarget.user_id === user.id;
-    if (!isOwn && !canModerate) {
-      setDeleting(false);
-      toast.error("Sem permissão");
-      return;
-    }
-    let q = supabase
-      .from("topic_messages")
-      .update({ deleted_at: new Date().toISOString() } as any)
-      .eq("id", deleteTarget.id);
-    if (!canModerate) q = q.eq("user_id", user.id);
-    const { error } = await q;
-    setDeleting(false);
-    if (error) { toast.error("Não foi possível excluir"); return; }
-    setMessages((prev) => prev.filter((m) => m.id !== deleteTarget.id));
-    setDeleteTarget(null);
-    toast.success("Mensagem removida");
+    if (tenant) awardPoints(user.id, tenant.id, "reply_created", selectedTopic.id, 3);
   };
 
   const closeTopic = () => {
@@ -584,18 +358,6 @@ export default function Topics() {
                   <p className="text-xs text-gray-500 mt-1 line-clamp-1">
                     {topic.first_message?.content || "Sem mensagens"}
                   </p>
-                  {/* Status Tags */}
-                  <div className="flex gap-1 mt-1">
-                    {topic.replies_count > 10 && (
-                      <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">🔥 Em alta</span>
-                    )}
-                    {topic.replies_count === 0 && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">📭 Sem respostas</span>
-                    )}
-                    {topic.related_post_id && (
-                      <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">💬 Do post</span>
-                    )}
-                  </div>
                 </div>
                 
                 {/* Right - Stats & Avatar */}
@@ -644,7 +406,7 @@ export default function Topics() {
       {/* Topic Detail View - Always render if we have a selectedTopic or messages */}
       {(selectedTopic || messages.length > 0) && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          
+          {console.log("RENDER: selectedTopic=", selectedTopic, "messages=", messages.length)}
           {/* Topic Header */}
           <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center gap-3">
             <button onClick={closeTopic} className="text-gray-500 p-1">←</button>
@@ -652,15 +414,6 @@ export default function Topics() {
               {selectedTopic?.title || "Carregando..."}
             </h2>
           </div>
-
-          {/* Question Highlight */}
-          {(selectedTopic?.title?.includes("?") || selectedTopic?.related_post_id) && (
-            <div className="bg-yellow-50 border-y border-yellow-200 px-4 py-3">
-              <p className="text-sm font-medium text-yellow-800">
-                💬 {selectedTopic?.title}
-              </p>
-            </div>
-          )}
           
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -671,17 +424,8 @@ export default function Topics() {
                 <p>Seja o primeiro a participar!</p>
               </div>
             ) : (
-              <>
-                <p className="text-xs text-gray-500 mb-2">
-                  👥 {messages.length} {messages.length === 1 ? "pessoa participou" : "pessoas já responderam"}
-                </p>
-                {messages.map((msg) => {
-                  const isOwn = !!user && msg.user_id === user.id;
-                  const canDelete = isOwn || canModerate;
-                  const canEdit = isOwn;
-                  const isEditing = editingId === msg.id;
-                return (
-                  <div key={msg.id} className={`flex gap-3 ${msg.is_brand ? "border-l-4 border-purple-600 bg-purple-50 rounded-r-lg pr-3 py-2" : ""}`}>
+              messages.map((msg) => (
+                <div key={msg.id} className="flex gap-3">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || ""} />
                     <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
@@ -693,135 +437,35 @@ export default function Topics() {
                       <span className="text-sm font-medium text-gray-800">
                         {msg.profiles?.name || "Usuário"}
                       </span>
-                      {msg.is_brand && (
-                        <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">🏢 Marca</span>
-                      )}
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
-                        {msg.edited_at && <span className="ml-1 italic">(editado)</span>}
                       </span>
-                      <div className="ml-auto flex items-center gap-2">
-                        {!isEditing && (
-                          <button
-                            onClick={() => startReplyTo(msg.profiles?.name)}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            Responder
-                          </button>
-                        )}
-                        {(canEdit || canDelete) && !isEditing && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="text-gray-400 hover:text-gray-600 p-1" aria-label="Ações">
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white">
-                              {canEdit && (
-                                <DropdownMenuItem onClick={() => startEdit(msg)}>
-                                  <Pencil className="h-4 w-4 mr-2" /> Editar
-                                </DropdownMenuItem>
-                              )}
-                              {canDelete && (
-                                <DropdownMenuItem
-                                  onClick={() => setDeleteTarget(msg)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
                     </div>
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editingContent}
-                          onChange={(e) => setEditingContent(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm resize-none"
-                          rows={3}
-                          autoFocus
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={cancelEdit}
-                            disabled={savingEdit}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            onClick={saveEdit}
-                            disabled={savingEdit || !editingContent.trim()}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50"
-                          >
-                            {savingEdit ? "Salvando..." : "Salvar"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-100 rounded-lg p-3">
-                        <MessageContent content={msg.content} mentions={msg.mentions} />
-                      </div>
-                    )}
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                );
-              })}
-              </>
+              ))
             )}
             <div ref={messagesEndRef} />
           </div>
           
           {/* Reply Input */}
           {selectedTopic && !selectedTopic.is_locked && (
-            <div className="p-4 border-t border-gray-200 bg-white relative">
-              {mentionOpen && filteredMentionUsers.length > 0 && (
-                <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10">
-                  {filteredMentionUsers.map((u) => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); selectMention(u); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 text-left"
-                    >
-                      <Avatar className="h-7 w-7">
-                        <AvatarImage src={u.avatar_url || ""} />
-                        <AvatarFallback className="text-xs bg-gray-200 text-gray-600">
-                          {u.name?.[0]?.toUpperCase() || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-900">{u.name}</span>
-                        <span className="text-xs text-gray-400">@{slugifyMention(u.name)}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="p-4 border-t border-gray-200 bg-white">
               <div className="flex gap-2">
                 <input
-                  ref={replyInputRef}
                   type="text"
                   value={newReply}
-                  onChange={handleReplyChange}
-                  onKeyUp={(e) => {
-                    const el = e.currentTarget;
-                    handleReplyChange({ target: el } as any);
-                  }}
-                  placeholder="Responda aqui... ou tire sua dúvida"
+                  onChange={(e) => setNewReply(e.target.value)}
+                  placeholder="Escreva sua resposta..."
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") { setMentionOpen(false); return; }
-                    if (e.key === "Enter" && !e.shiftKey && !mentionOpen) {
-                      e.preventDefault();
-                      sendReply();
-                    }
-                  }}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendReply())}
                 />
-                <button
+                <button 
                   onClick={sendReply}
                   disabled={sendingReply || !newReply.trim()}
                   className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-lg disabled:opacity-50"
@@ -833,27 +477,6 @@ export default function Topics() {
           )}
         </div>
       )}
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
-        <AlertDialogContent className="bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir mensagem?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta mensagem? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {deleting ? "Excluindo..." : "Excluir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <BottomNav />
     </div>

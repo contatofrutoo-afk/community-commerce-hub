@@ -6,8 +6,9 @@ import { useDeviceType } from "@/hooks/use-device-type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
 import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft, Users, Heart, MessageCircle, Target } from "lucide-react";
+import RankingSection from "@/components/RankingSection";
+import BrandInsights from "@/components/BrandInsights";
 import { cn } from "@/lib/utils";
-import { RankingSection, EngagementInsights, RewardSection } from "@/components/admin/GamificationComponents";
 
 const CTA_LABELS: Record<string, string> = {
   BUY: "Comprar",
@@ -379,13 +380,24 @@ export default function Overview() {
 
       {/* Gamificação: Ranking e Premiação */}
       <div className="grid md:grid-cols-2 gap-4">
-        <RankingSection type="monthly" />
-        <RankingSection type="yearly" />
+        <Card>
+          <CardContent className="p-4">
+            <RankingSection period="monthly" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <RankingSection period="yearly" />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <EngagementInsights />
-        <RewardSection />
+        <Card>
+          <CardContent className="p-4">
+            <BrandInsights />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Insights Automáticos */}
@@ -444,6 +456,16 @@ export default function Overview() {
           </CardContent>
         </Card>
       )}
+      {/* Ranking Section */}
+      <Card>
+        <CardHeader><CardTitle className="font-display">Ranking</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          <RankingSection period="monthly" />
+          <RankingSection period="yearly" />
+        </CardContent>
+      </Card>
+      {/* Brand Insights */}
+      <BrandInsights />
     </div>
   );
 }

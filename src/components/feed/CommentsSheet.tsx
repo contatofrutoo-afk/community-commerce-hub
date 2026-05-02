@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { track } from "@/lib/tracking";
 import { Send, Trash2 } from "lucide-react";
-import { usePointsFeedback } from "@/components/PointsFeedback";
 
 type Comment = {
   id: string;
@@ -36,7 +35,6 @@ export default function CommentsSheet({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const profileCache = useRef<Map<string, { name: string; avatar: string }>>(new Map());
-  const { showPoints } = usePointsFeedback();
 
   const fetchProfile = async (userId: string): Promise<{ name: string; avatar: string } | null> => {
     if (profileCache.current.has(userId)) return profileCache.current.get(userId)!;
@@ -123,7 +121,6 @@ export default function CommentsSheet({
       toast.error("Não foi possível comentar");
       return;
     }
-    showPoints(2);
     const profile = await fetchProfile(user.id);
     setList((l) => [{ 
       id: data.id, 

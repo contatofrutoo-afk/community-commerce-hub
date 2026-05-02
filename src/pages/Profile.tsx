@@ -8,9 +8,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, Trophy, MapPin } from "lucide-react";
+import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, Trophy, MapPin, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { useGamification, UserStats } from "@/hooks/use-gamification";
+import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
   const { user, signOut, isB2C } = useAuth();
@@ -32,8 +32,7 @@ export default function Profile() {
   const [country, setCountry] = useState("");
   
   // Gamification
-  const { getUserStats } = useGamification();
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -95,12 +94,16 @@ export default function Profile() {
         setState(data.state ?? "");
         setCountry(data.country ?? "");
       }
-      
-      // Fetch user gamification stats
-      const stats = await getUserStats();
-      if (stats) setUserStats(stats);
     })();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || !tenant) return;
+    (async () => {
+      const stats = await getUserStats(user.id, tenant.id);
+      if (stats) setUserPoints({ total: stats.total_points, monthly: stats.monthly_points, yearly: stats.yearly_points });
+    })();
+  }, [user?.id, tenant?.id]);
 
   useEffect(() => {
     if (tenant) { setTenantLogo(tenant.logo_url); }
@@ -155,7 +158,7 @@ export default function Profile() {
           <div><Label htmlFor="p-name">Nome</Label><Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></div>
           <div><Label htmlFor="p-phone">Telefone</Label><Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} /></div>
           
-          {userStats && (
+          {userPoints && (
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="h-5 w-5 text-green-600" />
@@ -163,18 +166,21 @@ export default function Profile() {
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-green-700">{userStats.total_points}</p>
+                  <p className="text-2xl font-bold text-green-700">{userPoints.total}</p>
                   <p className="text-xs text-muted-foreground">Total</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-700">{userStats.monthly_points}</p>
+                  <p className="text-2xl font-bold text-green-700">{userPoints.monthly}</p>
                   <p className="text-xs text-muted-foreground">Este mês</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-700">#{userStats.monthly_rank || "-"}</p>
-                  <p className="text-xs text-muted-foreground">Ranking</p>
+                  <p className="text-2xl font-bold text-green-700">{userPoints.yearly}</p>
+                  <p className="text-xs text-muted-foreground">Este ano</p>
                 </div>
               </div>
+              <Button variant="outline" className="w-full text-sm mt-3" asChild>
+                <Link to="/metrics"><TrendingUp className="h-4 w-4 mr-2" />Ver Ranking</Link>
+              </Button>
             </div>
           )}
           
