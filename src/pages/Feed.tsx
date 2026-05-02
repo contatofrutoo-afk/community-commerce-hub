@@ -92,6 +92,21 @@ export default function Feed() {
     }, { onConflict: "tenant_id,user_id,post_id,action_type" });
   }, [user, tenant]);
 
+  // Load pinned post
+  useEffect(() => {
+    if (!tenant) return;
+    (async () => {
+      const { data } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("tenant_id", tenant.id)
+        .eq("is_pinned" as any, true)
+        .limit(1)
+        .maybeSingle();
+      setPinnedPost((data as any) || null);
+    })();
+  }, [tenant?.id]);
+
   // Initial load only
   useEffect(() => {
     if (initialized.current || !tenant) return;
