@@ -85,7 +85,10 @@ export default function Topics() {
   // Menção (@usuário)
   const [showMentionList, setShowMentionList] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
-  const [mentionUsers, setMentionUsers] = useState<{id: string; name: string}[]>([]);
+  const [mentionUsers, setMentionUsers] = useState<{id: string; name: string; avatar_url?: string}[]>([]);
+  
+  // Resposta direta
+  const [replyToMsg, setReplyToMsg] = useState<{id: string; name: string; content: string} | null>(null);
 
   const loadTopics = async () => {
     if (!tenant) return;
@@ -273,11 +276,51 @@ export default function Topics() {
     
     const content = newReply.trim();
     
-    const { error: insertError } = await supabase.from("topic_messages").insert({
+    // Processar menção: extrair @username do texto
+    const mentionMatch = content.match(/@(\w+)/);
+    let mentionedUserId: string | null = null;
+    
+    if (mentionMatch && mentionUsers.length > 0) {
+      const mentionedName = mentionMatch[1];
+      const mentionedUser = mentionUsers.find(u => u.name.toLowerCase() === mentionedName.toLowerCase());
+      if (mentionedUser) {
+        mentionedUserId = mentionedUser.id;
+      }
+    }
+    
+    // Se não encontrou na lista, buscar pelo nome
+    if (!mentionedUserId && mentionMatch) {
+      const mentionedName = mentionMatch[1];
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .ilike("name", mentionedName)
+        .limit(1)
+        .single();
+      if (profile) mentionedUserId = profile.user_id;
+    }
+    
+    const insertData: any = {
       topic_id: selectedTopic.id,
       user_id: user.id,
       content: content,
-    });
+    };
+    
+    // Adicionar referência de resposta se existir
+    if (replyToMsg) {
+      insertData.reply_to_message_id = replyToMsg.id;
+    }
+    
+    // Adicionar mentioned_user_id se encontrado
+    if (mentionedUserId) {
+      insertData.mentioned_user_id = mentionedUserId;
+    }
+    
+    const { error: insertError, data: insertedMsg } = await supabase
+      .from("topic_messages")
+      .insert(insertData)
+      .select()
+      .single();
     
     if (insertError) {
       console.error("Insert error:", insertError);
@@ -286,12 +329,45 @@ export default function Topics() {
       return;
     }
     
+    // Notificar usuário mencionado
+    if (mentionedUserId && mentionedUserId !== user.id) {
+      await supabase.from("notifications").insert({
+        user_id: mentionedUserId,
+        type: "mention",
+        title: `${user.name || "Alguém"} te mencionou em uma conversa`,
+        content: content,
+        related_id: insertedMsg.id,
+        related_type: "topic_message"
+      });
+    }
+    
+    // Notificar autor da mensagem respondida
+    if (replyToMsg) {
+      const { data: originalMsg } = await supabase
+        .from("topic_messages")
+        .select("user_id")
+        .eq("id", replyToMsg.id)
+        .single();
+      
+      if (originalMsg && originalMsg.user_id !== user.id) {
+        await supabase.from("notifications").insert({
+          user_id: originalMsg.user_id,
+          type: "reply",
+          title: `${user.name || "Alguém"} respondeu sua mensagem`,
+          content: content,
+          related_id: insertedMsg.id,
+          related_type: "topic_message"
+        });
+      }
+    }
+    
     await supabase.from("topics").update({
       last_activity_at: new Date().toISOString(),
     }).eq("id", selectedTopic.id);
     
     setSendingReply(false);
     setNewReply("");
+    setReplyToMsg(null);
     await loadTopicMessages(selectedTopic);
     loadTopics();
     if (tenant) awardPoints(user.id, tenant.id, "reply_created", selectedTopic.id, 3);
@@ -364,7 +440,7 @@ export default function Topics() {
     
     const { data } = await supabase
       .from("topic_messages")
-      .select("user_id, profiles:profiles!topic_messages_user_id_fkey(id, name)")
+      .select("user_id, profiles:profiles!topic_messages_user_id_fkey(id, name, avatar_url)")
       .eq("topic_id", selectedTopic?.id)
       .limit(50);
 
@@ -374,17 +450,25 @@ export default function Topics() {
       data.forEach((msg: any) => {
         if (msg.profiles && !seen.has(msg.profiles.id)) {
           seen.add(msg.profiles.id);
-          uniqueUsers.push({ id: msg.profiles.id, name: msg.profiles.name });
+          uniqueUsers.push({ 
+            id: msg.profiles.id, 
+            name: msg.profiles.name,
+            avatar_url: msg.profiles.avatar_url
+          });
         }
       });
       // Adicionar autor do tópico
       if (selectedTopic?.created_by && !seen.has(selectedTopic.created_by)) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, name")
+          .select("id, name, avatar_url")
           .eq("user_id", selectedTopic.created_by)
           .single();
-        if (profile) uniqueUsers.push({ id: profile.id, name: profile.name });
+        if (profile) uniqueUsers.push({ id: profile.id, name: profile.name, avatar_url: profile.avatar_url });
+      }
+      // Adicionar usuário atual
+      if (user && !seen.has(user.id)) {
+        uniqueUsers.push({ id: user.id, name: user.name || "Você", avatar_url: user.avatar_url });
       }
       setMentionUsers(uniqueUsers);
     }
@@ -415,6 +499,18 @@ export default function Topics() {
     const newValue = newReply.slice(0, lastAt) + "@" + userName + " ";
     setNewReply(newValue);
     setShowMentionList(false);
+  };
+
+  // Responder diretamente a uma mensagem
+  const replyToMessage = (msg: any) => {
+    setReplyToMsg({ id: msg.id, name: msg.profiles?.name || "Usuário", content: msg.content });
+    setNewReply("@" + (msg.profiles?.name || "Usuário") + " ");
+    // Also load mention users if not loaded
+    if (mentionUsers.length === 0) loadMentionUsers();
+  };
+
+  const cancelReply = () => {
+    setReplyToMsg(null);
   };
 
   if (!tenant) {
@@ -592,6 +688,14 @@ export default function Topics() {
                       <span className="text-xs text-gray-400">
                         {formatTime(msg.created_at)}
                       </span>
+                      {msg.user_id !== user?.id && (
+                        <button 
+                          onClick={() => replyToMessage(msg)}
+                          className="text-xs text-purple-600 hover:text-purple-800 ml-2"
+                        >
+                          Responder
+                        </button>
+                      )}
                       {msg.user_id === user?.id && (
                         <div className="flex gap-1 ml-auto">
                           <button 
@@ -609,6 +713,13 @@ export default function Topics() {
                         </div>
                       )}
                     </div>
+                    {/* Mostrar se é resposta a outra mensagem */}
+                    {msg.reply_to_message_id && (
+                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <span className="text-purple-600">↩</span>
+                        Respondendo a mensagem
+                      </div>
+                    )}
                     {editingMsgId === msg.id ? (
                       <div className="bg-gray-100 rounded-lg p-3">
                         <input
@@ -654,6 +765,18 @@ export default function Topics() {
           {/* Reply Input */}
           {selectedTopic && !selectedTopic.is_locked && (
             <div className="p-4 border-t border-gray-200 bg-white">
+              {/* Mostrar resposta atual */}
+              {replyToMsg && (
+                <div className="mb-2 flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+                  <div className="flex-1">
+                    <span className="text-xs text-purple-600 font-medium">Respondendo a @{replyToMsg.name}</span>
+                    <p className="text-xs text-gray-500 truncate">{replyToMsg.content}</p>
+                  </div>
+                  <button onClick={cancelReply} className="text-gray-400 hover:text-gray-600">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               {/* Mention dropdown */}
               {showMentionList && mentionUsers.length > 0 && (
                 <div className="mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -663,9 +786,13 @@ export default function Topics() {
                       <button
                         key={u.id}
                         onClick={() => insertMention(u.name)}
-                        className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm"
+                        className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm flex items-center gap-2"
                       >
-                        @{u.name}
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={u.avatar_url || ""} />
+                          <AvatarFallback className="text-xs bg-gray-200">{u.name[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span>@{u.name}</span>
                       </button>
                     ))
                   }
