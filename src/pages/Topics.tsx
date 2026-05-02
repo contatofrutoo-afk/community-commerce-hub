@@ -95,6 +95,17 @@ function formatTime(dateStr: string): string {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
+function activityLabel(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Ativo agora";
+  if (mins < 60) return `Respondido há ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Respondido há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Respondido há ${days}d`;
+}
+
 export default function Topics() {
   const { tenant, isOwner } = useTenant();
   const { user, isB2B } = useAuth();
