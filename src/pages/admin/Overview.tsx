@@ -6,6 +6,8 @@ import { useDeviceType } from "@/hooks/use-device-type";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
 import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft, Users, Heart, MessageCircle, Target } from "lucide-react";
+import RankingSection from "@/components/RankingSection";
+import BrandInsights from "@/components/BrandInsights";
 import { cn } from "@/lib/utils";
 
 const CTA_LABELS: Record<string, string> = {
@@ -432,6 +434,16 @@ export default function Overview() {
           </CardContent>
         </Card>
       )}
+      {/* Ranking Section */}
+      <Card>
+        <CardHeader><CardTitle className="font-display">Ranking</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          <RankingSection period="monthly" />
+          <RankingSection period="yearly" />
+        </CardContent>
+      </Card>
+      {/* Brand Insights */}
+      <BrandInsights />
     </div>
   );
 }

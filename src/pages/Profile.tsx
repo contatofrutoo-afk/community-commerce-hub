@@ -8,8 +8,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload } from "lucide-react";
+import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
   const { user, signOut, isB2C } = useAuth();
@@ -24,6 +25,7 @@ export default function Profile() {
   const [tenantLogo, setTenantLogo] = useState<string | null>(null);
   const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
   const tenantFileRef = useRef<HTMLInputElement>(null);
+  const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -76,10 +78,18 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("name, phone, avatar_url").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("name, phone, avatar_url, city, state").eq("user_id", user.id).maybeSingle();
       if (data) { setName(data.name ?? ""); setPhone(data.phone ?? ""); setAvatar(data.avatar_url ?? null); }
     })();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || !tenant) return;
+    (async () => {
+      const stats = await getUserStats(user.id, tenant.id);
+      if (stats) setUserPoints({ total: stats.total_points, monthly: stats.monthly_points, yearly: stats.yearly_points });
+    })();
+  }, [user?.id, tenant?.id]);
 
   useEffect(() => {
     if (tenant) { setTenantLogo(tenant.logo_url); }
@@ -133,6 +143,29 @@ export default function Profile() {
             {loading ? "Salvando…" : "Salvar"}
           </Button>
         </section>
+
+        {userPoints && (
+          <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-5 space-y-3">
+            <h2 className="font-semibold flex items-center gap-2">🏆 Minha Pontuação</h2>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-white/80 rounded-xl p-3">
+                <p className="text-2xl font-display font-black text-amber-600">{userPoints.total.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="bg-white/80 rounded-xl p-3">
+                <p className="text-2xl font-display font-black text-blue-600">{userPoints.monthly.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Este Mês</p>
+              </div>
+              <div className="bg-white/80 rounded-xl p-3">
+                <p className="text-2xl font-display font-black text-purple-600">{userPoints.yearly.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Este Ano</p>
+              </div>
+            </div>
+            <Button variant="outline" className="w-full text-sm" asChild>
+              <Link to="/metrics"><TrendingUp className="h-4 w-4 mr-2" />Ver Ranking</Link>
+            </Button>
+          </section>
+        )}
 
         {isOwner && tenant && (
           <section className="bg-card rounded-2xl border border-border p-5 space-y-4 shadow-soft">
