@@ -17,6 +17,7 @@ export default function Feed() {
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [pinnedPost, setPinnedPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
