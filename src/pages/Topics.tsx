@@ -27,6 +27,7 @@ type Topic = {
   created_at: string;
   profiles?: { name: string; avatar_url: string | null } | null;
   first_message?: { content: string } | null;
+  last_message?: { content: string; created_at: string } | null;
 };
 
 type Mention = { user_id: string; name: string };
