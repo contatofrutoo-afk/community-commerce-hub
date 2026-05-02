@@ -27,6 +27,7 @@ type Topic = {
   created_at: string;
   profiles?: { name: string; avatar_url: string | null } | null;
   first_message?: { content: string } | null;
+  last_message?: { content: string; created_at: string } | null;
 };
 
 type Mention = { user_id: string; name: string };
@@ -92,6 +93,17 @@ function formatTime(dateStr: string): string {
   if (diffHours < 24) return `${diffHours}h`;
   if (diffDays < 7) return `${diffDays}d`;
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function activityLabel(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Ativo agora";
+  if (mins < 60) return `Respondido há ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Respondido há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Respondido há ${days}d`;
 }
 
 export default function Topics() {
@@ -233,13 +245,21 @@ export default function Topics() {
         .is("deleted_at", null)
         .order("created_at", { ascending: true })
         .limit(1)
-        .single();
-      const { data: profile } = await supabase
+        .maybeSingle();
+      const { data: lastMsg } = await supabase
+        .from("topic_messages")
+        .select("content, created_at")
+        .eq("topic_id", topic.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const { data: profile } = topic.created_by ? await supabase
         .from("profiles")
         .select("name, avatar_url")
         .eq("user_id", topic.created_by)
-        .single();
-      return { ...topic, first_message: firstMsg, profiles: profile };
+        .maybeSingle() : { data: null };
+      return { ...topic, first_message: firstMsg, last_message: lastMsg, profiles: profile };
     }));
     
     setTopics(topicsWithMessages);
@@ -300,7 +320,7 @@ export default function Topics() {
           .from("memberships")
           .select("user_id, role")
           .in("user_id", userIds)
-          .eq("role", "b2b");
+          .eq("role", "owner");
         (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
       }
 
@@ -403,7 +423,7 @@ export default function Topics() {
         .from("memberships")
         .select("user_id, role")
         .in("user_id", userIds)
-        .eq("role", "b2b");
+        .eq("role", "owner");
       (memberships || []).forEach((m: any) => brandUserIds.add(m.user_id));
     }
 
@@ -535,10 +555,14 @@ export default function Topics() {
       
       {/* Main Content */}
       <main className="flex-1 pb-20">
-        {/* Header */}
+        {/* Header — Identidade da comunidade */}
         <div className="bg-white px-4 py-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">Conversas</h1>
-          <p className="text-sm text-gray-500 mt-1">Discussões da comunidade</p>
+          <h1 className="text-xl font-semibold text-gray-900">
+            {(tenant as any)?.community_name || tenant?.name || "Conversas"}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {(tenant as any)?.community_description || "Participe das discussões da comunidade"}
+          </p>
         </div>
         
         {/* Create Button - B2B Only */}
@@ -549,8 +573,30 @@ export default function Topics() {
               className="w-full bg-purple-700 hover:bg-purple-800 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
             >
               <Plus className="h-5 w-5" />
-              Criar nova conversa
+              Inicie uma discussão
             </button>
+          </div>
+        )}
+
+        {/* Em alta */}
+        {!loading && topics.filter((t) => (t.replies_count || 0) > 0).length > 0 && (
+          <div className="px-4 pt-2 pb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🔥 Em alta</p>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
+              {topics
+                .filter((t) => (t.replies_count || 0) > 0)
+                .slice(0, 5)
+                .map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => navigate(`/conversas/${t.id}`)}
+                    className="flex-shrink-0 w-56 bg-white border border-gray-200 rounded-lg p-3 text-left hover:bg-gray-50"
+                  >
+                    <p className="text-sm font-medium text-gray-900 line-clamp-2">{t.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">{t.replies_count} respostas · {activityLabel(t.last_activity_at)}</p>
+                  </button>
+                ))}
+            </div>
           </div>
         )}
         
@@ -582,19 +628,24 @@ export default function Topics() {
                     {topic.title || "Sem título"}
                   </p>
                   <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                    {topic.first_message?.content || "Sem mensagens"}
+                    {topic.last_message?.content
+                      ? <>Última resposta: {topic.last_message.content}</>
+                      : (topic.first_message?.content || "Sem mensagens")}
                   </p>
                   {/* Status Tags */}
-                  <div className="flex gap-1 mt-1">
+                  <div className="flex gap-1 mt-1 flex-wrap">
                     {topic.replies_count > 10 && (
                       <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">🔥 Em alta</span>
                     )}
                     {topic.replies_count === 0 && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">📭 Sem respostas</span>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">📭 Seja o primeiro a responder</span>
                     )}
                     {topic.related_post_id && (
                       <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">💬 Do post</span>
                     )}
+                    <span className="text-xs text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      {activityLabel(topic.last_activity_at)}
+                    </span>
                   </div>
                 </div>
                 

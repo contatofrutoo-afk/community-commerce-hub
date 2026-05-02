@@ -174,7 +174,7 @@ export default function Notifications() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
-      <TopBar title="Notificações" />
+      <TopBar />
 
       <main className="flex-1 overflow-y-auto">
         {loading ? (
