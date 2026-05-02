@@ -548,6 +548,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_pinned: boolean
           media_url: string | null
           tenant_id: string
           thumbnail_url: string | null
@@ -559,6 +560,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_pinned?: boolean
           media_url?: string | null
           tenant_id: string
           thumbnail_url?: string | null
@@ -570,6 +572,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_pinned?: boolean
           media_url?: string | null
           tenant_id?: string
           thumbnail_url?: string | null
@@ -756,6 +759,8 @@ export type Database = {
           active: boolean
           bio: string | null
           city: string | null
+          community_description: string | null
+          community_name: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -772,6 +777,8 @@ export type Database = {
           active?: boolean
           bio?: string | null
           city?: string | null
+          community_description?: string | null
+          community_name?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -788,6 +795,8 @@ export type Database = {
           active?: boolean
           bio?: string | null
           city?: string | null
+          community_description?: string | null
+          community_name?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
