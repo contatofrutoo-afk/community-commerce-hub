@@ -8,8 +8,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload } from "lucide-react";
+import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, Trophy, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { useGamification, UserStats } from "@/hooks/use-gamification";
 
 export default function Profile() {
   const { user, signOut, isB2C } = useAuth();
@@ -24,6 +25,15 @@ export default function Profile() {
   const [tenantLogo, setTenantLogo] = useState<string | null>(null);
   const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
   const tenantFileRef = useRef<HTMLInputElement>(null);
+  
+  // Location fields
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country, setCountry] = useState("");
+  
+  // Gamification
+  const { getUserStats } = useGamification();
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -76,8 +86,19 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("name, phone, avatar_url").eq("user_id", user.id).maybeSingle();
-      if (data) { setName(data.name ?? ""); setPhone(data.phone ?? ""); setAvatar(data.avatar_url ?? null); }
+      const { data } = await supabase.from("profiles").select("name, phone, avatar_url, city, state, country").eq("user_id", user.id).maybeSingle();
+      if (data) { 
+        setName(data.name ?? ""); 
+        setPhone(data.phone ?? ""); 
+        setAvatar(data.avatar_url ?? null);
+        setCity(data.city ?? "");
+        setState(data.state ?? "");
+        setCountry(data.country ?? "");
+      }
+      
+      // Fetch user gamification stats
+      const stats = await getUserStats();
+      if (stats) setUserStats(stats);
     })();
   }, [user?.id]);
 
@@ -94,7 +115,11 @@ export default function Profile() {
       setAvatarFile(null);
     }
     const { error } = await supabase.from("profiles").update({
-      name: name.trim(), phone: phone.trim() || null,
+      name: name.trim(), 
+      phone: phone.trim() || null,
+      city: city.trim() || null,
+      state: state.trim() || null,
+      country: country.trim() || null,
     }).eq("user_id", user.id);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
@@ -129,6 +154,41 @@ export default function Profile() {
           <h2 className="font-semibold">Dados</h2>
           <div><Label htmlFor="p-name">Nome</Label><Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></div>
           <div><Label htmlFor="p-phone">Telefone</Label><Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} /></div>
+          
+          {userStats && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="h-5 w-5 text-green-600" />
+                <span className="font-semibold text-green-800">Sua Pontuação</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-green-700">{userStats.total_points}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-700">{userStats.monthly_points}</p>
+                  <p className="text-xs text-muted-foreground">Este mês</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-700">#{userStats.monthly_rank || "-"}</p>
+                  <p className="text-xs text-muted-foreground">Ranking</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> Localização
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label htmlFor="p-city" className="text-xs">Cidade</Label><Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={50} placeholder="São Paulo" /></div>
+              <div><Label htmlFor="p-state" className="text-xs">Estado</Label><Input id="p-state" value={state} onChange={(e) => setState(e.target.value)} maxLength={50} placeholder="SP" /></div>
+            </div>
+            <div><Label htmlFor="p-country" className="text-xs">País</Label><Input id="p-country" value={country} onChange={(e) => setCountry(e.target.value)} maxLength={50} placeholder="Brasil" /></div>
+          </div>
+          
           <Button onClick={save} disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
             {loading ? "Salvando…" : "Salvar"}
           </Button>

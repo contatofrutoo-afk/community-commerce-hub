@@ -12,6 +12,7 @@ import { z } from "zod";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Play } from "lucide-react";
+import { usePointsFeedback } from "@/components/PointsFeedback";
 
 type CTA = {
   id: string;
@@ -23,9 +24,11 @@ type CTA = {
 export default function CTAButton({ cta, postId, tenantId, className }: { cta: CTA; postId: string; tenantId: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const buttonLabel = cta.label?.trim() || "Ver mais";
+  const { showPoints } = usePointsFeedback();
 
   const handleClick = async () => {
     await track({ tenantId, postId, ctaId: cta.id, action: "click_cta" });
+    showPoints(3);
     setOpen(true);
   };
 

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
 import { TrendingUp, TrendingDown, AlertTriangle, ArrowLeft, Users, Heart, MessageCircle, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RankingSection, EngagementInsights, RewardSection } from "@/components/admin/GamificationComponents";
 
 const CTA_LABELS: Record<string, string> = {
   BUY: "Comprar",
@@ -375,6 +376,17 @@ export default function Overview() {
           </CardContent>
         </Card>
       )}
+
+      {/* Gamificação: Ranking e Premiação */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <RankingSection type="monthly" />
+        <RankingSection type="yearly" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <EngagementInsights />
+        <RewardSection />
+      </div>
 
       {/* Insights Automáticos */}
       {data.insights && (

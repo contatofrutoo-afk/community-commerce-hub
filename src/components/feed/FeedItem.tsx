@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { usePointsFeedback } from "@/components/PointsFeedback";
 
 export type Post = {
   id: string;
@@ -53,6 +54,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const [topicReplies, setTopicReplies] = useState<any[]>([]);
   const [topicCount, setTopicCount] = useState(0);
   const [showTopicPreview, setShowTopicPreview] = useState(false);
+  const { showPoints } = usePointsFeedback();
 
   const isPostOwner = isOwner && post.author_id === user?.id;
   
@@ -158,6 +160,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     setLiked(true);
     setCounts((c) => ({ ...c, likes: c.likes + 1 }));
     await track({ tenantId: post.tenant_id, postId: post.id, action: "like" });
+    showPoints(1);
   };
 
   const onShare = async (e: React.MouseEvent) => {

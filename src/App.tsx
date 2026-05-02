@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PointsFeedbackProvider } from "@/components/PointsFeedback";
 import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
@@ -58,8 +59,9 @@ const App = () => (
         <Suspense fallback={<Loading />}>
           <AuthProvider>
             <TenantProvider>
-              <OnboardingTour />
-              <Routes>
+              <PointsFeedbackProvider>
+                <OnboardingTour />
+                <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
@@ -84,6 +86,7 @@ const App = () => (
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
                 <Route path="*" element={<Navigate to="/feed" replace />} />
               </Routes>
+              </PointsFeedbackProvider>
             </TenantProvider>
           </AuthProvider>
         </Suspense>
