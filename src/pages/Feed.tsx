@@ -213,6 +213,21 @@ export default function Feed() {
   return (
     <div className="h-[100dvh] flex flex-col bg-background">
       <TopBar />
+      {pinnedPost && (
+        <button
+          onClick={() => {
+            const c = containerRef.current;
+            const target = itemRefs.current.find((el) => el?.dataset.idx === "0");
+            if (target && c) c.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+          }}
+          className="mx-3 mt-2 mb-1 text-left bg-brand-soft border border-brand/20 px-3 py-2 rounded-lg shadow-sm hover:bg-brand-soft/80 transition"
+        >
+          <p className="text-xs font-semibold text-brand uppercase tracking-wide">📌 Comece por aqui</p>
+          <p className="text-sm text-foreground line-clamp-2 mt-0.5">
+            {pinnedPost.description || "Confira este conteúdo em destaque"}
+          </p>
+        </button>
+      )}
       <div ref={containerRef} className="flex-1 overflow-y-scroll feed-snap scrollbar-hide">
         {posts.length === 0 && !loading && (
           <div className="h-[calc(100dvh-3.5rem)] grid place-items-center px-6 text-center">
