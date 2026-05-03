@@ -342,20 +342,21 @@ export default function Topics() {
       return;
     }
     
+    const userName = (user as any).user_metadata?.name || (user as any).email || "Alguém";
     // Notificar usuário mencionado
-    if (mentionedUserId && mentionedUserId !== user.id) {
+    if (mentionedUserId && mentionedUserId !== user.id && tenant) {
       await supabase.from("notifications").insert({
         user_id: mentionedUserId,
+        tenant_id: tenant.id,
         type: "mention",
-        title: `${user.name || "Alguém"} te mencionou em uma conversa`,
-        content: content,
-        related_id: insertedMsg.id,
-        related_type: "topic_message"
-      });
+        title: `${userName} te mencionou em uma conversa`,
+        body: content,
+        data: { message_id: insertedMsg.id, related_type: "topic_message" },
+      } as any);
     }
     
     // Notificar autor da mensagem respondida
-    if (replyToMsg) {
+    if (replyToMsg && tenant) {
       const { data: originalMsg } = await supabase
         .from("topic_messages")
         .select("user_id")
@@ -365,12 +366,12 @@ export default function Topics() {
       if (originalMsg && originalMsg.user_id !== user.id) {
         await supabase.from("notifications").insert({
           user_id: originalMsg.user_id,
+          tenant_id: tenant.id,
           type: "reply",
-          title: `${user.name || "Alguém"} respondeu sua mensagem`,
-          content: content,
-          related_id: insertedMsg.id,
-          related_type: "topic_message"
-        });
+          title: `${userName} respondeu sua mensagem`,
+          body: content,
+          data: { message_id: insertedMsg.id, related_type: "topic_message" },
+        } as any);
       }
     }
     
