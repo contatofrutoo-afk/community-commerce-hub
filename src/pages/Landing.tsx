@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Users, BarChart3, Calendar, ShoppingBag, MessageCircle } from "lucide-react";
 import Logo from "@/components/Logo";
+import PWAInstallButton from "@/components/PWAInstallButton";
 
 const features = [
   { icon: Sparkles, title: "Feed imersivo", desc: "Vídeo-first, autoplay, swipe vertical, like com toque duplo." },
@@ -19,7 +20,10 @@ export default function Landing() {
         <Link to="/" className="flex items-center gap-2">
           <Logo size={140} />
         </Link>
-        <Button asChild variant="ghost" size="sm"><Link to="/auth">Entrar</Link></Button>
+        <div className="flex items-center gap-2">
+          <PWAInstallButton />
+          <Button asChild variant="ghost" size="sm"><Link to="/auth">Entrar</Link></Button>
+        </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-6 pt-8 pb-24">
