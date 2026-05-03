@@ -101,23 +101,34 @@ export default function Topics() {
     if (!tenant) return;
     setLoading(true);
     
-    // Buscar todos os tópicos
+    // Buscar todos os tópicos primeiro
     const { data: topicsData, error } = await supabase
       .from("topics")
       .select("*")
       .eq("tenant_id", tenant.id)
       .order("is_pinned", { ascending: false })
-      .order("replies_count", { ascending: false })
+      .order("last_activity_at", { ascending: false })
       .limit(30);
     
     if (error) { console.error("Load topics error:", error); setLoading(false); return; }
     
-    // Filtrar tópicos com engajamento (replies_count > 0) para "Em alta"
-    const trending = (topicsData || []).filter(t => t.replies_count > 0).slice(0, 5);
+    // Para cada tópico, contar mensagens dinamicamente
+    const topicsWithCounts = await Promise.all((topicsData || []).map(async (topic) => {
+      // Contar mensagens reais vinculadas ao topic
+      const { count } = await supabase
+        .from("topic_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("topic_id", topic.id);
+      
+      return { ...topic, replies_count: count || 0 };
+    }));
+    
+    // Filtrar tópicos com engajamento para "Em alta" (replies_count > 0)
+    const trending = topicsWithCounts.filter(t => t.replies_count > 0).slice(0, 5);
     setTrendingTopics(trending);
     
-    // Processar todos os tópicos com preview
-    const topicsWithMessages = await Promise.all((topicsData || []).map(async (topic) => {
+    // Processar todos os tópicos com preview da primeira mensagem
+    const topicsWithMessages = await Promise.all(topicsWithCounts.map(async (topic) => {
       const { data: firstMsg } = await supabase
         .from("topic_messages")
         .select("content")
@@ -240,6 +251,7 @@ export default function Topics() {
       related_post_id: postId,
       title: content.substring(0, 100),
       created_by: user.id,
+      replies_count: 1, // A primeira mensagem conta como 1 resposta
     }).select().single();
     
     if (topicError) {
@@ -248,6 +260,7 @@ export default function Topics() {
       return;
     }
     
+    // Inserir primeira mensagem do tópico
     await supabase.from("topic_messages").insert({
       topic_id: topicData.id,
       user_id: user.id,
@@ -439,7 +452,7 @@ export default function Topics() {
 
   // Executar exclusão após confirmação
   const executeDeleteMessage = async () => {
-    if (!deleteConfirmMsg) return;
+    if (!deleteConfirmMsg || !selectedTopic) return;
     
     const { error } = await supabase
       .from("topic_messages")
@@ -451,9 +464,17 @@ export default function Topics() {
       return;
     }
 
+    // Atualizar contador
+    const newCount = Math.max(0, (selectedTopic.replies_count || 0) - 1);
+    await supabase.from("topics").update({
+      replies_count: newCount,
+      last_activity_at: new Date().toISOString(),
+    }).eq("id", selectedTopic.id);
+    
     setMessages(messages.filter(m => m.id !== deleteConfirmMsg.id));
     setDeleteConfirmMsg(null);
     toast.success("Mensagem excluída");
+    loadTopics(); // Recarregar contagens
   };
 
   // Carregar usuários para menção
