@@ -36,6 +36,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Topics = lazy(() => import("./pages/Topics"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Lives = lazy(() => import("./pages/admin/Lives"));
+const Offline = lazy(() => import("./pages/Offline"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                 <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                 <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                <Route path="/offline" element={<Offline />} />
                 <Route path="*" element={<Navigate to="/feed" replace />} />
               </Routes>
             </TenantProvider>

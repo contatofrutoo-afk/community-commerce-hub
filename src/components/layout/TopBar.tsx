@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
+import PWAInstallButton from "@/components/PWAInstallButton";
 
 export default function TopBar() {
   const { tenant } = useTenant();
@@ -32,7 +33,7 @@ export default function TopBar() {
             <Logo size={82} />
           )}
         </div>
-        <div className="w-9" />
+        <PWAInstallButton />
       </div>
     </header>
   );
