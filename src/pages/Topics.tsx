@@ -36,6 +36,7 @@ type TopicMessage = {
   parent_id: string | null;
   likes_count: number;
   created_at: string;
+  reply_to_message_id?: string | null;
   profiles?: { name: string; avatar_url: string | null } | null;
 };
 
