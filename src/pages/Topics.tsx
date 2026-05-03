@@ -91,9 +91,6 @@ export default function Topics() {
   // Resposta direta
   const [replyToMsg, setReplyToMsg] = useState<{id: string; name: string; content: string} | null>(null);
   
-  // Tópicos em alta (com engajamento)
-  const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
-  
   // Dialog de confirmação para excluir
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState<any | null>(null);
 
@@ -122,10 +119,6 @@ export default function Topics() {
       
       return { ...topic, replies_count: count || 0 };
     }));
-    
-    // Filtrar tópicos com engajamento para "Em alta" (replies_count > 0)
-    const trending = topicsWithCounts.filter(t => t.replies_count > 0).slice(0, 5);
-    setTrendingTopics(trending);
     
     // Processar todos os tópicos com preview da primeira mensagem
     const topicsWithMessages = await Promise.all(topicsWithCounts.map(async (topic) => {
@@ -572,40 +565,13 @@ export default function Topics() {
     <div className="min-h-[100dvh] flex flex-col bg-gray-100">
       <TopBar />
       
-      {/* Main Content */}
+{/* Main Content */}
       <main className="flex-1 pb-20">
         {/* Header */}
         <div className="bg-white px-4 py-4 border-b border-gray-200">
           <h1 className="text-xl font-semibold text-gray-900">Conversas</h1>
           <p className="text-sm text-gray-500 mt-1">Discussões da comunidade</p>
         </div>
-
-        {/* Em Alta - Apenas tópicos com engajamento real */}
-        {trendingTopics.length > 0 && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 border-b border-amber-100">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">🔥</span>
-              <span className="text-sm font-semibold text-amber-800">Em alta</span>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {trendingTopics.map((topic) => (
-                <button
-                  key={topic.id}
-                  onClick={() => navigate(`/conversas/${topic.id}`)}
-                  className="flex-shrink-0 bg-white border border-amber-200 rounded-lg px-3 py-2 text-left hover:bg-amber-50 min-w-[140px]"
-                >
-                  <p className="text-xs font-medium text-gray-800 line-clamp-1">{topic.title || "Conversa"}</p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    {topic.replies_count} {topic.replies_count === 1 ? "resposta" : "respostas"}
-                    {topic.last_activity_at && (
-                      <span className="text-gray-400 ml-1">• {formatTime(topic.last_activity_at)}</span>
-                    )}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         
         {/* Create Button - B2B Only */}
         {isB2B && (
