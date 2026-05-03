@@ -490,7 +490,7 @@ export default function Topics() {
       }
       // Adicionar usuário atual
       if (user && !seen.has(user.id)) {
-        uniqueUsers.push({ id: user.id, name: user.name || "Você", avatar_url: user.avatar_url });
+        uniqueUsers.push({ id: user.id, name: (user as any).user_metadata?.name || "Você", avatar_url: (user as any).user_metadata?.avatar_url });
       }
       setMentionUsers(uniqueUsers);
     }
