@@ -8,4 +8,15 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  console.log('✅ Evento PWA disparado! Install disponível.');
+  console.log('Plataforma:', navigator.platform);
+  console.log('User Agent:', navigator.userAgent);
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('✅ PWA instalado com sucesso!');
+});
+
 createRoot(document.getElementById("root")!).render(<App />);
