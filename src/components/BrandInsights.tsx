@@ -21,7 +21,7 @@ function InsightCard({ label, value, sub, icon: Icon, color }: { label: string; 
   );
 }
 
-export default function BrandInsights() {
+export default function BrandInsights(_props: { conversationsCount?: number; ctaClicks?: number } = {}) {
   const { tenant } = useTenant();
   const [insights, setInsights] = useState<InsightStats | null>(null);
   const [loading, setLoading] = useState(false);
