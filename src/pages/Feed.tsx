@@ -228,6 +228,23 @@ export default function Feed() {
           </p>
         </button>
       )}
+      {/* Dicas rápidas para B2B */}
+      {isB2B && posts.length > 0 && (
+        <div className="mx-3 mb-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <Link to="/create" className="flex-shrink-0 text-xs bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-blue-100">
+            <Plus className="h-3 w-3 text-blue-600" />
+            <span className="text-blue-700">Novo post</span>
+          </Link>
+          <Link to="/conversas" className="flex-shrink-0 text-xs bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-purple-100">
+            <Sparkles className="h-3 w-3 text-purple-600" />
+            <span className="text-purple-700">Criar conversa</span>
+          </Link>
+          <Link to="/metrics" className="flex-shrink-0 text-xs bg-green-50 border border-green-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-green-100">
+            <Sparkles className="h-3 w-3 text-green-600" />
+            <span className="text-green-700">Ver métricas</span>
+          </Link>
+        </div>
+      )}
       <div ref={containerRef} className="flex-1 overflow-y-scroll feed-snap scrollbar-hide">
         {posts.length === 0 && !loading && (
           <div className="h-[calc(100dvh-3.5rem)] grid place-items-center px-6 text-center">

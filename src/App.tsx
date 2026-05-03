@@ -7,6 +7,7 @@ import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import OnboardingTour from "@/components/OnboardingTour";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -50,14 +51,15 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Suspense fallback={<Loading />}>
-          <AuthProvider>
-            <TenantProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<Loading />}>
+            <AuthProvider>
+              <TenantProvider>
                 <OnboardingTour />
                 <Routes>
                 <Route path="/" element={<Landing />} />
@@ -90,6 +92,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
