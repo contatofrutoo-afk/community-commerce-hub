@@ -280,7 +280,7 @@ export default function Topics() {
       console.error("Load messages error:", error);
       return; 
     }
-    setMessages(data || []);
+    setMessages((data as any) || []);
   };
 
   const sendReply = async () => {
