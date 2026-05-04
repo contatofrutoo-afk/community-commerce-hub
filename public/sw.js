@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weaze-v2';
+const CACHE_NAME = 'weaze-v3';
 
 const STATIC_ASSETS = [
   '/',
