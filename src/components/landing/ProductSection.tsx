@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { ScrollText, MessageSquare, Calendar, ShoppingBag, BarChart3, Users, Bell, Image, ArrowRight } from "lucide-react";
+import { Check, Video, Image, MessageSquare, Calendar, Users, BarChart3, Bell, Megaphone, Sparkles, DollarSign, ClipboardCheck, ExternalLink, FileText } from "lucide-react";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -12,15 +12,19 @@ const fadeInUp = {
 };
 
 const features = [
-  { icon: ScrollText, title: "Feed", desc: "Posts e vídeos" },
-  { icon: MessageSquare, title: "Mensagens", desc: "Chat da marca" },
-  { icon: Calendar, title: "Agenda", desc: "Agendamentos" },
-  { icon: ShoppingBag, title: "Produtos", desc: "Catálogo" },
-  { icon: BarChart3, title: "Dados", desc: "Métricas" },
-  { icon: Users, title: "Membros", desc: "Lista" },
-  { icon: Bell, title: "Notificações", desc: "Alertas" },
-  { icon: Image, title: "Mídia", desc: "Imagens e vídeos" }
+  { icon: Video, title: "Feed", desc: "Posts em vídeo, imagem ou texto" },
+  { icon: Megaphone, title: "CTAs", desc: "Comprar, agendar, orçamento, inscrição" },
+  { icon: Calendar, title: "Serviços", desc: "Agendamentos com horários" },
+  { icon: ClipboardCheck, title: "Eventos", desc: "Inscrições em eventos" },
+  { icon: ExternalLink, title: "Lives", desc: "Transmissões ao vivo" },
+  { icon: MessageSquare, title: "Conversas", desc: "Chat da comunidade" },
+  { icon: Users, title: "Membros", desc: "Lista e gestão" },
+  { icon: BarChart3, title: "Dados", desc: "Métricas e funil" },
+  { icon: Bell, title: "Notificações", desc: "Alertas e pushes" },
+  { icon: Sparkles, title: "Sua marca", desc: "Logo white-label" },
 ];
+
+const colors = ["from-[#630091] to-[#8b2091]", "from-[#8b2091] to-[#d81e62]", "from-[#d81e62] to-[#630091]"];
 
 export default function ProductSection() {
   const ref = useRef(null);
@@ -38,32 +42,31 @@ export default function ProductSection() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#d81e62] font-semibold mb-4">
-            Recursos
+            O que você ganha
           </div>
           <h2 className="font-display text-4xl sm:text-5xl text-balance max-w-2xl mx-auto mb-4 text-[#1a1a1a]">
             Tudo que você precisa.
           </h2>
           <p className="text-muted-foreground text-lg max-w-lg mx-auto leading-relaxed">
-            Integrado e funcionando. Sem mensalidade por usuário.
+            Uma plataforma completa com as ferramentas que sua comunidade precisa.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
               initial={{ opacity: 0, y: 15 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.04 * i, duration: 0.4 }}
-              className="group p-6 rounded-2xl bg-white border border-[#630091]/10 shadow-lg hover:shadow-2xl hover:border-[#d81e62]/30 transition-all duration-300 relative overflow-hidden"
+              className="group p-4 rounded-2xl bg-white border border-[#630091]/10 shadow-lg hover:shadow-2xl hover:border-[#d81e62]/30 transition-all duration-300"
               whileHover={{ y: -3 }}
             >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-[#630091]/5 to-[#d81e62]/5 rounded-bl-2xl" />
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center mb-4">
-                <f.icon className="h-6 w-6 text-white" />
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors[i % 3]} flex items-center justify-center mb-3`}>
+                <f.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="font-display text-lg font-semibold mb-1 text-[#1a1a1a]">{f.title}</h3>
-              <p className="text-sm text-muted-foreground">{f.desc}</p>
+              <h3 className="font-display text-sm font-semibold mb-1 text-[#1a1a1a]">{f.title}</h3>
+              <p className="text-xs text-muted-foreground">{f.desc}</p>
             </motion.div>
           ))}
         </div>
