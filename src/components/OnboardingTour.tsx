@@ -54,7 +54,7 @@ export default function OnboardingTour() {
     if (!user || !tenant) return;
     
     (async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("onboarding_progress")
         .select("*")
         .eq("user_id", user.id)
@@ -88,7 +88,7 @@ export default function OnboardingTour() {
   const completeOnboarding = async () => {
     if (!user || !tenant) return;
     
-    await supabase.from("onboarding_progress").upsert({
+    await (supabase as any).from("onboarding_progress").upsert({
       user_id: user.id,
       tenant_id: tenant.id,
       step_completed: "all",
@@ -100,7 +100,7 @@ export default function OnboardingTour() {
   const markStepComplete = async (stepAction: string) => {
     if (!user || !tenant) return;
     
-    await supabase.from("onboarding_progress").upsert({
+    await (supabase as any).from("onboarding_progress").upsert({
       user_id: user.id,
       tenant_id: tenant.id,
       step_completed: stepAction,
