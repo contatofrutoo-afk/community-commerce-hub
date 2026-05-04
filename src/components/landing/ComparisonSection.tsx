@@ -1,5 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { Check, X } from "lucide-react";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -11,36 +12,14 @@ const fadeInUp = {
 };
 
 const comparison = [
-  {
-    title: "Algoritmo",
-    social: "O algoritmo decide quem vê seu conteúdo.",
-    weaze: "Todo mundo que é membro vê."
-  },
-  {
-    title: "Concorrência",
-    social: "Você compete com milhões de contas.",
-    weaze: "Ambiente só seu."
-  },
-  {
-    title: "Dados",
-    social: "Dados limitados e incompletos.",
-    weaze: "CRM completo."
-  },
-  {
-    title: "Venda",
-    social: "Link no bio. Múltiplos passos.",
-    weaze: "Venda direta no app."
-  },
-  {
-    title: "Agenda",
-    social: "Precisa de ferramenta externa.",
-    weaze: "Agenda nativa."
-  },
-  {
-    title: "Marca",
-    social: "Genérico, igual a todos.",
-    weaze: "100% white-label."
-  }
+  { feature: "Algoritmo", social: false, weaze: true },
+  { feature: "Domínio próprio", social: false, weaze: true },
+  { feature: "CRM completo", social: false, weaze: true },
+  { feature: "Venda direta", social: false, weaze: true },
+  { feature: "Agenda nativa", social: false, weaze: true },
+  { feature: "White-label", social: false, weaze: true },
+  { feature: "Dados reais", social: false, weaze: true },
+  { feature: "Sem límites", social: false, weaze: true },
 ];
 
 export default function ComparisonSection() {
@@ -48,49 +27,57 @@ export default function ComparisonSection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-28 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#d81e62]/5 to-[#630091]/5" />
+    <section ref={ref} className="py-32 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-[#d81e62]/5 to-white" />
       
-      <div className="relative mx-auto max-w-5xl px-6">
+      <div className="relative mx-auto max-w-4xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={fadeInUp}
           className="text-center mb-16"
         >
-          <p className="text-xs uppercase tracking-[0.2em] text-[#630091] font-semibold mb-4">
-            Por que weaze
-          </p>
-          <h2 className="font-display text-3xl sm:text-4xl text-balance">
-            Não é só mais uma ferramenta. É sua <span className="text-[#d81e62]">infraestrutura</span>.
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#d81e62] font-semibold mb-4">
+            Comparativo
+          </div>
+          <h2 className="font-display text-4xl sm:text-5xl text-balance text-[#1a1a1a]">
+            Weaze vs Redes Sociais
           </h2>
         </motion.div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[500px]">
-            <thead>
-              <tr className="border-b border-[#630091]/20">
-                <th className="text-left py-4 pr-4 font-medium text-muted-foreground text-sm">Diferença</th>
-                <th className="text-left py-4 px-4 font-medium text-muted-foreground text-sm">Redes sociais</th>
-                <th className="text-left py-4 pl-4 font-medium text-[#d81e62] text-sm">Weaze</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparison.map((item, i) => (
-                <motion.tr
-                  key={item.title}
-                  initial={{ opacity: 0 }}
-                  animate={isInView ? { opacity: 1 } : {}}
-                  transition={{ delay: 0.05 * i }}
-                  className="border-b border-[#630091]/10"
-                >
-                  <td className="py-4 pr-4 text-sm font-medium text-[#630091]">{item.title}</td>
-                  <td className="py-4 px-4 text-sm text-muted-foreground">{item.social}</td>
-                  <td className="py-4 pl-4 text-sm font-medium text-[#d81e62]">{item.weaze}</td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#630091]/10">
+          <div className="grid grid-cols-3 bg-gradient-to-r from-[#630091]/5 via-[#d81e62]/5 to-[#630091]/5 border-b border-[#630091]/10 py-4 px-6">
+            <div className="font-semibold text-[#1a1a1a]">Recurso</div>
+            <div className="text-center font-medium text-muted-foreground">Redes</div>
+            <div className="text-center font-semibold text-[#d81e62]">Weaze</div>
+          </div>
+          {comparison.map((item, i) => (
+            <motion.div
+              key={item.feature}
+              initial={{ opacity: 0 }}
+              animate={isInView ? { opacity: 1 } : {}}
+              transition={{ delay: 0.05 * i }}
+              className="grid grid-cols-3 py-4 px-6 border-b border-[#630091]/5 last:border-0"
+            >
+              <div className="font-medium text-[#1a1a1a]">{item.feature}</div>
+              <div className="flex justify-center">
+                {item.social ? (
+                  <Check className="h-5 w-5 text-green-500" />
+                ) : (
+                  <X className="h-5 w-5 text-red-400" />
+                )}
+              </div>
+              <div className="flex justify-center">
+                {item.weaze ? (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                ) : (
+                  <X className="h-5 w-5 text-red-400" />
+                )}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
