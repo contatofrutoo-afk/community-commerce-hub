@@ -2,64 +2,65 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
   }
 };
 
 const problems = [
   {
-    title: "Dependência total de algoritmos",
-    desc: "Seu alcance diminui a cada mudança de feed. Você não controla quem vê seu conteúdo."
+    title: "Você não controla quem vê seu conteúdo",
+    desc: "O algoritmo decide. Seu alcance muda a cada alteração da plataforma."
   },
   {
-    title: "Sem controle da experiência",
-    desc: "Plataformas decides onde seu conteúdo aparece. Sua marca compete por atenção."
+    title: "Não consegue manter contato",
+    desc: "Após o post, não há como falar direto com quem te seguiu."
   },
   {
-    title: "Conversão fraca",
-    desc: "Seguidores não se tornam compradores. Olink está disponível, mas falta conexão."
+    title: "Seguidores não viram clientes",
+    desc: "Tem atenção, mas dificuldade em converter em vendas."
   },
   {
-    title: "Sem relacionamento contínuo",
-    desc: "Após o post, não há como manter contato. O alcance é pontual, não permanente."
+    title: "Sua marca se perde no meio de outras",
+    desc: "Competindo por atenção num feed lotado de concorrentes."
   }
 ];
 
 export default function ProblemSection() {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-24 bg-secondary/20 overflow-hidden">
-      <div className="mx-auto max-w-6xl px-6">
+    <section className="py-24 bg-muted/30">
+      <div className="mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={fadeInUp}
+          className="mb-12"
         >
-          <motion.p className="text-brand text-xs uppercase tracking-[0.2em] mb-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
             O problema
-          </motion.p>
-          <motion.h2 className="font-display text-4xl sm:text-5xl text-balance max-w-3xl mb-16">
-            As redes sociais não trabalham para sua marca. Você trabalha para elas.
-          </motion.h2>
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl text-balance max-w-2xl">
+            As redes sociais trabalham contra você.
+          </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid sm:grid-cols-2 gap-4">
           {problems.map((problem, i) => (
             <motion.div
               key={problem.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.1 * i, duration: 0.5 }}
-              className="p-8 rounded-2xl bg-card border border-border hover:border-brand/30 transition-colors"
+              transition={{ delay: 0.1 * i, duration: 0.4 }}
+              className="p-6 rounded-xl bg-background border border-border"
             >
-              <h3 className="font-display text-xl mb-3 text-foreground">{problem.title}</h3>
-              <p className="text-muted-foreground">{problem.desc}</p>
+              <h3 className="font-medium text-lg mb-2">{problem.title}</h3>
+              <p className="text-sm text-muted-foreground">{problem.desc}</p>
             </motion.div>
           ))}
         </div>

@@ -5,62 +5,54 @@ const steps = [
   {
     step: "01",
     title: "Crie seu espaço",
-    desc: "Personalize com sua marca, cores e identidade. Um ambiente 100% seu."
+    desc: "Escolha cores, nome e personalize com sua marca."
   },
   {
     step: "02",
-    title: "Convide sua audiência",
-    desc: "Convide seguidores, clientes e interessados. Tudo começa aqui."
+    title: "Convide sua gente",
+    desc: "Compartilhe o link e invites quem já te segue."
   },
   {
     step: "03",
-    title: "Engaje e converta",
-    desc: "Publique, interaja e faça vendas diretas. Relacionamento que vira receita."
+    title: "Comece a vender",
+    desc: "Publique, engaje e faça vendas diretas."
   }
 ];
 
 export default function HowItWorksSection() {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-24 bg-secondary/20 overflow-hidden">
-      <div className="mx-auto max-w-6xl px-6">
+    <section className="py-24 bg-muted/30">
+      <div className="mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <p className="text-brand text-xs uppercase tracking-[0.2em] mb-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
             Como funciona
           </p>
-          <h2 className="font-display text-4xl sm:text-5xl text-balance">
-            Em três passos, sua comunidade no ar.
+          <h2 className="font-display text-3xl sm:text-4xl text-balance">
+            Pronto em minutos.
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid sm:grid-cols-3 gap-6">
           {steps.map((s, i) => (
             <motion.div
               key={s.step}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.1 * i, duration: 0.5 }}
-              className="relative p-8 rounded-2xl bg-card border border-border"
+              transition={{ delay: 0.1 * i, duration: 0.4 }}
+              className="relative p-6 rounded-xl bg-background border border-border"
             >
-              <div className="text-brand/30 font-display text-6xl absolute top-4 right-6">
+              <div className="text-muted-foreground/30 font-display text-5xl absolute top-4 right-6">
                 {s.step}
               </div>
-              <h3 className="font-display text-2xl mb-3 mt-8">{s.title}</h3>
-              <p className="text-muted-foreground">{s.desc}</p>
-              
-              {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2">
-                  <svg className="w-8 h-8 text-border" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              )}
+              <h3 className="font-display text-xl mb-2 mt-6">{s.title}</h3>
+              <p className="text-sm text-muted-foreground">{s.desc}</p>
             </motion.div>
           ))}
         </div>
