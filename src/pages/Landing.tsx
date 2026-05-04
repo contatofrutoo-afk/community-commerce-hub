@@ -7,7 +7,10 @@ import {
   ProblemSection,
   SolutionSection,
   HowItWorksSection,
+  WhoSection,
   ProductSection,
+  ComparisonSection,
+  PricingSection,
   CTASection,
 } from "@/components/landing";
 
@@ -32,7 +35,10 @@ export default function Landing() {
       <ProblemSection />
       <SolutionSection />
       <HowItWorksSection />
+      <WhoSection />
       <ProductSection />
+      <ComparisonSection />
+      <PricingSection />
       <CTASection />
 
       <footer className="border-t border-border/50 py-6">

@@ -17,7 +17,7 @@ export default function CTASection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-24 bg-muted/30">
+    <section ref={ref} className="py-28 bg-muted/30">
       <div className="mx-auto max-w-2xl px-6 text-center">
         <motion.div
           initial="hidden"
@@ -30,10 +30,11 @@ export default function CTASection() {
             <span className="text-brand">Hora de transformar em renda.</span>
           </h2>
           
-          <motion.div 
-            variants={fadeInUp}
-            className="mt-8"
-          >
+          <p className="text-muted-foreground text-lg mb-8">
+            Você já fez o trabalho difícil de construir seguidores. Agora tenha um lugar próprio para continuar essa relação.
+          </p>
+          
+          <motion.div variants={fadeInUp}>
             <Link to="/auth">
               <motion.button 
                 className="inline-flex items-center gap-2 bg-brand text-primary-foreground hover:opacity-90 shadow-brand px-8 py-4 rounded-full font-medium transition-all"

@@ -12,12 +12,15 @@ const fadeInUp = {
 };
 
 const benefits = [
-  "Ambiente 100% da sua marca",
-  "Seu próprio feed e conteúdo",
-  "Mensagens diretas com seguidores",
-  "Agenda e agendamentos",
-  "Vendas direto na plataforma",
-  "Dados reais da sua audiência"
+  { title: "Ambiente 100% seu", desc: "Cores, nome, logo — tudo com a identidade da sua marca. Nenhum rastro de outra empresa." },
+  { title: "Feed proprietário", desc: " Seu conteúdo, suas regras. Sem algoritmo decidindo quem vê." },
+  { title: "Mensagens diretas", desc: "Chat integrado com sua galera. Não precisa usar WhatsApp pessoal." },
+  { title: "Agenda completa", desc: "Agendamentos, eventos, horários — tudo num só lugar." },
+  { title: "Vendas integradas", desc: "Productos, serviços, inscrição — fecha sem sair do app." },
+  { title: "Dados reais", desc: "Quem viu, quem Comprou, quem retornou. Métricas que importam." },
+  { title: "CRM nativo", desc: "Histórico de cada cliente. Relacionamento que dura." },
+  { title: "White-label", desc: "Sua marca, seu domínio, seu App. Totalmente white-label." },
+  { title: "Escala", desc: "Milhares de membros sem slowdown. Infraestrutura que suporta." }
 ];
 
 export default function SolutionSection() {
@@ -25,38 +28,41 @@ export default function SolutionSection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section className="py-24">
+    <section ref={ref} className="py-28">
       <div className="mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={fadeInUp}
-          className="mb-12"
+          className="mb-16"
         >
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">
             A solução
           </p>
           <h2 className="font-display text-3xl sm:text-4xl text-balance max-w-2xl mb-4">
-            Um lugar só seu. Onde a conexão vira conversão.
+            Um espaço só seu. Onde a conexão vira conversão.
           </h2>
-          <p className="text-muted-foreground max-w-xl">
-            Esqueça os algoritmos. Com weaze, você construye um espaço onde sua audiência encontra, interage e compra — direto no seu ambiente.
+          <p className="text-muted-foreground text-lg max-w-xl">
+            Weaze é a infraestrutura que você precisa para criar sua própria comunidade. Sem algoritmo, sem concorrência no feed, sem dependencia de plataforma externa.
           </p>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {benefits.map((benefit, i) => (
             <motion.div
-              key={benefit}
+              key={benefit.title}
               initial={{ opacity: 0, y: 10 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: 0.05 * i, duration: 0.3 }}
-              className="flex items-center gap-3 p-4 rounded-lg bg-muted/30"
+              transition={{ delay: 0.03 * i, duration: 0.3 }}
+              className="flex items-start gap-3 p-4 rounded-lg bg-muted/30"
             >
-              <div className="h-6 w-6 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+              <div className="h-6 w-6 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Check className="h-3 w-3 text-brand" />
               </div>
-              <span className="text-sm">{benefit}</span>
+              <div>
+                <span className="text-sm font-medium">{benefit.title}</span>
+                <p className="text-xs text-muted-foreground mt-1">{benefit.desc}</p>
+              </div>
             </motion.div>
           ))}
         </div>
