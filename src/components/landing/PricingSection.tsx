@@ -38,8 +38,10 @@ export default function PricingSection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-28">
-      <div className="mx-auto max-w-5xl px-6">
+    <section ref={ref} className="py-28 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#630091]/3 via-transparent to-[#d81e62]/3" />
+      
+      <div className="relative mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
@@ -64,14 +66,17 @@ export default function PricingSection() {
               initial={{ opacity: 0, y: 15 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.1 * i, duration: 0.4 }}
-              className={`relative p-6 rounded-xl border ${
+              className={`relative p-6 rounded-2xl border transition-all ${
                 plan.popular 
-                  ? "bg-background border-brand" 
-                  : "bg-muted/30 border-border"
+                  ? "bg-background border-transparent shadow-xl"
+                  : "bg-muted/30 border-border hover:border-[#630091]/30"
               }`}
+              style={plan.popular ? { background: "linear-gradient(135deg, rgba(99, 0, 145, 0.03) 0%, rgba(216, 30, 98, 0.03) 100%)" } : {}}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-primary-foreground text-xs px-3 py-1 rounded-full">
+                <div 
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#630091] to-[#d81e62] text-white text-xs px-4 py-1 rounded-full font-medium"
+                >
                   Mais popular
                 </div>
               )}
@@ -81,7 +86,7 @@ export default function PricingSection() {
               <ul className="space-y-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4 text-brand" />
+                    <Check className="h-4 w-4 text-[#d81e62]" />
                     {feature}
                   </li>
                 ))}

@@ -13,13 +13,13 @@ const fadeInUp = {
 
 const benefits = [
   { title: "Ambiente 100% seu", desc: "Cores, nome, logo — tudo com a identidade da sua marca. Nenhum rastro de outra empresa." },
-  { title: "Feed proprietário", desc: " Seu conteúdo, suas regras. Sem algoritmo decidindo quem vê." },
+  { title: "Feed proprietário", desc: "Seu conteúdo, suas regras. Sem algoritmo decidindo quem vê." },
   { title: "Mensagens diretas", desc: "Chat integrado com sua galera. Não precisa usar WhatsApp pessoal." },
   { title: "Agenda completa", desc: "Agendamentos, eventos, horários — tudo num só lugar." },
-  { title: "Vendas integradas", desc: "Productos, serviços, inscrição — fecha sem sair do app." },
-  { title: "Dados reais", desc: "Quem viu, quem Comprou, quem retornou. Métricas que importam." },
+  { title: "Vendas integradas", desc: "Produtos, serviços, inscrição — fecha sem sair do app." },
+  { title: "Dados reais", desc: "Quem viu, quem comprou, quem retornou. Métricas que importam." },
   { title: "CRM nativo", desc: "Histórico de cada cliente. Relacionamento que dura." },
-  { title: "White-label", desc: "Sua marca, seu domínio, seu App. Totalmente white-label." },
+  { title: "White-label", desc: "Sua marca, seu domínio, seu app. Totalmente white-label." },
   { title: "Escala", desc: "Milhares de membros sem slowdown. Infraestrutura que suporta." }
 ];
 
@@ -28,8 +28,10 @@ export default function SolutionSection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-28">
-      <div className="mx-auto max-w-5xl px-6">
+    <section ref={ref} className="py-28 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#630091]/5 via-transparent to-[#d81e62]/5" />
+      
+      <div className="relative mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
@@ -43,7 +45,7 @@ export default function SolutionSection() {
             Um espaço só seu. Onde a conexão vira conversão.
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl">
-            Weaze é a infraestrutura que você precisa para criar sua própria comunidade. Sem algoritmo, sem concorrência no feed, sem dependencia de plataforma externa.
+            Weaze é a infraestrutura que você precisa para criar sua própria comunidade. Sem algoritmo, sem concorrência no feed, sem dependência de plataforma externa.
           </p>
         </motion.div>
 
@@ -54,10 +56,11 @@ export default function SolutionSection() {
               initial={{ opacity: 0, y: 10 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.03 * i, duration: 0.3 }}
-              className="flex items-start gap-3 p-4 rounded-lg bg-muted/30"
+              className="flex items-start gap-3 p-4 rounded-xl bg-white/50 border border-border hover:border-[#630091]/30 transition-all group"
+              whileHover={{ y: -2 }}
             >
-              <div className="h-6 w-6 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Check className="h-3 w-3 text-brand" />
+              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#630091]/20 to-[#d81e62]/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:from-[#630091]/30 group-hover:to-[#d81e62]/30 transition-all">
+                <Check className="h-3 w-3 text-[#d81e62] group-hover:text-[#630091] transition-all" />
               </div>
               <div>
                 <span className="text-sm font-medium">{benefit.title}</span>

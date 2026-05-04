@@ -42,8 +42,10 @@ export default function ProblemSection() {
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <section ref={ref} className="py-28 bg-muted/30">
-      <div className="mx-auto max-w-5xl px-6">
+    <section ref={ref} className="py-28 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-muted/50 to-transparent" />
+      
+      <div className="relative mx-auto max-w-5xl px-6">
         <motion.div
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
@@ -68,8 +70,10 @@ export default function ProblemSection() {
               initial={{ opacity: 0, y: 15 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.05 * i, duration: 0.4 }}
-              className="p-6 rounded-xl bg-background border border-border"
+              className="group p-6 rounded-xl bg-background border border-border hover:border-[#d81e62]/30 transition-all"
+              whileHover={{ y: -2 }}
             >
+              <div className="h-1 w-8 bg-gradient-to-r from-[#630091] to-[#d81e62] rounded-full mb-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               <h3 className="font-medium text-lg mb-3">{problem.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{problem.desc}</p>
             </motion.div>
