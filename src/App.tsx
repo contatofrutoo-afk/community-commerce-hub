@@ -37,7 +37,9 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Topics = lazy(() => import("./pages/Topics"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Lives = lazy(() => import("./pages/admin/Lives"));
+const InviteLinks = lazy(() => import("./pages/admin/InviteLinks"));
 const Offline = lazy(() => import("./pages/Offline"));
+const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
@@ -81,6 +83,7 @@ const App = () => (
                     <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
                     <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
                     <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
+                    <Route path="/metrics/invites" element={<Protected><NeedsTenant><InviteLinks /></NeedsTenant></Protected>} />
                     <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
                     <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                     <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
@@ -88,6 +91,7 @@ const App = () => (
                     <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                     <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
                     <Route path="/offline" element={<Offline />} />
+                    <Route path="/m/:slug" element={<InviteLanding />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>
                 </AppEntrance>
