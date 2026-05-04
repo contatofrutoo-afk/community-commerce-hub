@@ -16,7 +16,7 @@ const audiences = [
   { title: "Coaches", desc: "Acompanhamento completo" },
   { title: "Cursos", desc: "Alunos mais engajados" },
   { title: "Serviços", desc: "Agenda e histórico facilitado" },
-  { title: "Comunidades", desc: "Netw orgânico" }
+  { title: "Comunidades", desc: "Network orgânico" }
 ];
 
 export default function WhoSection() {
@@ -38,7 +38,7 @@ export default function WhoSection() {
             Para quem é
           </div>
           <h2 className="font-display text-4xl sm:text-5xl text-balance max-w-2xl mx-auto mb-4 text-[#1a1a1a]">
-            Para marcas que levamRelationship a sério.
+            Para marcas que levam relacionamento a sério.
           </h2>
           <p className="text-muted-foreground text-lg max-w-lg mx-auto leading-relaxed">
             Qualquer pessoa ou marca que quer construir algo que dura, sem depender de plataformas.

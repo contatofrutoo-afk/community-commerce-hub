@@ -15,7 +15,7 @@ const steps = [
   {
     number: "01",
     title: "Crie sua marca",
-    desc: "Escolha o nome da sua comunidade e personalize com a identidade da sua marca.",
+    desc: "Escolha o nome da sua comunidade e carregue seu logo.",
     icon: Sparkles
   },
   {

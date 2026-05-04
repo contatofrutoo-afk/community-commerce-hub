@@ -15,11 +15,10 @@ const comparison = [
   { feature: "Feed próprio", social: false, weaze: true },
   { feature: "Mensagens da marca", social: false, weaze: true },
   { feature: "Agenda integrada", social: false, weaze: true },
-  { feature: "Catálogo de produtos", social: false, weaze: true },
   { feature: "Dados da audiência", social: false, weaze: true },
   { feature: "Membros ilimitados", social: false, weaze: true },
   { feature: "Sem algoritmos", social: false, weaze: true },
-  { feature: " eigene marca", social: false, weaze: true },
+  { feature: "Sua marca", social: false, weaze: true },
 ];
 
 export default function ComparisonSection() {

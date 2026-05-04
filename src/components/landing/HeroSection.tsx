@@ -18,8 +18,8 @@ const stagger = {
 
 const stats = [
   { icon: Image, value: "Feed", label: "Posts e vídeos" },
-  { icon: MessageSquare, value: "Chat", label: "Mensagens" },
-  { icon: Calendar, value: "Agenda", label: "Eventos" },
+  { icon: MessageSquare, value: "Conversas", label: "Chat" },
+  { icon: Calendar, value: "Serviços", label: "Agendamentos" },
   { icon: Users, value: "Membros", label: "Lista" },
 ];
 
