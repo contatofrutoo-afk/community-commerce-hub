@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import AppEntrance from "@/components/AppEntrance";
 
 const queryClient = new QueryClient();
 
@@ -62,38 +63,40 @@ const App = () => (
             <AuthProvider>
               <TenantProvider>
                 <OnboardingTour />
-                <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
-                <Route path="/communities" element={<Protected><Communities /></Protected>} />
-                <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
-                <Route path="/messages" element={<Protected><NeedsTenant><Messages /></NeedsTenant></Protected>} />
-                <Route path="/content" element={<Protected><NeedsTenant><Content /></NeedsTenant></Protected>} />
-                <Route path="/content/services" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
-                <Route path="/content/events" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
-                <Route path="/content/lives" element={<Protected><NeedsTenant><Lives /></NeedsTenant></Protected>} />
-                <Route path="/admin/*" element={<Protected><NeedsTenant><AdminLayout /></NeedsTenant></Protected>} />
-                <Route path="/metrics" element={<Protected><NeedsTenant><AdminOverview /></NeedsTenant></Protected>} />
-                <Route path="/metrics/revenue" element={<Protected><NeedsTenant><AdminRevenue /></NeedsTenant></Protected>} />
-                <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
-                <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
-                <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
-                <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
-                <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
-                <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
-                <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
-                <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
-                <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
-                <Route path="/offline" element={<Offline />} />
-                <Route path="*" element={<Navigate to="/feed" replace />} />
-              </Routes>
-            </TenantProvider>
-          </AuthProvider>
-        </Suspense>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                <AppEntrance>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
+                    <Route path="/communities" element={<Protected><Communities /></Protected>} />
+                    <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
+                    <Route path="/messages" element={<Protected><NeedsTenant><Messages /></NeedsTenant></Protected>} />
+                    <Route path="/content" element={<Protected><NeedsTenant><Content /></NeedsTenant></Protected>} />
+                    <Route path="/content/services" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
+                    <Route path="/content/events" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
+                    <Route path="/content/lives" element={<Protected><NeedsTenant><Lives /></NeedsTenant></Protected>} />
+                    <Route path="/admin/*" element={<Protected><NeedsTenant><AdminLayout /></NeedsTenant></Protected>} />
+                    <Route path="/metrics" element={<Protected><NeedsTenant><AdminOverview /></NeedsTenant></Protected>} />
+                    <Route path="/metrics/revenue" element={<Protected><NeedsTenant><AdminRevenue /></NeedsTenant></Protected>} />
+                    <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
+                    <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
+                    <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
+                    <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
+                    <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
+                    <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                    <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                    <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
+                    <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                    <Route path="/offline" element={<Offline />} />
+                    <Route path="*" element={<Navigate to="/feed" replace />} />
+                  </Routes>
+                </AppEntrance>
+              </TenantProvider>
+            </AuthProvider>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 
