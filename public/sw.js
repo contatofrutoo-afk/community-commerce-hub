@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wenity-v1';
+const CACHE_NAME = 'weaze-v2';
 
 const STATIC_ASSETS = [
   '/',
