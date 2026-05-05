@@ -87,6 +87,13 @@ export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Pro
     const { data: free } = await supabase.from("plans").select("id").eq("name", "Free").maybeSingle();
     if (free) await supabase.from("tenant_plans").insert({ tenant_id: data.id, plan_id: free.id });
 
+    // Create membership with owner role
+    await supabase.from("memberships").insert({
+      tenant_id: data.id,
+      user_id: user.id,
+      role: "owner",
+    });
+
     await refresh();
     selectTenant(data.id);
     toast.success("Marca criada");
