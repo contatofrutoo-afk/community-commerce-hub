@@ -3,6 +3,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BarChart3, DollarSign, Filter, Users, Building2, FileText, LogOut, Link2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/metrics", icon: BarChart3, label: "Visão geral", end: true },
