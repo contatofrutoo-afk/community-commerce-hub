@@ -2,8 +2,13 @@ export type AccessStatus = "none" | "pending" | "approved" | "rejected";
 
 const getStorageKey = (slug: string) => `community_${slug}`;
 
-export const getCommunityAccess = (slug: string): AccessStatus => {
+export const getCommunityAccess = (slug: string, userRole?: "owner" | "admin" | "member"): AccessStatus => {
   if (typeof window === "undefined") return "none";
+  
+  if (userRole === "owner" || userRole === "admin") {
+    return "approved";
+  }
+  
   const status = localStorage.getItem(getStorageKey(slug));
   if (status === "pending" || status === "approved" || status === "rejected") {
     return status;
@@ -25,8 +30,4 @@ export const setCommunityAccess = (slug: string, status: AccessStatus): void => 
 export const simulateApproval = (slug: string): AccessStatus => {
   setCommunityAccess(slug, "approved");
   return "approved";
-};
-
-export const isCommunityOwner = async (slug: string): Promise<boolean> => {
-  return false;
 };

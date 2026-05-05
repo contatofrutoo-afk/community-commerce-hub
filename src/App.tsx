@@ -59,13 +59,19 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const { user } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, isOwner } = useTenant();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     if (!user || !tenant) {
+      setLoading(false);
+      return;
+    }
+
+    if (isOwner) {
+      setHasAccess(true);
       setLoading(false);
       return;
     }
@@ -78,7 +84,7 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
     if (!approved) {
       navigate(`/c?slug=${tenant.slug}`, { replace: true });
     }
-  }, [user, tenant, navigate]);
+  }, [user, tenant, isOwner, navigate]);
 
   if (loading) return <Loading />;
   if (!hasAccess) return null;

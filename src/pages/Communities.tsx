@@ -21,7 +21,7 @@ type TenantCard = {
 
 export default function Communities() {
   const { user, signOut, isB2B } = useAuth();
-  const { tenants, selectTenant } = useTenant();
+  const { tenants, selectTenant, isOwner } = useTenant();
   const nav = useNavigate();
   const [discover, setDiscover] = useState<TenantCard[]>([]);
   const [query, setQuery] = useState("");
@@ -46,7 +46,7 @@ export default function Communities() {
     const tenant = tenants.find(t => t.id === id);
     if (!tenant) return;
     
-    const status = getCommunityAccess(tenant.slug);
+    const status = getCommunityAccess(tenant.slug, isOwner ? "owner" : undefined);
     
     if (status === "approved") {
       selectTenant(id);

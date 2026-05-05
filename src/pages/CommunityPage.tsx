@@ -34,6 +34,7 @@ export default function CommunityPage() {
   const [error, setError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("none");
   const [requesting, setRequesting] = useState(false);
+  const [userRole, setUserRole] = useState<"owner" | "admin" | "member" | null>(null);
 
   useEffect(() => {
     if (!communitySlug) {
@@ -43,7 +44,7 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      const { data, error: err } = await supabase
+      const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
         .eq("slug", communitySlug)
@@ -52,16 +53,33 @@ export default function CommunityPage() {
       if (err) {
         console.error("Erro ao buscar comunidade:", err);
         setError("Erro ao carregar comunidade");
-      } else if (!data) {
+      } else if (!tenantData) {
         setError("Comunidade não encontrada");
       } else {
-        setTenant(data);
-        const access = getCommunityAccess(communitySlug);
+        setTenant(tenantData);
+        
+        let role: "owner" | "admin" | "member" | null = null;
+        
+        if (user) {
+          const { data: memberData } = await supabase
+            .from("memberships")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("tenant_id", tenantData.id)
+            .maybeSingle();
+          
+          if (memberData) {
+            role = memberData.role as "owner" | "admin" | "member";
+            setUserRole(role);
+          }
+        }
+        
+        const access = getCommunityAccess(communitySlug, role ?? undefined);
         setAccessStatus(access);
       }
       setLoading(false);
     })();
-  }, [communitySlug]);
+  }, [communitySlug, user]);
 
   const handleRequestAccess = () => {
     if (!communitySlug) return;
@@ -214,31 +232,50 @@ export default function CommunityPage() {
       );
     }
 
-    return (
-      <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
-        <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
-        <p className="text-muted-foreground">
-          Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
-        </p>
-        
-        <Button 
-          className="w-full bg-brand text-primary-foreground hover:opacity-90" 
-          onClick={handleRequestAccess}
-          disabled={requesting}
-        >
-          {requesting ? "Enviando..." : "Solicitar Acesso"}
-        </Button>
+    const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
 
-        <Button 
-          variant="outline" 
-          className="w-full text-xs" 
-          onClick={handleSimulateApproval}
-        >
-          <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
+  if (isOwnerOrAdmin) {
+    return (
+      <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
+        <div className="flex items-center gap-3 text-green-700">
+          <CheckCircle className="h-8 w-8" />
+          <h2 className="font-semibold text-lg">Você é o administrador!</h2>
+        </div>
+        <p className="text-green-800">
+          Você tem acesso total a <strong>{tenant.name}</strong> como {userRole}.
+        </p>
+        <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+          Entrar na Comunidade
         </Button>
       </div>
     );
-  };
+  }
+
+  return (
+    <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
+      <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
+      <p className="text-muted-foreground">
+        Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
+      </p>
+      
+      <Button 
+        className="w-full bg-brand text-primary-foreground hover:opacity-90" 
+        onClick={handleRequestAccess}
+        disabled={requesting}
+      >
+        {requesting ? "Enviando..." : "Solicitar Acesso"}
+      </Button>
+
+      <Button 
+        variant="outline" 
+        className="w-full text-xs" 
+        onClick={handleSimulateApproval}
+      >
+        <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
+      </Button>
+    </div>
+  );
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
