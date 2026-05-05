@@ -57,24 +57,31 @@ export default function CommunityPage() {
         setError("Comunidade não encontrada");
       } else {
         setTenant(tenantData);
+        console.log("CommunityPage - Tenant:", tenantData.id);
         
         let role: "owner" | "admin" | "member" | null = null;
         
         if (user) {
-          const { data: memberData } = await supabase
+          console.log("CommunityPage - User ID:", user.id);
+          
+          const { data: memberData, error: memberErr } = await supabase
             .from("memberships")
             .select("role")
             .eq("user_id", user.id)
             .eq("tenant_id", tenantData.id)
             .maybeSingle();
           
+          console.log("CommunityPage - Membership:", memberData, memberErr);
+          
           if (memberData) {
             role = memberData.role as "owner" | "admin" | "member";
             setUserRole(role);
+            console.log("CommunityPage - Role found:", role);
           }
         }
         
         const access = getCommunityAccess(communitySlug, role ?? undefined);
+        console.log("CommunityPage - Access:", access, "Role:", role);
         setAccessStatus(access);
       }
       setLoading(false);

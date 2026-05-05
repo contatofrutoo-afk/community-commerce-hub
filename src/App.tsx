@@ -70,20 +70,35 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
       return;
     }
 
-    if (isOwner) {
-      setHasAccess(true);
-      setLoading(false);
-      return;
-    }
+    (async () => {
+      if (isOwner) {
+        setHasAccess(true);
+        setLoading(false);
+        return;
+      }
 
-    const status = getCommunityAccess(tenant.slug);
-    const approved = status === "approved";
-    setHasAccess(approved);
-    setLoading(false);
-    
-    if (!approved) {
-      navigate(`/c?slug=${tenant.slug}`, { replace: true });
-    }
+      const { data: memberData } = await supabase
+        .from("memberships")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("tenant_id", tenant.id)
+        .maybeSingle();
+
+      if (memberData && (memberData.role === "owner" || memberData.role === "admin")) {
+        setHasAccess(true);
+        setLoading(false);
+        return;
+      }
+
+      const status = getCommunityAccess(tenant.slug);
+      const approved = status === "approved";
+      setHasAccess(approved);
+      setLoading(false);
+      
+      if (!approved) {
+        navigate(`/c?slug=${tenant.slug}`, { replace: true });
+      }
+    })();
   }, [user, tenant, isOwner, navigate]);
 
   if (loading) return <Loading />;
