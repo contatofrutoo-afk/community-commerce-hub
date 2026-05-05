@@ -70,8 +70,8 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
     }
 
     (async () => {
-      const { data } = await supabase.rpc("get_member_status", { p_tenant_id: tenant.id });
-      const status = data as string || "none";
+      const { data } = await (supabase as any).rpc("get_member_status", { p_tenant_id: tenant.id });
+      const status = (data as string) || "none";
       setHasAccess(status === "approved");
       setLoading(false);
       
