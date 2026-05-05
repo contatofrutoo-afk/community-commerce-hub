@@ -7,6 +7,7 @@ import { Suspense, lazy, useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getCommunityAccess } from "@/lib/communityAccess";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
@@ -69,17 +70,15 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
       return;
     }
 
-    (async () => {
-      const { data } = await (supabase as any).rpc("get_member_status", { p_tenant_id: tenant.id });
-      const status = (data as string) || "none";
-      setHasAccess(status === "approved");
-      setLoading(false);
-      
-      if (status !== "approved") {
-        navigate(`/c?slug=${tenant.slug}`, { replace: true });
-      }
-    })();
-  }, [user, tenant]);
+    const status = getCommunityAccess(tenant.slug);
+    const approved = status === "approved";
+    setHasAccess(approved);
+    setLoading(false);
+    
+    if (!approved) {
+      navigate(`/c?slug=${tenant.slug}`, { replace: true });
+    }
+  }, [user, tenant, navigate]);
 
   if (loading) return <Loading />;
   if (!hasAccess) return null;

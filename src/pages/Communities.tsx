@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, LogOut, Search, Users, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
-import { getMemberStatus, requestJoinCommunity } from "@/lib/communityMembers";
+import { getCommunityAccess, requestCommunityAccess } from "@/lib/communityAccess";
 
 type TenantCard = {
   id: string;
@@ -40,46 +40,38 @@ export default function Communities() {
     (t) => !myIds.has(t.id) && t.name.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const enter = async (id: string) => {
+  const enter = (id: string) => {
     if (!user) { nav("/auth"); return; }
     
-    const status = await getMemberStatus(id);
+    const tenant = tenants.find(t => t.id === id);
+    if (!tenant) return;
+    
+    const status = getCommunityAccess(tenant.slug);
     
     if (status === "approved") {
       selectTenant(id);
       nav("/feed");
-    } else if (status === "pending") {
-      selectTenant(id);
-      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
-    } else if (status === "rejected") {
-      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
     } else {
       selectTenant(id);
-      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
+      nav(`/c/${tenant.slug}`);
     }
   };
 
-  const join = async (id: string) => {
+  const join = (id: string) => {
     if (!user) { nav("/auth"); return; }
     
-    const status = await getMemberStatus(id);
-    
     const tenant = discover.find(t => t.id === id);
+    if (!tenant) return;
+    
+    const status = getCommunityAccess(tenant.slug);
     
     if (status === "approved") {
       selectTenant(id);
       nav("/feed");
-    } else if (status === "pending") {
-      selectTenant(id);
-      nav(`/c/${tenant?.slug}`);
-    } else if (status === "rejected") {
-      nav(`/c/${tenant?.slug}`);
     } else {
-      const result = await requestJoinCommunity(id);
-      if (result) {
-        selectTenant(id);
-        nav(`/c/${tenant?.slug}`);
-      }
+      requestCommunityAccess(tenant.slug);
+      selectTenant(id);
+      nav(`/c/${tenant.slug}`);
     }
   };
 

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMemberStatus, requestJoinCommunity, MemberStatus } from "@/lib/communityMembers";
-import { Building2, Users, MessageCircle, Calendar, ArrowRight, Clock, XCircle, CheckCircle } from "lucide-react";
+import { getCommunityAccess, requestCommunityAccess, simulateApproval, AccessStatus } from "@/lib/communityAccess";
+import { Building2, Users, MessageCircle, Calendar, ArrowRight, Clock, XCircle, CheckCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   const getSlugFromUrl = () => {
     if (slug) return slug;
@@ -32,7 +32,7 @@ export default function CommunityPage() {
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [memberStatus, setMemberStatus] = useState<MemberStatus>("none");
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("none");
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
@@ -56,37 +56,27 @@ export default function CommunityPage() {
         setError("Comunidade não encontrada");
       } else {
         setTenant(data);
+        const access = getCommunityAccess(communitySlug);
+        setAccessStatus(access);
       }
       setLoading(false);
     })();
   }, [communitySlug]);
 
-  useEffect(() => {
-    if (!tenant || authLoading) return;
-
-    (async () => {
-      if (user) {
-        const status = await getMemberStatus(tenant.id);
-        setMemberStatus(status);
-      } else {
-        setMemberStatus("none");
-      }
-    })();
-  }, [tenant, user, authLoading]);
-
-  const handleRequestJoin = async () => {
-    if (!user || !tenant) return;
-    
+  const handleRequestAccess = () => {
+    if (!communitySlug) return;
     setRequesting(true);
-    const result = await requestJoinCommunity(tenant.id);
+    const status = requestCommunityAccess(communitySlug);
+    setAccessStatus(status);
     setRequesting(false);
-    
-    if (result) {
-      setMemberStatus("pending");
-      toast.success("Solicitação enviada! Aguarde aprovação da marca.");
-    } else {
-      toast.error("Erro ao enviar solicitação. Tente novamente.");
-    }
+    toast.success("Solicitação enviada! Aguarde aprovação da marca.");
+  };
+
+  const handleSimulateApproval = () => {
+    if (!communitySlug) return;
+    const status = simulateApproval(communitySlug);
+    setAccessStatus(status);
+    toast.success("Acesso aprovado! (Simulação)");
   };
 
   if (loading) {
@@ -155,7 +145,7 @@ export default function CommunityPage() {
       );
     }
 
-    if (memberStatus === "pending") {
+    if (accessStatus === "pending") {
       return (
         <div className="bg-amber-50 rounded-3xl border border-amber-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-amber-700">
@@ -171,16 +161,23 @@ export default function CommunityPage() {
               Enquanto isso, você pode explorar outras comunidades ou voltar mais tarde.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => navigate("/")}>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
               Explorar
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full text-xs" 
+              onClick={handleSimulateApproval}
+            >
+              <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
             </Button>
           </div>
         </div>
       );
     }
 
-    if (memberStatus === "rejected") {
+    if (accessStatus === "rejected") {
       return (
         <div className="bg-red-50 rounded-3xl border border-red-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-red-700">
@@ -200,7 +197,7 @@ export default function CommunityPage() {
       );
     }
 
-    if (memberStatus === "approved") {
+    if (accessStatus === "approved") {
       return (
         <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-green-700">
@@ -226,10 +223,18 @@ export default function CommunityPage() {
         
         <Button 
           className="w-full bg-brand text-primary-foreground hover:opacity-90" 
-          onClick={handleRequestJoin}
+          onClick={handleRequestAccess}
           disabled={requesting}
         >
           {requesting ? "Enviando..." : "Solicitar Acesso"}
+        </Button>
+
+        <Button 
+          variant="outline" 
+          className="w-full text-xs" 
+          onClick={handleSimulateApproval}
+        >
+          <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
         </Button>
       </div>
     );
