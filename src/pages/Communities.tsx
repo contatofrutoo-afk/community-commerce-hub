@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, LogOut, Search, Users, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
+import { getMemberStatus, requestJoinCommunity } from "@/lib/communityMembers";
 
 type TenantCard = {
   id: string;
@@ -39,19 +40,47 @@ export default function Communities() {
     (t) => !myIds.has(t.id) && t.name.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const enter = (id: string) => {
-    selectTenant(id);
-    nav("/feed");
+  const enter = async (id: string) => {
+    if (!user) { nav("/auth"); return; }
+    
+    const status = await getMemberStatus(id);
+    
+    if (status === "approved") {
+      selectTenant(id);
+      nav("/feed");
+    } else if (status === "pending") {
+      selectTenant(id);
+      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
+    } else if (status === "rejected") {
+      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
+    } else {
+      selectTenant(id);
+      nav(`/c/${discover.find(t => t.id === id)?.slug}`);
+    }
   };
 
   const join = async (id: string) => {
     if (!user) { nav("/auth"); return; }
-    await supabase.from("memberships").upsert(
-      { user_id: user.id, tenant_id: id, role: "member" },
-      { onConflict: "user_id,tenant_id" } as any,
-    );
-    selectTenant(id);
-    nav("/feed");
+    
+    const status = await getMemberStatus(id);
+    
+    const tenant = discover.find(t => t.id === id);
+    
+    if (status === "approved") {
+      selectTenant(id);
+      nav("/feed");
+    } else if (status === "pending") {
+      selectTenant(id);
+      nav(`/c/${tenant?.slug}`);
+    } else if (status === "rejected") {
+      nav(`/c/${tenant?.slug}`);
+    } else {
+      const result = await requestJoinCommunity(id);
+      if (result) {
+        selectTenant(id);
+        nav(`/c/${tenant?.slug}`);
+      }
+    }
   };
 
   return (
