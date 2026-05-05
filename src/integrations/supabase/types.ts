@@ -329,6 +329,47 @@ export type Database = {
           },
         ]
       }
+      invite_link_events: {
+        Row: {
+          campaign: string | null
+          created_at: string | null
+          event_type: string
+          id: string
+          ref: string | null
+          session_id: string | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign?: string | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          ref?: string | null
+          session_id?: string | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign?: string | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          ref?: string | null
+          session_id?: string | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_link_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lives: {
         Row: {
           created_at: string
