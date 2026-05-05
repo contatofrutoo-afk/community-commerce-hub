@@ -1,0 +1,131 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Building2, Users, MessageCircle, Calendar, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type PublicTenant = {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  bio: string | null;
+  city: string | null;
+};
+
+export default function CommunityPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const [tenant, setTenant] = useState<PublicTenant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) {
+      setError("Slug não fornecido");
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      const { data, error: err } = await supabase
+        .from("tenants")
+        .select("id, name, slug, logo_url, bio, city")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (err) {
+        console.error("Erro ao buscar comunidade:", err);
+        setError("Erro ao carregar comunidade");
+      } else if (!data) {
+        setError("Comunidade não encontrada");
+      } else {
+        setTenant(data);
+      }
+      setLoading(false);
+    })();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando comunidade...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !tenant) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md px-4">
+          <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Comunidade não encontrada</h1>
+          <p className="text-muted-foreground mb-6">{error || "Esta comunidade não existe ou foi removida."}</p>
+          <Button asChild>
+            <a href="/">Ir para página inicial</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+          <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
+            {tenant.logo_url ? (
+              <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
+            ) : (
+              <Building2 className="h-12 w-12" />
+            )}
+          </div>
+          <h1 className="text-3xl font-display font-bold mb-2">{tenant.name}</h1>
+          {tenant.bio && <p className="text-muted-foreground mb-2">{tenant.bio}</p>}
+          {tenant.city && <p className="text-sm text-muted-foreground">{tenant.city}</p>}
+        </div>
+
+        <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
+          <h2 className="font-semibold text-lg">Bem-vindo à comunidade!</h2>
+          <p className="text-muted-foreground">
+            Junte-se a {tenant.name} para ter acesso a conteúdo exclusivo, eventos, 
+            promoções e muito mais.
+          </p>
+          
+          <div className="grid grid-cols-2 gap-3 py-4">
+            <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <Users className="h-6 w-6 mx-auto mb-2 text-brand" />
+              <p className="font-semibold">Membros</p>
+              <p className="text-sm text-muted-foreground">Comunidade ativa</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <MessageCircle className="h-6 w-6 mx-auto mb-2 text-brand" />
+              <p className="font-semibold">Conteúdo</p>
+              <p className="text-sm text-muted-foreground">Postagens diárias</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <Calendar className="h-6 w-6 mx-auto mb-2 text-brand" />
+              <p className="font-semibold">Eventos</p>
+              <p className="text-sm text-muted-foreground">Exclusivos</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <ArrowRight className="h-6 w-6 mx-auto mb-2 text-brand" />
+              <p className="font-semibold">Ofertas</p>
+              <p className="text-sm text-muted-foreground">Só para membros</p>
+            </div>
+          </div>
+
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" asChild>
+            <a href="/auth">Entrar na comunidade</a>
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground mt-8">
+          Powered by Community Commerce Hub
+        </p>
+      </div>
+    </div>
+  );
+}

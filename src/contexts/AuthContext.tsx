@@ -63,13 +63,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let newRole: AppRole | null = null;
       
       if (roles.length === 0) {
+        // Sem role explícita → verificar se é owner de alguma marca → B2B
         const { data: memberships } = await supabase
           .from("memberships")
           .select("role")
-          .eq("user_id", user.id)
-          .limit(1);
+          .eq("user_id", user.id);
         
-        newRole = (memberships && memberships.length > 0 && memberships[0].role === 'owner') ? 'b2c' : 'b2c';
+        newRole = (memberships && memberships.length > 0 && memberships[0].role === 'owner') ? 'b2b' : 'b2c';
       } else {
         newRole = roles.includes("admin")
           ? "admin"

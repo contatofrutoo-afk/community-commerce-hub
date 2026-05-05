@@ -34,6 +34,7 @@ const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
 const Profile = lazy(() => import("./pages/Profile"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
 const Topics = lazy(() => import("./pages/Topics"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Lives = lazy(() => import("./pages/admin/Lives"));
@@ -88,10 +89,11 @@ const App = () => (
                     <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
                     <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                     <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                    <Route path="/m/:slug" element={<CommunityPage />} />
+                    <Route path="/invite/:code" element={<InviteLanding />} />
                     <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                     <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
                     <Route path="/offline" element={<Offline />} />
-                    <Route path="/m/:slug" element={<InviteLanding />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>
                 </AppEntrance>
