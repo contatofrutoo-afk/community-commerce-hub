@@ -8,7 +8,8 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Bell, BellOff, MessageSquare, AtSign, Radio, FileText, Check, CheckCheck } from "lucide-react";
+import { Bell, BellOff, MessageSquare, AtSign, Radio, FileText, Check, CheckCheck, UserPlus, X, Clock, CheckCircle, XCircle } from "lucide-react";
+import { getPendingMembers, approveMember, rejectMember, PendingMember } from "@/lib/communityMembers";
 
 type Notification = {
   id: string;
@@ -41,12 +42,14 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; bgColor: string; pr
 };
 
 export default function Notifications() {
-  const { tenant } = useTenant();
+  const { tenant, isOwner } = useTenant();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<NotificationSummary>({ replies: 0, mentions: 0, liveStarted: 0, newPosts: 0 });
+  const [pendingRequests, setPendingRequests] = useState<PendingMember[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   const loadNotifications = async () => {
     if (!tenant || !user) return;
@@ -81,9 +84,22 @@ export default function Notifications() {
     setLoading(false);
   };
 
+  const loadPendingRequests = async () => {
+    if (!tenant || !isOwner) return;
+    setPendingLoading(true);
+    
+    const members = await getPendingMembers(tenant.id);
+    setPendingRequests(members);
+    setPendingLoading(false);
+  };
+
   useEffect(() => {
     if (tenant && user) loadNotifications();
   }, [tenant, user]);
+
+  useEffect(() => {
+    if (tenant && isOwner) loadPendingRequests();
+  }, [tenant, isOwner]);
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read_at) {
@@ -91,179 +107,150 @@ export default function Notifications() {
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
         .eq("id", notification.id);
-
-      setNotifications(prev =>
-        prev.map(n => n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n)
-      );
     }
 
-    const referenceId = notification.reference_id || notification.data?.topic_id || notification.data?.post_id;
+    const refId = notification.reference_id;
+    if (!refId) return;
 
     switch (notification.type) {
       case "reply_message":
       case "mention":
-        if (referenceId) navigate(`/conversas/${referenceId}`);
-        else navigate("/conversas");
+        navigate(`/conversas/${refId}`);
         break;
       case "live_started":
-        if (referenceId) navigate(`/feed?live=${referenceId}`);
-        else navigate("/feed");
+        navigate(`/content/lives`);
         break;
       case "new_post":
-        navigate(`/feed?post=${referenceId}`);
+        navigate(`/feed?post=${refId}`);
         break;
       default:
         navigate("/feed");
     }
   };
 
-  const markAllAsRead = async () => {
-    if (!tenant || !user) return;
-
-    await supabase
-      .from("notifications")
-      .update({ read_at: new Date().toISOString() })
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .is("read_at", null);
-
-    toast.success("Todas marcadas como lidas");
-    loadNotifications();
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "border-l-red-500";
-      case "medium": return "border-l-yellow-500";
-      case "low": return "border-l-gray-300";
-      default: return "border-l-gray-300";
+  const handleApprove = async (memberId: string) => {
+    const success = await approveMember(memberId);
+    if (success) {
+      toast.success("Membro aprovado!");
+      loadPendingRequests();
+    } else {
+      toast.error("Erro ao aprovar membro");
     }
   };
 
-  const formatTime = (date: string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "Agora";
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
+  const handleReject = async (memberId: string) => {
+    const success = await rejectMember(memberId);
+    if (success) {
+      toast.success("Membro recusado");
+      loadPendingRequests();
+    } else {
+      toast.error("Erro ao recusar membro");
+    }
   };
-
-  const getTypeIcon = (type: string) => {
-    const config = TYPE_CONFIG[type];
-    if (!config) return Bell;
-    return config.icon;
-  };
-
-  if (!tenant) {
-    return (
-      <div className="min-h-[100dvh] flex flex-col bg-background">
-        <TopBar />
-        <main className="flex-1 grid place-items-center">
-          <p className="text-muted-foreground">Selecione uma comunidade</p>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
       <TopBar />
+      <div className="flex-1 max-w-xl mx-auto w-full px-4 py-6 pb-28 space-y-4">
+        <h1 className="text-2xl font-display font-bold">Notificações</h1>
 
-      <main className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="p-6 text-center text-muted-foreground">Carregando...</div>
-        ) : notifications.length === 0 ? (
-          <div className="p-8 text-center">
-            <BellOff className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <p className="text-lg font-medium text-muted-foreground mb-2">Você está em dia com sua comunidade</p>
-            <p className="text-sm text-muted-foreground/70">Novas interações aparecerão aqui</p>
+        {isOwner && pendingRequests.length > 0 && (
+          <section className="bg-amber-50 rounded-2xl border border-amber-200 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-amber-600" />
+              <h2 className="font-semibold text-amber-800">Solicitações de Acesso</h2>
+              <span className="ml-auto bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {pendingRequests.length}
+              </span>
+            </div>
+            
+            <div className="space-y-2">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="bg-white rounded-xl p-3 flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    {req.user_name ? (
+                      <AvatarImage src={req.user_name} />
+                    ) : (
+                      <AvatarFallback>{(req.user_email || "?").substring(0, 2).toUpperCase()}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{req.user_name || "Usuário"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{req.user_email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(req.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                      onClick={() => handleApprove(req.id)}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                      onClick={() => handleReject(req.id)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {notifications.length === 0 && !loading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <BellOff className="h-12 w-12 text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">Nenhuma notificação</p>
           </div>
         ) : (
-          <>
-            {(summary.replies > 0 || summary.mentions > 0 || summary.liveStarted > 0) && (
-              <div className="grid grid-cols-3 gap-2 p-4 border-b bg-gray-50">
-                {summary.replies > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <MessageSquare className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <p className="text-lg font-bold text-blue-600">{summary.replies}</p>
-                    <p className="text-xs text-muted-foreground">respostas</p>
-                  </div>
-                )}
-                {summary.mentions > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <AtSign className="h-5 w-5 mx-auto mb-1 text-purple-600" />
-                    <p className="text-lg font-bold text-purple-600">{summary.mentions}</p>
-                    <p className="text-xs text-muted-foreground">menções</p>
-                  </div>
-                )}
-                {summary.liveStarted > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <Radio className="h-5 w-5 mx-auto mb-1 text-red-600" />
-                    <p className="text-lg font-bold text-red-600">{summary.liveStarted}</p>
-                    <p className="text-xs text-muted-foreground">lives</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="divide-y divide-gray-100">
-              {notifications.map((n) => {
-                const IconComponent = getTypeIcon(n.type);
-                return (
-                  <div
-                    key={n.id}
-                    className={`flex items-start gap-3 p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                      n.read_at ? "opacity-60" : "bg-white"
-                    } ${getPriorityColor(n.priority)}`}
-                    onClick={() => handleNotificationClick(n)}
-                  >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={n.actor_profiles?.avatar_url || ""} />
-                      <AvatarFallback className="bg-gray-200 text-gray-600 text-sm">
-                        {n.actor_profiles?.name?.[0]?.toUpperCase() || n.title[0]?.toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-
+          <div className="space-y-2">
+            {notifications.map((notification) => {
+              const config = TYPE_CONFIG[notification.type] || { icon: Bell, bgColor: "bg-gray-100", priority: 0 };
+              const Icon = config.icon;
+              
+              return (
+                <button
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`w-full text-left p-3 rounded-xl border ${
+                    notification.read_at 
+                      ? "bg-card border-border" 
+                      : "bg-blue-50/50 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${config.bgColor}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                        {n.title}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatTime(n.created_at)}
+                      <p className="font-medium text-sm">{notification.title}</p>
+                      {notification.body && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {notification.body}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(notification.created_at).toLocaleString("pt-BR")}
                       </p>
                     </div>
-
-                    {!n.read_at && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
+                    {!notification.read_at && (
+                      <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
                     )}
-
-                    <div className={`p-2 rounded-full ${TYPE_CONFIG[n.type]?.bgColor || "bg-gray-100"}`}>
-                      <IconComponent className="h-4 w-4" />
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </>
+                </button>
+              );
+            })}
+          </div>
         )}
-      </main>
-
-      {notifications.some(n => !n.read_at) && (
-        <div className="p-4 border-t border-border bg-white">
-          <Button onClick={markAllAsRead} variant="outline" className="w-full">
-            <CheckCheck className="h-4 w-4 mr-2" />
-            Marcar todas como lidas
-          </Button>
-        </div>
-      )}
-
+      </div>
       <BottomNav />
     </div>
   );

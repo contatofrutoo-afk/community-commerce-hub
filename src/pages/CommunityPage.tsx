@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Users, MessageCircle, Calendar, ArrowRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { getMemberStatus, requestJoinCommunity, MemberStatus } from "@/lib/communityMembers";
+import { Building2, Users, MessageCircle, Calendar, ArrowRight, Clock, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type PublicTenant = {
   id: string;
@@ -16,6 +19,8 @@ type PublicTenant = {
 export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   
   const getSlugFromUrl = () => {
     if (slug) return slug;
@@ -27,6 +32,8 @@ export default function CommunityPage() {
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memberStatus, setMemberStatus] = useState<MemberStatus>("none");
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     if (!communitySlug) {
@@ -54,6 +61,34 @@ export default function CommunityPage() {
     })();
   }, [communitySlug]);
 
+  useEffect(() => {
+    if (!tenant || authLoading) return;
+
+    (async () => {
+      if (user) {
+        const status = await getMemberStatus(tenant.id);
+        setMemberStatus(status);
+      } else {
+        setMemberStatus("none");
+      }
+    })();
+  }, [tenant, user, authLoading]);
+
+  const handleRequestJoin = async () => {
+    if (!user || !tenant) return;
+    
+    setRequesting(true);
+    const result = await requestJoinCommunity(tenant.id);
+    setRequesting(false);
+    
+    if (result) {
+      setMemberStatus("pending");
+      toast.success("Solicitação enviada! Aguarde aprovação da marca.");
+    } else {
+      toast.error("Erro ao enviar solicitação. Tente novamente.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -80,22 +115,9 @@ export default function CommunityPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
-            {tenant.logo_url ? (
-              <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
-            ) : (
-              <Building2 className="h-12 w-12" />
-            )}
-          </div>
-          <h1 className="text-3xl font-display font-bold mb-2">{tenant.name}</h1>
-          {tenant.bio && <p className="text-muted-foreground mb-2">{tenant.bio}</p>}
-          {tenant.city && <p className="text-sm text-muted-foreground">{tenant.city}</p>}
-        </div>
-
+  const renderContent = () => {
+    if (!user) {
+      return (
         <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
           <h2 className="font-semibold text-lg">Bem-vindo à comunidade!</h2>
           <p className="text-muted-foreground">
@@ -127,9 +149,109 @@ export default function CommunityPage() {
           </div>
 
           <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" asChild>
-            <a href="/auth">Entrar na comunidade</a>
+            <a href={`/auth?redirect=/c?slug=${tenant.slug}`}>Entrar na comunidade</a>
           </Button>
         </div>
+      );
+    }
+
+    if (memberStatus === "pending") {
+      return (
+        <div className="bg-amber-50 rounded-3xl border border-amber-200 p-6 space-y-4 shadow-soft">
+          <div className="flex items-center gap-3 text-amber-700">
+            <Clock className="h-8 w-8" />
+            <h2 className="font-semibold text-lg">Aguardando Aprovação</h2>
+          </div>
+          <p className="text-amber-800">
+            Sua solicitação foi enviada para <strong>{tenant.name}</strong>. 
+            Você receberá uma notificação quando seu acesso for aprovado.
+          </p>
+          <div className="bg-white/50 rounded-xl p-4 text-center">
+            <p className="text-sm text-amber-700">
+              Enquanto isso, você pode explorar outras comunidades ou voltar mais tarde.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => navigate("/")}>
+              Explorar
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (memberStatus === "rejected") {
+      return (
+        <div className="bg-red-50 rounded-3xl border border-red-200 p-6 space-y-4 shadow-soft">
+          <div className="flex items-center gap-3 text-red-700">
+            <XCircle className="h-8 w-8" />
+            <h2 className="font-semibold text-lg">Acesso Recusado</h2>
+          </div>
+          <p className="text-red-800">
+            Seu acesso à <strong>{tenant.name}</strong> não foi aprovado neste momento.
+          </p>
+          <p className="text-sm text-red-600">
+            Entre em contato diretamente com a marca para mais informações.
+          </p>
+          <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+            Voltar ao início
+          </Button>
+        </div>
+      );
+    }
+
+    if (memberStatus === "approved") {
+      return (
+        <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
+          <div className="flex items-center gap-3 text-green-700">
+            <CheckCircle className="h-8 w-8" />
+            <h2 className="font-semibold text-lg">Bem-vindo!</h2>
+          </div>
+          <p className="text-green-800">
+            Você é membro de <strong>{tenant.name}</strong>!
+          </p>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+            Entrar na Comunidade
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
+        <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
+        <p className="text-muted-foreground">
+          Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
+        </p>
+        
+        <Button 
+          className="w-full bg-brand text-primary-foreground hover:opacity-90" 
+          onClick={handleRequestJoin}
+          disabled={requesting}
+        >
+          {requesting ? "Enviando..." : "Solicitar Acesso"}
+        </Button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+          <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
+            {tenant.logo_url ? (
+              <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
+            ) : (
+              <Building2 className="h-12 w-12" />
+            )}
+          </div>
+          <h1 className="text-3xl font-display font-bold mb-2">{tenant.name}</h1>
+          {tenant.bio && <p className="text-muted-foreground mb-2">{tenant.bio}</p>}
+          {tenant.city && <p className="text-sm text-muted-foreground">{tenant.city}</p>}
+        </div>
+
+        {renderContent()}
 
         <p className="text-center text-sm text-muted-foreground mt-8">
           Powered by Community Commerce Hub

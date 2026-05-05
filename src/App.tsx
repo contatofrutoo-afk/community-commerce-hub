@@ -3,9 +3,10 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/integrations/supabase/client";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
@@ -55,6 +56,36 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+const NeedsAccess = ({ children }: { children: JSX.Element }) => {
+  const { user } = useAuth();
+  const { tenant } = useTenant();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+
+  useEffect(() => {
+    if (!user || !tenant) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      const { data } = await supabase.rpc("get_member_status", { p_tenant_id: tenant.id });
+      const status = data as string || "none";
+      setHasAccess(status === "approved");
+      setLoading(false);
+      
+      if (status !== "approved") {
+        navigate(`/c?slug=${tenant.slug}`, { replace: true });
+      }
+    })();
+  }, [user, tenant]);
+
+  if (loading) return <Loading />;
+  if (!hasAccess) return null;
+  return children;
+};
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -76,24 +107,23 @@ const App = () => (
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/community/:slug" element={<CommunityPage />} />
                     <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
-                    <Route path="/communities" element={<Protected><Communities /></Protected>} />
-                    <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
-                    <Route path="/messages" element={<Protected><NeedsTenant><Messages /></NeedsTenant></Protected>} />
-                    <Route path="/content" element={<Protected><NeedsTenant><Content /></NeedsTenant></Protected>} />
-                    <Route path="/content/services" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
-                    <Route path="/content/events" element={<Protected><NeedsTenant><AdminContent /></NeedsTenant></Protected>} />
-                    <Route path="/content/lives" element={<Protected><NeedsTenant><Lives /></NeedsTenant></Protected>} />
+<Route path="/communities" element={<Protected><Communities /></Protected>} />
+                    <Route path="/feed" element={<Protected><NeedsTenant><NeedsAccess><Feed /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/messages" element={<Protected><NeedsTenant><NeedsAccess><Messages /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/content" element={<Protected><NeedsTenant><NeedsAccess><Content /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/content/services" element={<Protected><NeedsTenant><NeedsAccess><AdminContent /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/content/events" element={<Protected><NeedsTenant><NeedsAccess><AdminContent /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/content/lives" element={<Protected><NeedsTenant><NeedsAccess><Lives /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/admin/*" element={<Protected><NeedsTenant><AdminLayout /></NeedsTenant></Protected>} />
-                    <Route path="/metrics" element={<Protected><NeedsTenant><AdminOverview /></NeedsTenant></Protected>} />
+                    <Route path="/metrics" element={<Protected><NeedsTenant><NeedsAccess><AdminOverview /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/metrics/revenue" element={<Protected><NeedsTenant><AdminRevenue /></NeedsTenant></Protected>} />
                     <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
                     <Route path="/metrics/users" element={<Protected><NeedsTenant><AdminUsers /></NeedsTenant></Protected>} />
                     <Route path="/metrics/tenants" element={<Protected><NeedsTenant><AdminTenants /></NeedsTenant></Protected>} />
-                    <Route path="/metrics/invites" element={<Protected><NeedsTenant><InviteLinks /></NeedsTenant></Protected>} />
                     <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
-                    <Route path="/create" element={<Protected><NeedsTenant><CreatePost /></NeedsTenant></Protected>} />
-                    <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
-                    <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
+                    <Route path="/create" element={<Protected><NeedsTenant><NeedsAccess><CreatePost /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/conversas" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/m/:slug" element={<CommunityPage />} />
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/invite/:code" element={<InviteLanding />} />

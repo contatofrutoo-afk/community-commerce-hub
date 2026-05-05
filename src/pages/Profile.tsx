@@ -239,44 +239,6 @@ export default function Profile() {
               <Link to="/communities"><ArrowLeftRight className="h-4 w-4 mr-2" />Trocar de comunidade ({tenants.length})</Link>
             </Button>
           )}
-          {isB2B && (
-            <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-5 space-y-3">
-              <h2 className="font-semibold flex items-center gap-2 text-indigo-900">🔗 Link da Comunidade</h2>
-              <p className="text-sm text-indigo-700">Compartilhe este link para invitar novos membros</p>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="text" 
-                  value={tenant?.slug ? `${window.location.origin}/c?slug=${tenant.slug}` : "Carregando..."} 
-                  readOnly 
-                  className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm text-indigo-700 font-mono"
-                />
-                <Button 
-                  size="sm" 
-                  variant={copied ? "default" : "outline"}
-                  onClick={async () => {
-                    if (!tenant?.slug) return;
-                    const link = `${window.location.origin}/c?slug=${tenant.slug}`;
-                    await navigator.clipboard.writeText(link);
-                    setCopied(true);
-                    toast.success("Link copiado!");
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className={copied ? "bg-green-500 hover:bg-green-600" : ""}
-                  disabled={!tenant?.slug}
-                >
-                  {copied ? "✓ Copiado" : "Copiar"}
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => tenant?.slug && window.open(`${window.location.origin}/c?slug=${tenant.slug}`, '_blank')}
-                  disabled={!tenant?.slug}
-                >
-                  Abrir
-                </Button>
-              </div>
-            </section>
-          )}
         </section>
 
         <Button variant="ghost" onClick={async () => { await signOut(); nav("/"); }} className="w-full text-destructive">
