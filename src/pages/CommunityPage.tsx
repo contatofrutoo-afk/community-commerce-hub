@@ -131,6 +131,25 @@ export default function CommunityPage() {
   }
 
   const renderContent = () => {
+    const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
+    
+    if (isOwnerOrAdmin) {
+      return (
+        <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
+          <div className="flex items-center gap-3 text-green-700">
+            <CheckCircle className="h-8 w-8" />
+            <h2 className="font-semibold text-lg">Você é o administrador!</h2>
+          </div>
+          <p className="text-green-800">
+            Você tem acesso total a <strong>{tenant.name}</strong> como {userRole}.
+          </p>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+            Entrar na Comunidade
+          </Button>
+        </div>
+      );
+    }
+
     if (!user) {
       return (
         <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
@@ -238,25 +257,6 @@ export default function CommunityPage() {
         </div>
       );
     }
-
-    const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
-
-  if (isOwnerOrAdmin) {
-    return (
-      <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
-        <div className="flex items-center gap-3 text-green-700">
-          <CheckCircle className="h-8 w-8" />
-          <h2 className="font-semibold text-lg">Você é o administrador!</h2>
-        </div>
-        <p className="text-green-800">
-          Você tem acesso total a <strong>{tenant.name}</strong> como {userRole}.
-        </p>
-        <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
-          Entrar na Comunidade
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
