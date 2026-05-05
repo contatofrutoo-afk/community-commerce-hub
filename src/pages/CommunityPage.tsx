@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCommunityAccess, requestCommunityAccess, AccessStatus } from "@/lib/communityAccess";
-import { Building2, Users, MessageCircle, Calendar, ArrowRight, Clock, XCircle, CheckCircle } from "lucide-react";
+import { Building2, Users, MessageCircle, Calendar, ArrowRight, ArrowLeft, Clock, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -262,6 +262,9 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
+          <Button variant="ghost" onClick={() => navigate("/communities")} className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          </Button>
           <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
             {tenant.logo_url ? (
               <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
@@ -275,10 +278,6 @@ export default function CommunityPage() {
         </div>
 
         {renderContent()}
-
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Powered by Community Commerce Hub
-        </p>
       </div>
     </div>
   );
