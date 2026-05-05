@@ -34,7 +34,7 @@ export default function CommunityPage() {
   const [error, setError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("none");
   const [requesting, setRequesting] = useState(false);
-  const [userRole, setUserRole] = useState<"owner" | "admin" | "member" | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (!communitySlug) {
@@ -65,6 +65,7 @@ export default function CommunityPage() {
       
       // Se usuário está logado, verificar membership
       let role: "owner" | "admin" | "member" | null = null;
+      let ownerStatus = false;
       
       if (user) {
         // Buscar TODAS as memberships do usuário
@@ -80,13 +81,15 @@ export default function CommunityPage() {
         
         if (thisCommunityMember) {
           role = thisCommunityMember.role as "owner" | "admin" | "member";
-          setUserRole(role);
           console.log("Role for this community:", role);
           
-          // Se for owner/admin, LIMPAR localStorage e dar acesso total
+          // Se for owner/admin
           if (role === "owner" || role === "admin") {
+            ownerStatus = true;
+            setIsOwner(true);
+            setAccessStatus("approved");
             localStorage.removeItem(`community_${communitySlug}`);
-            console.log("Owner/Admin detected - cleared localStorage");
+            console.log("Owner/Admin detected - ACCESS APPROVED");
           }
         }
       }
@@ -94,10 +97,9 @@ export default function CommunityPage() {
       // LIMPAR localStorage para kepop (solução temporária)
       localStorage.removeItem("community_kepop");
       
-      // Se é owner/admin, acesso automático
-      if (role === "owner" || role === "admin") {
-        setAccessStatus("approved");
-        console.log("Access: APPROVED (Owner/Admin)");
+      // Se já detectou owner, não precisa verificar localStorage
+      if (ownerStatus) {
+        console.log("Final: ACCESS APPROVED (Owner)");
       } else {
         // Para não-owners, verificar localStorage
         const access = getCommunityAccess(communitySlug, role ?? undefined);
@@ -152,9 +154,10 @@ export default function CommunityPage() {
   }
 
   const renderContent = () => {
-    const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
+    console.log("Render - isOwner:", isOwner, "accessStatus:", accessStatus);
     
-    if (isOwnerOrAdmin) {
+    if (isOwner) {
+      console.log("Rendering owner screen");
       return (
         <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-green-700">
@@ -162,7 +165,7 @@ export default function CommunityPage() {
             <h2 className="font-semibold text-lg">Você é o administrador!</h2>
           </div>
           <p className="text-green-800">
-            Você tem acesso total a <strong>{tenant.name}</strong> como {userRole}.
+            Você tem acesso total a <strong>{tenant.name}</strong>.
           </p>
           <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
             Entrar na Comunidade
