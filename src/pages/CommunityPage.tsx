@@ -44,8 +44,9 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      console.log("CommunityPage - Starting...");
-      console.log("CommunityPage - User:", user);
+      console.log("=== CommunityPage Debug ===");
+      console.log("User ID:", user?.id);
+      console.log("Slug:", communitySlug);
       
       const { data: tenantData, error: err } = await supabase
         .from("tenants")
@@ -53,57 +54,54 @@ export default function CommunityPage() {
         .eq("slug", communitySlug)
         .maybeSingle();
 
-      if (err) {
-        console.error("Erro ao buscar comunidade:", err);
-        setError("Erro ao carregar comunidade");
-      } else if (!tenantData) {
+      if (err || !tenantData) {
         setError("Comunidade não encontrada");
-      } else {
-        setTenant(tenantData);
-        console.log("CommunityPage - Tenant:", tenantData.id, tenantData.name);
-        
-        let role: "owner" | "admin" | "member" | null = null;
-        
-        if (user) {
-          console.log("CommunityPage - Checking membership for user:", user.id);
-          
-          // Primeira tentativa: buscar membership normal
-          const { data: memberData, error: memberErr } = await supabase
-            .from("memberships")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("tenant_id", tenantData.id)
-            .maybeSingle();
-          
-          console.log("CommunityPage - Membership attempt 1:", memberData, memberErr);
-          
-          if (memberData) {
-            role = memberData.role as "owner" | "admin" | "member";
-            setUserRole(role);
-            console.log("CommunityPage - Role found:", role);
-          } else {
-            // Segunda tentativa: verificar se é owner do tenant diretamente
-            console.log("CommunityPage - Trying RPC is_tenant_owner...");
-            const { data: isOwner } = await supabase.rpc("is_tenant_owner", {
-              _user_id: user.id,
-              _tenant_id: tenantData.id
-            });
-            console.log("CommunityPage - is_tenant_owner result:", isOwner);
-            
-            if (isOwner === true) {
-              role = "owner";
-              setUserRole("owner");
-              console.log("CommunityPage - Detected as owner via RPC");
-            }
-          }
-        } else {
-          console.log("CommunityPage - No user logged in");
-        }
-        
-        const access = getCommunityAccess(communitySlug, role ?? undefined);
-        console.log("CommunityPage - Final Access:", access, "Role:", role);
-        setAccessStatus(access);
+        setLoading(false);
+        return;
       }
+
+      setTenant(tenantData);
+      console.log("Tenant ID:", tenantData.id);
+      
+      // Se usuário está logado, verificar membership
+      let role: "owner" | "admin" | "member" | null = null;
+      
+      if (user) {
+        // Buscar TODAS as memberships do usuário
+        const { data: allMemberships } = await supabase
+          .from("memberships")
+          .select("role, tenant_id")
+          .eq("user_id", user.id);
+        
+        console.log("All memberships:", allMemberships);
+        
+        // Verificar se é owner/admin desta comunidade específica
+        const thisCommunityMember = allMemberships?.find(m => m.tenant_id === tenantData.id);
+        
+        if (thisCommunityMember) {
+          role = thisCommunityMember.role as "owner" | "admin" | "member";
+          setUserRole(role);
+          console.log("Role for this community:", role);
+          
+          // Se for owner/admin, LIMPAR localStorage e dar acesso total
+          if (role === "owner" || role === "admin") {
+            localStorage.removeItem(`community_${communitySlug}`);
+            console.log("Owner/Admin detected - cleared localStorage");
+          }
+        }
+      }
+      
+      // Se é owner/admin, acesso automático
+      if (role === "owner" || role === "admin") {
+        setAccessStatus("approved");
+        console.log("Access: APPROVED (Owner/Admin)");
+      } else {
+        // Para não-owners, verificar localStorage
+        const access = getCommunityAccess(communitySlug, role ?? undefined);
+        setAccessStatus(access);
+        console.log("Access from localStorage:", access);
+      }
+      
       setLoading(false);
     })();
   }, [communitySlug, user]);
