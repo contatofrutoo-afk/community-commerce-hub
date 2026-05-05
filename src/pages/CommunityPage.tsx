@@ -91,6 +91,9 @@ export default function CommunityPage() {
         }
       }
       
+      // LIMPAR localStorage para kepop (solução temporária)
+      localStorage.removeItem("community_kepop");
+      
       // Se é owner/admin, acesso automático
       if (role === "owner" || role === "admin") {
         setAccessStatus("approved");
