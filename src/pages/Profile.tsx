@@ -246,7 +246,7 @@ export default function Profile() {
               <div className="flex items-center gap-2">
                 <input 
                   type="text" 
-                  value={tenant?.slug ? `${window.location.origin}/c/${tenant.slug}` : "Carregando..."} 
+                  value={tenant?.slug ? `${window.location.origin}/c?slug=${tenant.slug}` : "Carregando..."} 
                   readOnly 
                   className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm text-indigo-700 font-mono"
                 />
@@ -255,7 +255,7 @@ export default function Profile() {
                   variant={copied ? "default" : "outline"}
                   onClick={async () => {
                     if (!tenant?.slug) return;
-                    const link = `${window.location.origin}/c/${tenant.slug}`;
+                    const link = `${window.location.origin}/c?slug=${tenant.slug}`;
                     await navigator.clipboard.writeText(link);
                     setCopied(true);
                     toast.success("Link copiado!");
@@ -269,7 +269,7 @@ export default function Profile() {
                 <Button 
                   size="sm" 
                   variant="outline"
-                  onClick={() => tenant?.slug && window.open(`${window.location.origin}/c/${tenant.slug}`, '_blank')}
+                  onClick={() => tenant?.slug && window.open(`${window.location.origin}/c?slug=${tenant.slug}`, '_blank')}
                   disabled={!tenant?.slug}
                 >
                   Abrir

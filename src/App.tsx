@@ -70,6 +70,8 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/m" element={<CommunityPage />} />
+                    <Route path="/c" element={<CommunityPage />} />
                     <Route path="/m/:slug" element={<CommunityPage />} />
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/community/:slug" element={<CommunityPage />} />

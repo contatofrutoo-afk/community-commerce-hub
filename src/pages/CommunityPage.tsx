@@ -16,7 +16,14 @@ type PublicTenant = {
 export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
-  const communitySlug = slug || location.pathname.split("/")[2] || "";
+  
+  const getSlugFromUrl = () => {
+    if (slug) return slug;
+    const params = new URLSearchParams(location.search);
+    return params.get("slug") || params.get("s") || "";
+  };
+  
+  const communitySlug = getSlugFromUrl();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
