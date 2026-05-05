@@ -239,94 +239,45 @@ export default function Profile() {
               <Link to="/communities"><ArrowLeftRight className="h-4 w-4 mr-2" />Trocar de comunidade ({tenants.length})</Link>
             </Button>
           )}
-          {isOwner && (
-            <>
-              <div className="bg-gradient-to-r from-[#630091]/10 to-[#d81e62]/10 rounded-xl p-4 border border-[#630091]/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Link2 className="h-4 w-4 text-[#630091]" />
-                  <span className="font-semibold text-sm">Link da sua comunidade</span>
-                </div>
-                <code className="text-xs text-muted-foreground break-all">
-                  {typeof window !== "undefined" ? window.location.origin : ""}/m/{tenant?.slug || "sua-marca"}
-                </code>
-                <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => {
-                      const link = `${window.location.origin}/m/${tenant?.slug || "sua-marca"}`;
-                      navigator.clipboard.writeText(link);
-                      toast.success("Link copiado!");
-                    }}
-                  >
-                    <Copy className="h-3 w-3 mr-1" /> Copiar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    asChild
-                  >
-                    <a href={`/m/${tenant?.slug || "sua-marca"}`} target="_blank">
-                      <ExternalLink className="h-3 w-3 mr-1" /> Abrir
-                    </a>
-                  </Button>
-                </div>
+          {isB2B && (
+            <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-5 space-y-3">
+              <h2 className="font-semibold flex items-center gap-2 text-indigo-900">🔗 Link da Comunidade</h2>
+              <p className="text-sm text-indigo-700">Compartilhe este link para invitar novos membros</p>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  value={tenant?.slug ? `${window.location.origin}/m/${tenant.slug}` : "Carregando..."} 
+                  readOnly 
+                  className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm text-indigo-700 font-mono"
+                />
+                <Button 
+                  size="sm" 
+                  variant={copied ? "default" : "outline"}
+                  onClick={async () => {
+                    if (!tenant?.slug) return;
+                    const link = `${window.location.origin}/m/${tenant.slug}`;
+                    await navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    toast.success("Link copiado!");
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className={copied ? "bg-green-500 hover:bg-green-600" : ""}
+                  disabled={!tenant?.slug}
+                >
+                  {copied ? "✓ Copiado" : "Copiar"}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => tenant?.slug && window.open(`${window.location.origin}/m/${tenant.slug}`, '_blank')}
+                  disabled={!tenant?.slug}
+                >
+                  Abrir
+                </Button>
               </div>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/admin"><BarChart3 className="h-4 w-4 mr-2" />Painel da marca</Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/admin/content"><Building2 className="h-4 w-4 mr-2" />Gerenciar conteúdo</Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/metrics/invites"><Link2 className="h-4 w-4 mr-2" />Links de convite</Link>
-              </Button>
-            </>
+            </section>
           )}
         </section>
-
-        {isB2B && tenant?.slug && (
-          <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-5 space-y-3">
-            <h2 className="font-semibold flex items-center gap-2">🔗 Convide sua comunidade</h2>
-            <div className="flex items-center gap-2">
-              <input 
-                type="text" 
-                value={`${window.location.origin}/m/${tenant.slug}`} 
-                readOnly 
-                className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm text-indigo-700 font-mono"
-              />
-              <Button 
-                size="sm" 
-                variant={copied ? "default" : "outline"}
-                onClick={async () => {
-                  const link = `${window.location.origin}/m/${tenant.slug}`;
-                  await navigator.clipboard.writeText(link);
-                  setCopied(true);
-                  toast.success("Link copiado!");
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className={copied ? "bg-green-500 hover:bg-green-600" : ""}
-              >
-                {copied ? "✓ Copiado" : "Copiar"}
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => window.open(`${window.location.origin}/m/${tenant.slug}`, '_blank')}
-              >
-                Abrir
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {isB2B && (!tenant?.slug) && (
-          <section className="bg-red-50 rounded-2xl border border-red-200 p-5">
-            <p className="text-sm text-red-600">Erro ao gerar link da comunidade. Slug não disponível.</p>
-          </section>
-        )}
 
         <Button variant="ghost" onClick={async () => { await signOut(); nav("/"); }} className="w-full text-destructive">
           <LogOut className="h-4 w-4 mr-2" />Sair
