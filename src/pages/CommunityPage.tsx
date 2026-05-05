@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Building2, Users, MessageCircle, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ type PublicTenant = {
 
 export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const communitySlug = slug || location.pathname.split("/")[2] || "";
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) {
+    if (!communitySlug) {
       setError("Slug não fornecido");
       setLoading(false);
       return;
@@ -30,7 +32,7 @@ export default function CommunityPage() {
       const { data, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
-        .eq("slug", slug)
+        .eq("slug", communitySlug)
         .maybeSingle();
 
       if (err) {
@@ -43,7 +45,7 @@ export default function CommunityPage() {
       }
       setLoading(false);
     })();
-  }, [slug]);
+  }, [communitySlug]);
 
   if (loading) {
     return (

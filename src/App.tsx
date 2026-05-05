@@ -70,6 +70,9 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/m/:slug" element={<CommunityPage />} />
+                    <Route path="/c/:slug" element={<CommunityPage />} />
+                    <Route path="/community/:slug" element={<CommunityPage />} />
                     <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
                     <Route path="/communities" element={<Protected><Communities /></Protected>} />
                     <Route path="/feed" element={<Protected><NeedsTenant><Feed /></NeedsTenant></Protected>} />
@@ -90,6 +93,7 @@ const App = () => (
                     <Route path="/conversas" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                     <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><Topics /></NeedsTenant></Protected>} />
                     <Route path="/m/:slug" element={<CommunityPage />} />
+                    <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/invite/:code" element={<InviteLanding />} />
                     <Route path="/notifications" element={<Protected><NeedsTenant><Notifications /></NeedsTenant></Protected>} />
                     <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
