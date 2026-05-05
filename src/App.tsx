@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -70,8 +70,8 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
     }
 
     (async () => {
-      const { data } = await supabase.rpc("get_member_status", { p_tenant_id: tenant.id });
-      const status = data as string || "none";
+      const { data } = await (supabase as any).rpc("get_member_status", { p_tenant_id: tenant.id });
+      const status = (data as string) || "none";
       setHasAccess(status === "approved");
       setLoading(false);
       
