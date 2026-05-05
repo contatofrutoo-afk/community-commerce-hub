@@ -58,8 +58,8 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user } = useAuth();
-  const { tenant, isOwner } = useTenant();
+  const { user, isB2B } = useAuth();
+  const { tenant } = useTenant();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
@@ -70,36 +70,23 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
       return;
     }
 
-    (async () => {
-      if (isOwner) {
-        setHasAccess(true);
-        setLoading(false);
-        return;
-      }
-
-      const { data: memberData } = await supabase
-        .from("memberships")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("tenant_id", tenant.id)
-        .maybeSingle();
-
-      if (memberData && (memberData.role === "owner" || memberData.role === "admin")) {
-        setHasAccess(true);
-        setLoading(false);
-        return;
-      }
-
-      const status = getCommunityAccess(tenant.slug);
-      const approved = status === "approved";
-      setHasAccess(approved);
+    // B2B sempre tem acesso
+    if (isB2B) {
+      setHasAccess(true);
       setLoading(false);
-      
-      if (!approved) {
-        navigate(`/c?slug=${tenant.slug}`, { replace: true });
-      }
-    })();
-  }, [user, tenant, isOwner, navigate]);
+      return;
+    }
+
+    // B2C: verificar localStorage
+    const status = getCommunityAccess(tenant.slug);
+    const approved = status === "approved";
+    setHasAccess(approved);
+    setLoading(false);
+    
+    if (!approved) {
+      navigate(`/c?slug=${tenant.slug}`, { replace: true });
+    }
+  }, [user, tenant, isB2B, navigate]);
 
   if (loading) return <Loading />;
   if (!hasAccess) return null;

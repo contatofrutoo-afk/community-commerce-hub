@@ -20,7 +20,7 @@ export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isB2B } = useAuth();
   
   const getSlugFromUrl = () => {
     if (slug) return slug;
@@ -34,7 +34,8 @@ export default function CommunityPage() {
   const [error, setError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("none");
   const [requesting, setRequesting] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
+
+  console.log("CommunityPage - isB2B:", isB2B, "user:", user?.id);
 
   useEffect(() => {
     if (!communitySlug) {
@@ -44,10 +45,6 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      console.log("=== CommunityPage Debug ===");
-      console.log("User ID:", user?.id);
-      console.log("Slug:", communitySlug);
-      
       const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
@@ -61,55 +58,25 @@ export default function CommunityPage() {
       }
 
       setTenant(tenantData);
-      console.log("Tenant ID:", tenantData.id);
-      
-      // Se usuário está logado, verificar membership
-      let role: "owner" | "admin" | "member" | null = null;
-      let ownerStatus = false;
-      
-      if (user) {
-        // Buscar TODAS as memberships do usuário
-        const { data: allMemberships } = await supabase
-          .from("memberships")
-          .select("role, tenant_id")
-          .eq("user_id", user.id);
-        
-        console.log("All memberships:", allMemberships);
-        
-        // Verificar se é owner/admin desta comunidade específica
-        const thisCommunityMember = allMemberships?.find(m => m.tenant_id === tenantData.id);
-        
-        if (thisCommunityMember) {
-          role = thisCommunityMember.role as "owner" | "admin" | "member";
-          console.log("Role for this community:", role);
-          
-          // Se for owner/admin
-          if (role === "owner" || role === "admin") {
-            ownerStatus = true;
-            setIsOwner(true);
-            setAccessStatus("approved");
-            localStorage.removeItem(`community_${communitySlug}`);
-            console.log("Owner/Admin detected - ACCESS APPROVED");
-          }
-        }
+
+      // === REGRA PRINCIPAL: B2B TEM ACESSO TOTAL ===
+      if (isB2B) {
+        // Limpar qualquer localStorage para evitar conflito
+        localStorage.removeItem(`community_${communitySlug}`);
+        setAccessStatus("approved");
+        console.log("B2B detected - access approved");
+        setLoading(false);
+        return;
       }
-      
-      // LIMPAR localStorage para kepop (solução temporária)
-      localStorage.removeItem("community_kepop");
-      
-      // Se já detectou owner, não precisa verificar localStorage
-      if (ownerStatus) {
-        console.log("Final: ACCESS APPROVED (Owner)");
-      } else {
-        // Para não-owners, verificar localStorage
-        const access = getCommunityAccess(communitySlug, role ?? undefined);
-        setAccessStatus(access);
-        console.log("Access from localStorage:", access);
-      }
+
+      // === PARA B2C: APLICAR CONTROLE VIA LOCALSTORAGE ===
+      const access = getCommunityAccess(communitySlug);
+      setAccessStatus(access);
+      console.log("B2C access:", access);
       
       setLoading(false);
     })();
-  }, [communitySlug, user]);
+  }, [communitySlug, isB2B]);
 
   const handleRequestAccess = () => {
     if (!communitySlug) return;
@@ -154,18 +121,16 @@ export default function CommunityPage() {
   }
 
   const renderContent = () => {
-    console.log("Render - isOwner:", isOwner, "accessStatus:", accessStatus);
-    
-    if (isOwner) {
-      console.log("Rendering owner screen");
+    // === B2B: SEMPRE LIBERADO ===
+    if (isB2B) {
       return (
         <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-green-700">
             <CheckCircle className="h-8 w-8" />
-            <h2 className="font-semibold text-lg">Você é o administrador!</h2>
+            <h2 className="font-semibold text-lg">Bem-vindo!</h2>
           </div>
           <p className="text-green-800">
-            Você tem acesso total a <strong>{tenant.name}</strong>.
+            Você é membro de <strong>{tenant.name}</strong>!
           </p>
           <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
             Entrar na Comunidade
@@ -174,6 +139,7 @@ export default function CommunityPage() {
       );
     }
 
+    // === B2C: SEM LOGIN ===
     if (!user) {
       return (
         <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
@@ -213,6 +179,7 @@ export default function CommunityPage() {
       );
     }
 
+    // === B2C: PENDING ===
     if (accessStatus === "pending") {
       return (
         <div className="bg-amber-50 rounded-3xl border border-amber-200 p-6 space-y-4 shadow-soft">
@@ -245,6 +212,7 @@ export default function CommunityPage() {
       );
     }
 
+    // === B2C: REJECTED ===
     if (accessStatus === "rejected") {
       return (
         <div className="bg-red-50 rounded-3xl border border-red-200 p-6 space-y-4 shadow-soft">
@@ -265,6 +233,7 @@ export default function CommunityPage() {
       );
     }
 
+    // === B2C: APPROVED ===
     if (accessStatus === "approved") {
       return (
         <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
@@ -282,31 +251,32 @@ export default function CommunityPage() {
       );
     }
 
-  return (
-    <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
-      <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
-      <p className="text-muted-foreground">
-        Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
-      </p>
-      
-      <Button 
-        className="w-full bg-brand text-primary-foreground hover:opacity-90" 
-        onClick={handleRequestAccess}
-        disabled={requesting}
-      >
-        {requesting ? "Enviando..." : "Solicitar Acesso"}
-      </Button>
+    // === B2C: SEM STATUS - SOLICITAR ACESSO ===
+    return (
+      <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
+        <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
+        <p className="text-muted-foreground">
+          Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
+        </p>
+        
+        <Button 
+          className="w-full bg-brand text-primary-foreground hover:opacity-90" 
+          onClick={handleRequestAccess}
+          disabled={requesting}
+        >
+          {requesting ? "Enviando..." : "Solicitar Acesso"}
+        </Button>
 
-      <Button 
-        variant="outline" 
-        className="w-full text-xs" 
-        onClick={handleSimulateApproval}
-      >
-        <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
-      </Button>
-    </div>
-  );
-};
+        <Button 
+          variant="outline" 
+          className="w-full text-xs" 
+          onClick={handleSimulateApproval}
+        >
+          <Zap className="h-3 w-3 mr-1" /> Simular aprovação (TESTE)
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">

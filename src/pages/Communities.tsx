@@ -46,7 +46,14 @@ export default function Communities() {
     const tenant = tenants.find(t => t.id === id);
     if (!tenant) return;
     
-    const status = getCommunityAccess(tenant.slug, isOwner ? "owner" : undefined);
+    // B2B sempre tem acesso
+    if (isB2B) {
+      selectTenant(id);
+      nav("/feed");
+      return;
+    }
+    
+    const status = getCommunityAccess(tenant.slug);
     
     if (status === "approved") {
       selectTenant(id);
@@ -62,6 +69,13 @@ export default function Communities() {
     
     const tenant = discover.find(t => t.id === id);
     if (!tenant) return;
+    
+    // B2B sempre tem acesso
+    if (isB2B) {
+      selectTenant(id);
+      nav("/feed");
+      return;
+    }
     
     const status = getCommunityAccess(tenant.slug);
     
