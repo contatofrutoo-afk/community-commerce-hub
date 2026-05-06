@@ -1,270 +1,246 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
-import TopBar from "@/components/layout/TopBar";
-import BottomNav from "@/components/layout/BottomNav";
+import { useTenant } from "@/contexts/TenantContext";
+import { getB2BNotifications, getB2CNotifications, approveRequest, rejectRequest, B2BNotification, B2CNotification } from "@/lib/communityAccess";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { toast } from "sonner";
-import { Bell, BellOff, MessageSquare, AtSign, Radio, FileText, Check, CheckCheck } from "lucide-react";
+import { Bell, Check, X, User, Mail, Building2, ArrowRight } from "lucide-react";
 
-type Notification = {
+type TenantInfo = {
   id: string;
-  tenant_id: string;
-  user_id: string;
-  actor_id: string | null;
-  type: string;
-  title: string;
-  body: string | null;
-  priority: "high" | "medium" | "low";
-  read_at: string | null;
-  data: Record<string, unknown>;
-  reference_id: string | null;
-  created_at: string;
-  actor_profiles?: { name: string; avatar_url: string | null } | null;
-};
-
-type NotificationSummary = {
-  replies: number;
-  mentions: number;
-  liveStarted: number;
-  newPosts: number;
-};
-
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; bgColor: string; priority: number }> = {
-  reply_message: { icon: MessageSquare, bgColor: "bg-blue-100", priority: 3 },
-  mention: { icon: AtSign, bgColor: "bg-purple-100", priority: 4 },
-  live_started: { icon: Radio, bgColor: "bg-red-100", priority: 2 },
-  new_post: { icon: FileText, bgColor: "bg-green-100", priority: 1 },
+  name: string;
+  slug: string;
 };
 
 export default function Notifications() {
-  const { tenant } = useTenant();
-  const { user } = useAuth();
+  const { user, isB2B } = useAuth();
+  const { tenants } = useTenant();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  const [b2bNotifications, setB2bNotifications] = useState<B2BNotification[]>([]);
+  const [b2cNotifications, setB2cNotifications] = useState<B2CNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<NotificationSummary>({ replies: 0, mentions: 0, liveStarted: 0, newPosts: 0 });
 
   const loadNotifications = async () => {
-    if (!tenant || !user) return;
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*, actor_profiles:actor_id(name, avatar_url)")
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .order("priority DESC", { foreignTable: "notifications", ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error("Load notifications error:", error);
-      setLoading(false);
+    if (!user || !user.id) {
+      navigate("/auth");
       return;
     }
 
-    const notificationsData = (data || []) as unknown as Notification[];
-    setNotifications(notificationsData);
+    if (isB2B) {
+      let allNotifications: B2BNotification[] = [];
+      let tenantList: TenantInfo[] = [];
 
-    const unread = notificationsData.filter(n => !n.read_at);
-    setSummary({
-      replies: unread.filter(n => n.type === "reply_message").length,
-      mentions: unread.filter(n => n.type === "mention").length,
-      liveStarted: unread.filter(n => n.type === "live_started").length,
-      newPosts: unread.filter(n => n.type === "new_post").length,
-    });
+      if (tenants && tenants.length > 0) {
+        tenantList = tenants as TenantInfo[];
+      } else {
+        const { data: mems, error } = await supabase
+          .from("memberships")
+          .select("tenant_id, role, tenants(id, name, slug)")
+          .eq("user_id", user.id)
+          .in("role", ["owner", "admin"]);
+        
+        if (error) {
+          console.error("Erro ao buscar tenants:", error);
+        }
+        
+        if (mems) {
+          tenantList = mems
+            .map((m: any) => m.tenants)
+            .filter(Boolean) as TenantInfo[];
+        }
+      }
 
+      if (tenantList.length > 0) {
+        const combined: B2BNotification[] = [];
+        tenantList.forEach((t: TenantInfo) => {
+          const notifications = getB2BNotifications(t.id);
+          combined.push(...notifications);
+        });
+
+        const uniqueMap = new Map();
+        combined.forEach((item) => {
+          const key = item.userId + item.createdAt;
+          uniqueMap.set(key, item);
+        });
+        allNotifications = Array.from(uniqueMap.values());
+      }
+      
+      allNotifications.sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+      
+      console.log("B2B Notifications carregadas:", allNotifications.length);
+setB2bNotifications(allNotifications);
+       
+    } else if (user) {
+      const notifications = getB2CNotifications(user.id);
+      setB2cNotifications(notifications);
+    }
+    
     setLoading(false);
   };
 
   useEffect(() => {
-    if (tenant && user) loadNotifications();
-  }, [tenant, user]);
-
-  const handleNotificationClick = async (notification: Notification) => {
-    if (!notification.read_at) {
-      await supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", notification.id);
-
-      setNotifications(prev =>
-        prev.map(n => n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n)
-      );
-    }
-
-    const referenceId = notification.reference_id || notification.data?.topic_id || notification.data?.post_id;
-
-    switch (notification.type) {
-      case "reply_message":
-      case "mention":
-        if (referenceId) navigate(`/conversas/${referenceId}`);
-        else navigate("/conversas");
-        break;
-      case "live_started":
-        if (referenceId) navigate(`/feed?live=${referenceId}`);
-        else navigate("/feed");
-        break;
-      case "new_post":
-        navigate(`/feed?post=${referenceId}`);
-        break;
-      default:
-        navigate("/feed");
-    }
-  };
-
-  const markAllAsRead = async () => {
-    if (!tenant || !user) return;
-
-    await supabase
-      .from("notifications")
-      .update({ read_at: new Date().toISOString() })
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .is("read_at", null);
-
-    toast.success("Todas marcadas como lidas");
     loadNotifications();
+  }, [user, isB2B, tenants]);
+
+  const handleApprove = async (notification: B2BNotification) => {
+    approveRequest(notification.requestId);
+    await loadNotifications();
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "border-l-red-500";
-      case "medium": return "border-l-yellow-500";
-      case "low": return "border-l-gray-300";
-      default: return "border-l-gray-300";
-    }
+  const handleReject = async (notification: B2BNotification) => {
+    rejectRequest(notification.requestId);
+    await loadNotifications();
   };
 
-  const formatTime = (date: string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "Agora";
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   };
 
-  const getTypeIcon = (type: string) => {
-    const config = TYPE_CONFIG[type];
-    if (!config) return Bell;
-    return config.icon;
-  };
-
-  if (!tenant) {
+  if (loading) {
     return (
-      <div className="min-h-[100dvh] flex flex-col bg-background">
-        <TopBar />
-        <main className="flex-1 grid place-items-center">
-          <p className="text-muted-foreground">Selecione uma comunidade</p>
-        </main>
-        <BottomNav />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background">
-      <TopBar />
-
-      <main className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="p-6 text-center text-muted-foreground">Carregando...</div>
-        ) : notifications.length === 0 ? (
-          <div className="p-8 text-center">
-            <BellOff className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <p className="text-lg font-medium text-muted-foreground mb-2">Você está em dia com sua comunidade</p>
-            <p className="text-sm text-muted-foreground/70">Novas interações aparecerão aqui</p>
-          </div>
-        ) : (
-          <>
-            {(summary.replies > 0 || summary.mentions > 0 || summary.liveStarted > 0) && (
-              <div className="grid grid-cols-3 gap-2 p-4 border-b bg-gray-50">
-                {summary.replies > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <MessageSquare className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <p className="text-lg font-bold text-blue-600">{summary.replies}</p>
-                    <p className="text-xs text-muted-foreground">respostas</p>
-                  </div>
-                )}
-                {summary.mentions > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <AtSign className="h-5 w-5 mx-auto mb-1 text-purple-600" />
-                    <p className="text-lg font-bold text-purple-600">{summary.mentions}</p>
-                    <p className="text-xs text-muted-foreground">menções</p>
-                  </div>
-                )}
-                {summary.liveStarted > 0 && (
-                  <div className="bg-white rounded-lg p-3 text-center border">
-                    <Radio className="h-5 w-5 mx-auto mb-1 text-red-600" />
-                    <p className="text-lg font-bold text-red-600">{summary.liveStarted}</p>
-                    <p className="text-xs text-muted-foreground">lives</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="divide-y divide-gray-100">
-              {notifications.map((n) => {
-                const IconComponent = getTypeIcon(n.type);
-                return (
-                  <div
-                    key={n.id}
-                    className={`flex items-start gap-3 p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                      n.read_at ? "opacity-60" : "bg-white"
-                    } ${getPriorityColor(n.priority)}`}
-                    onClick={() => handleNotificationClick(n)}
-                  >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={n.actor_profiles?.avatar_url || ""} />
-                      <AvatarFallback className="bg-gray-200 text-gray-600 text-sm">
-                        {n.actor_profiles?.name?.[0]?.toUpperCase() || n.title[0]?.toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                        {n.title}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatTime(n.created_at)}
-                      </p>
-                    </div>
-
-                    {!n.read_at && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
-                    )}
-
-                    <div className={`p-2 rounded-full ${TYPE_CONFIG[n.type]?.bgColor || "bg-gray-100"}`}>
-                      <IconComponent className="h-4 w-4" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </main>
-
-      {notifications.some(n => !n.read_at) && (
-        <div className="p-4 border-t border-border bg-white">
-          <Button onClick={markAllAsRead} variant="outline" className="w-full">
-            <CheckCheck className="h-4 w-4 mr-2" />
-            Marcar todas como lidas
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
+        <div className="max-w-xl mx-auto flex items-center justify-between px-4 h-14">
+          <h1 className="text-xl font-semibold">Notificações</h1>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            Voltar
           </Button>
         </div>
-      )}
+      </header>
 
-      <BottomNav />
+      <div className="max-w-xl mx-auto px-4 py-6">
+        {isB2B ? (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold mb-4">Solicitações de acesso</h2>
+            
+            {b2bNotifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma solicitação de acesso no momento</p>
+              </div>
+            ) : (
+              b2bNotifications.map((notification) => (
+                <div key={notification.userId + notification.createdAt} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-brand/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-brand" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{notification.userName || "Usuário"}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> {notification.userEmail}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span>Comunidade: {notification.tenantName || notification.slug}</span>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(notification.createdAt)}
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => handleApprove(notification)}
+                    >
+                      <Check className="h-4 w-4 mr-2" /> Aprovar
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                      onClick={() => handleReject(notification)}
+                    >
+                      <X className="h-4 w-4 mr-2" /> Recusar
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold mb-4">Suas notificações</h2>
+            
+            {b2cNotifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma atualização no momento</p>
+              </div>
+            ) : (
+              b2cNotifications.map((notification) => (
+                <div 
+                  key={notification.slug + notification.createdAt + notification.type}
+                  className={`border rounded-2xl p-4 space-y-3 ${
+                    notification.type === "approved" 
+                      ? "bg-green-50 border-green-200" 
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                      notification.type === "approved" 
+                        ? "bg-green-100" 
+                        : "bg-red-100"
+                    }`}>
+                      {notification.type === "approved" ? (
+                        <Check className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <X className="h-5 w-5 text-red-600" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold">
+                        {notification.type === "approved" ? "Acesso aprovado" : "Acesso recusado"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{notification.message}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span>{notification.tenantName}</span>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(notification.createdAt)}
+                  </div>
+                  
+                  {notification.type === "approved" && (
+                    <Button 
+                      className="w-full bg-brand text-primary-foreground hover:opacity-90"
+                      onClick={() => navigate(`/m/${notification.slug}`)}
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" /> Entrar na comunidade
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

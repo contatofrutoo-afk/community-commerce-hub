@@ -2,23 +2,25 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 import PWAInstallButton from "@/components/PWAInstallButton";
+import LiveSocialProof from "@/components/LiveSocialProof";
 import {
   HeroSection,
   ProblemSection,
   SolutionSection,
   HowItWorksSection,
-  WhoSection,
   ProductSection,
+  WhoSection,
   ComparisonSection,
+  ValueProofSection,
   PricingSection,
   CTASection,
 } from "@/components/landing";
 
 export default function Landing() {
   return (
-    <main className="min-h-screen bg-background">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="mx-auto max-w-5xl flex items-center justify-between px-6 py-3">
+    <main className="min-h-screen bg-white">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#1a1a1a]/5">
+        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center gap-2">
             <Logo size={100} />
           </Link>
@@ -34,15 +36,20 @@ export default function Landing() {
       <HeroSection />
       <ProblemSection />
       <SolutionSection />
-      <HowItWorksSection />
-      <WhoSection />
+      <section id="como-funciona">
+        <HowItWorksSection />
+      </section>
       <ProductSection />
+      <WhoSection />
       <ComparisonSection />
+      <ValueProofSection />
       <PricingSection />
       <CTASection />
 
-      <footer className="border-t border-border/50 py-6">
-        <div className="mx-auto max-w-5xl px-6 flex justify-between text-xs text-muted-foreground">
+      <LiveSocialProof />
+
+      <footer className="border-t border-[#1a1a1a]/10 py-8 bg-white">
+        <div className="mx-auto max-w-6xl px-6 flex flex-wrap gap-4 justify-between text-xs text-[#6a6a6a]">
           <span>&copy; {new Date().getFullYear()} weaze</span>
           <span>Infraestrutura para comunidades.</span>
         </div>

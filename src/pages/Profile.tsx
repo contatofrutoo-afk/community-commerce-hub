@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
-  const { user, signOut, isB2C } = useAuth();
+  const { user, signOut, isB2B } = useAuth();
   const { tenant, isOwner, tenants } = useTenant();
   const nav = useNavigate();
   const [name, setName] = useState("");
@@ -33,6 +33,7 @@ export default function Profile() {
   
   // Gamification
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -237,52 +238,6 @@ export default function Profile() {
             <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
               <Link to="/communities"><ArrowLeftRight className="h-4 w-4 mr-2" />Trocar de comunidade ({tenants.length})</Link>
             </Button>
-          )}
-          {isOwner && (
-            <>
-              <div className="bg-gradient-to-r from-[#630091]/10 to-[#d81e62]/10 rounded-xl p-4 border border-[#630091]/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Link2 className="h-4 w-4 text-[#630091]" />
-                  <span className="font-semibold text-sm">Link da sua comunidade</span>
-                </div>
-                <code className="text-xs text-muted-foreground break-all">
-                  {typeof window !== "undefined" ? window.location.origin : ""}/m/{tenant?.slug || "sua-marca"}
-                </code>
-                <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => {
-                      const link = `${window.location.origin}/m/${tenant?.slug || "sua-marca"}`;
-                      navigator.clipboard.writeText(link);
-                      toast.success("Link copiado!");
-                    }}
-                  >
-                    <Copy className="h-3 w-3 mr-1" /> Copiar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    asChild
-                  >
-                    <a href={`/m/${tenant?.slug || "sua-marca"}`} target="_blank">
-                      <ExternalLink className="h-3 w-3 mr-1" /> Abrir
-                    </a>
-                  </Button>
-                </div>
-              </div>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/admin"><BarChart3 className="h-4 w-4 mr-2" />Painel da marca</Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/admin/content"><Building2 className="h-4 w-4 mr-2" />Gerenciar conteúdo</Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-                <Link to="/metrics/invites"><Link2 className="h-4 w-4 mr-2" />Links de convite</Link>
-              </Button>
-            </>
           )}
         </section>
 

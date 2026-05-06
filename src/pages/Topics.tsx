@@ -107,7 +107,7 @@ export default function Topics() {
       .order("last_activity_at", { ascending: false })
       .limit(30);
     
-    if (error) { console.error("Load topics error:", error); setLoading(false); return; }
+    if (error) { setLoading(false); return; }
     
     // Para cada tópico, contar mensagens dinamicamente
     const topicsWithCounts = await Promise.all((topicsData || []).map(async (topic) => {
@@ -148,8 +148,6 @@ export default function Topics() {
     setSelectedTopic(null);
     setMessages([]);
     
-    console.log("Loading direct topic:", topicIdFromParams, "tenant:", tenant.id);
-    
     const { data: topic, error: topicError } = await supabase
       .from("topics")
       .select("*")
@@ -157,12 +155,10 @@ export default function Topics() {
       .single();
     
     if (topicError) { 
-      console.error("Topic load error:", topicError);
       setLoadingMessages(false); 
       return; 
     }
     
-    console.log("Topic found:", topic);
     setSelectedTopic(topic);
     
     // Simple query without join
@@ -171,8 +167,6 @@ export default function Topics() {
       .select("*")
       .eq("topic_id", topicIdFromParams)
       .order("created_at", { ascending: false });
-    
-    console.log("Messages loaded:", msgs, "error:", msgError);
     
     if (msgError || !msgs) {
       console.error("Load messages error:", msgError);
@@ -204,7 +198,6 @@ export default function Topics() {
       profiles: profilesMap[m.user_id] || null
     }));
     
-    console.log("Messages with profiles:", msgsWithProfiles);
     setLoadingMessages(false);
     setMessages(msgsWithProfiles);
   };
@@ -214,7 +207,6 @@ export default function Topics() {
   }, [tenant]);
 
   useEffect(() => {
-    console.log("EFFECT: topicIdFromParams=", topicIdFromParams, "tenant=", !!tenant);
     if (topicIdFromParams && tenant) {
       loadDirectTopic();
     }
@@ -271,20 +263,16 @@ export default function Topics() {
     setSelectedTopic(topic);
     setLoadingMessages(true);
     
-    console.log("Loading messages for topic:", topic.id);
-    
     const { data, error } = await supabase
       .from("topic_messages")
       .select("*, profiles:profiles!topic_messages_user_id_fkey(name, avatar_url)")
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: false });
     
-    console.log("Messages loaded:", data, "error:", error);
-    
     setLoadingMessages(false);
-    if (error) { 
-      console.error("Load messages error:", error);
-      return; 
+    if (error) return;
+      setMessages([]);
+      return;
     }
     setMessages((data as any) || []);
   };
@@ -668,7 +656,6 @@ export default function Topics() {
       {/* Topic Detail View - Always render if we have a selectedTopic or messages */}
       {(selectedTopic || messages.length > 0) && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          {void console.log("RENDER: selectedTopic=", selectedTopic, "messages=", messages.length)}
           {/* Topic Header */}
           <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center gap-3">
             <button onClick={closeTopic} className="text-gray-500 p-1">←</button>

@@ -23,24 +23,18 @@ if ('serviceWorker' in navigator) {
       return;
     }
 
-    navigator.serviceWorker.register('/sw.js').then(() => {
-      console.log('PWA service worker registrado');
-    }).catch((error) => {
-      console.error('Falha ao registrar service worker', error);
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Service worker registration failed silently
     });
   });
 }
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  console.log('PWA EVENTO DISPARADO');
-  console.log('✅ Evento PWA disparado! Install disponível.');
-  console.log('Plataforma:', navigator.platform);
-  console.log('User Agent:', navigator.userAgent);
 });
 
 window.addEventListener('appinstalled', () => {
-  console.log('✅ PWA instalado com sucesso!');
+  // PWA installed
 });
 
 createRoot(document.getElementById("root")!).render(<App />);

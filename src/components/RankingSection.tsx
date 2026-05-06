@@ -58,23 +58,44 @@ export default function RankingSection({ period = "monthly" }: { period?: "month
   const [monthly, setMonthly] = useState<RankingEntry[]>([]);
   const [yearly, setYearly] = useState<RankingEntry[]>([]);
   const [rewards, setRewards] = useState<TenantReward[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tenant) return;
+    if (!tenant) {
+      setMonthly([]);
+      setYearly([]);
+      setRewards([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
+    setError(null);
+    
     (async () => {
       try {
-        const [{ data: m }, { data: y }, { data: rw }] = await Promise.all([
+        const [{ data: m, error: mErr }, { data: y, error: yErr }, { data: rw, error: rwErr }] = await Promise.all([
           supabase.rpc("get_monthly_ranking", { p_tenant_id: tenant.id, p_limit: 10 }),
           supabase.rpc("get_yearly_ranking", { p_tenant_id: tenant.id, p_limit: 10 }),
           supabase.from("tenant_rewards").select("*").eq("tenant_id", tenant.id).eq("is_active", true).order("min_position"),
         ]);
+        
+        if (mErr || yErr) {
+          console.error("RankingSection RPC error:", mErr || yErr);
+          setError("Erro ao carregar ranking");
+          return;
+        }
+        
         setMonthly((m as any[] || []).map((r: any) => ({ rank: r.rank ?? 0, user_id: r.user_id ?? "", name: r.name ?? "Usuário", avatar_url: r.avatar_url ?? null, city: r.city ?? null, state: r.state ?? null, points: r.monthly_points ?? 0 })));
         setYearly((y as any[] || []).map((r: any) => ({ rank: r.rank ?? 0, user_id: r.user_id ?? "", name: r.name ?? "Usuário", avatar_url: r.avatar_url ?? null, city: r.city ?? null, state: r.state ?? null, points: r.yearly_points ?? 0 })));
         setRewards((rw as any[]) || []);
-      } catch (e) { console.error("RankingSection:", e); }
-      finally { setLoading(false); }
+      } catch (e) { 
+        console.error("RankingSection:", e);
+        setError("Erro ao carregar ranking");
+      } finally { 
+        setLoading(false); 
+      }
     })();
   }, [tenant?.id]);
 
@@ -88,7 +109,11 @@ export default function RankingSection({ period = "monthly" }: { period?: "month
         <h3 className="font-display text-lg">Ranking {label}</h3>
       </div>
 
-      {loading ? <Skeleton /> : entries.length === 0 ? (
+      {loading ? <Skeleton /> : error ? (
+        <div className="text-center py-8 text-destructive">
+          <p className="text-sm">{error}</p>
+        </div>
+      ) : entries.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Star className="h-8 w-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Ninguém no ranking ainda</p>

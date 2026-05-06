@@ -1,80 +1,78 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
-import { Check, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { UserPlus, MessageCircle, Users } from "lucide-react";
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
-  }
-};
-
-const comparison = [
-  { feature: "Feed próprio", social: false, weaze: true },
-  { feature: "Mensagens da marca", social: false, weaze: true },
-  { feature: "Agenda integrada", social: false, weaze: true },
-  { feature: "Dados da audiência", social: false, weaze: true },
-  { feature: "Membros ilimitados", social: false, weaze: true },
-  { feature: "Sem algoritmos", social: false, weaze: true },
-  { feature: "Sua marca", social: false, weaze: true },
+const messages = [
+  { text: "Novo membro entrou na comunidade", icon: UserPlus },
+  { text: "Usuário solicitou acesso", icon: MessageCircle },
+  { text: "Comunidade ativa agora", icon: Users },
+  { text: "Novo comentário em post", icon: MessageCircle },
+  { text: "Solicitação aprovada", icon: UserPlus },
 ];
 
 export default function ComparisonSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const [currentMsg, setCurrentMsg] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsVisible(false);
+      setTimeout(() => {
+        setCurrentMsg((prev) => (prev + 1) % messages.length);
+        setIsVisible(true);
+      }, 500);
+    }, 4000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const msg = messages[currentMsg];
 
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-[#d81e62]/5 to-white" />
-      
-      <div className="relative mx-auto max-w-4xl px-6">
-        <motion.div
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          variants={fadeInUp}
-          className="text-center mb-16"
-        >
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#d81e62] font-semibold mb-4">
-            Comparativo
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-balance text-[#1a1a1a]">
-            Weaze vs Redes Sociais
+    <section className="py-16 md:py-24 bg-white">
+      <div className="max-w-4xl mx-auto px-6 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <h2 className="font-display text-3xl md:text-4xl text-[#1a1a1a] mb-4">
+            Comunidades ativas gerando resultado
           </h2>
         </motion.div>
 
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#630091]/10">
-          <div className="grid grid-cols-3 bg-gradient-to-r from-[#630091]/5 via-[#d81e62]/5 to-[#630091]/5 border-b border-[#630091]/10 py-4 px-6">
-            <div className="font-semibold text-[#1a1a1a]">Recurso</div>
-            <div className="text-center font-medium text-muted-foreground">Redes</div>
-            <div className="text-center font-semibold text-[#d81e62]">Weaze</div>
-          </div>
-          {comparison.map((item, i) => (
+        {/* Proof notifications */}
+        <motion.div className="mt-10 inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-[#630091]/10 to-[#d81e62]/10 rounded-full border border-[#630091]/20">
+          <AnimatePresence mode="wait">
+            {isVisible && (
+              <motion.div
+                key={currentMsg}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center gap-2"
+              >
+                <msg.icon className="h-4 w-4 text-[#630091]" />
+                <span className="text-sm font-medium text-[#630091]">{msg.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[
+            { number: "2.5k+", label: "Comunidades ativas" },
+            { number: "50k+", label: "Membros" },
+            { number: "10k+", label: "Posts publicados" },
+          ].map((stat, i) => (
             <motion.div
-              key={item.feature}
-              initial={{ opacity: 0 }}
-              animate={isInView ? { opacity: 1 } : {}}
-              transition={{ delay: 0.05 * i }}
-              className="grid grid-cols-3 py-4 px-6 border-b border-[#630091]/5 last:border-0"
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="text-center"
             >
-              <div className="font-medium text-[#1a1a1a]">{item.feature}</div>
-              <div className="flex justify-center">
-                {item.social ? (
-                  <Check className="h-5 w-5 text-green-500" />
-                ) : (
-                  <X className="h-5 w-5 text-red-400" />
-                )}
+              <div className="font-display text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#630091] to-[#d81e62] bg-clip-text text-transparent">
+                {stat.number}
               </div>
-              <div className="flex justify-center">
-                {item.weaze ? (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center">
-                    <Check className="h-4 w-4 text-white" />
-                  </div>
-                ) : (
-                  <X className="h-5 w-5 text-red-400" />
-                )}
-              </div>
+              <div className="text-sm text-[#6a6a6a] mt-2">{stat.label}</div>
             </motion.div>
           ))}
         </div>

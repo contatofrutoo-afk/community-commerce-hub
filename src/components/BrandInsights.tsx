@@ -3,12 +3,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Users, MessageCircle, TrendingUp, Zap, BarChart3 } from "lucide-react";
+import { Users, MessageCircle, TrendingUp, Zap, BarChart3, Loader2 } from "lucide-react";
 
-type ActionStats = { type: string; count: number; percentage: number };
 type InsightStats = { total_users: number; active_users: number; feed_engagement: number; conv_engagement: number; avg_cta_interaction: number };
 
-function InsightCard({ label, value, sub, icon: Icon, color }: { label: string; value: string; sub?: string; icon?: React.ElementType; color?: string }) {
+function InsightCard({ label, value, sub, icon: Icon, color, loading }: { label: string; value: string; sub?: string; icon?: React.ElementType; color?: string; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="p-3 rounded-xl border border-border bg-muted/30 animate-pulse">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="h-4 w-4 rounded bg-muted" />
+          <div className="h-3 w-20 rounded bg-muted" />
+        </div>
+        <div className="h-6 w-12 rounded bg-muted mt-1" />
+      </div>
+    );
+  }
+  
   return (
     <div className={cn("p-3 rounded-xl border", color ? `border-${color}/20 bg-${color}/5` : "border-border bg-muted/30")}>
       <div className="flex items-center gap-2 mb-1">
@@ -21,46 +32,108 @@ function InsightCard({ label, value, sub, icon: Icon, color }: { label: string; 
   );
 }
 
+function Skeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <InsightCard label="" value="" loading />
+      <InsightCard label="" value="" loading />
+      <InsightCard label="" value="" loading />
+      <InsightCard label="" value="" loading />
+    </div>
+  );
+}
+
 export default function BrandInsights(_props: { conversationsCount?: number; ctaClicks?: number } = {}) {
   const { tenant } = useTenant();
   const [insights, setInsights] = useState<InsightStats | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tenant) return;
+    if (!tenant) {
+      setInsights(null);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
+    setError(null);
+    
     (async () => {
       try {
         const now = new Date();
         const d30 = new Date(now.getTime() - 30 * 86400_000).toISOString();
-        const [{ data: interactions }, { data: comments }, { data: topics }, { data: ctas }] = await Promise.all([
-          supabase.from("interactions").select("action_type").eq("tenant_id", tenant.id).gte("created_at", d30),
-          supabase.from("interactions").select("user_id").eq("tenant_id", tenant.id).eq("action_type", "comment").gte("created_at", d30),
-          supabase.from("topic_messages").select("user_id, topics!inner(tenant_id)").eq("topics.tenant_id", tenant.id).gte("created_at", d30) as any,
-          supabase.from("interactions").select("action_type").eq("tenant_id", tenant.id).eq("action_type", "click_cta").gte("created_at", d30),
+        
+        const [{ data: interactions, error: intErr }, { data: topicsData, error: topicErr }] = await Promise.all([
+          supabase.from("interactions").select("action_type, user_id").eq("tenant_id", tenant.id).gte("created_at", d30),
+          supabase.from("topic_messages").select("id, user_id").eq("tenant_id", tenant.id).gte("created_at", d30),
         ]);
+        
+        if (intErr || topicErr) {
+          console.error("BrandInsights query error:", intErr || topicErr);
+          setError("Erro ao carregar insights");
+          return;
+        }
+        
         const allInteractions = interactions ?? [];
+        const topicsList = topicsData ?? [];
+        
         const totalInteractions = allInteractions.length;
         const feedCount = allInteractions.filter((i: any) => i.action_type !== "live_participation").length;
-        const convCount = (topics ?? []).length;
-        const activeUserIds = new Set(allInteractions.map((i: any) => i.user_id));
+        const convCount = topicsList.length;
+        
+        const activeUserIds = new Set(allInteractions.map((i: any) => i.user_id).filter(Boolean));
+        topicsList.forEach((t: any) => activeUserIds.add(t.user_id));
+        
+        const uniqueActiveUsers = activeUserIds.size;
+        
         const feedPct = totalInteractions > 0 ? Math.round((feedCount / totalInteractions) * 100) : 0;
         const convPct = totalInteractions > 0 ? Math.round((convCount / totalInteractions) * 100) : 0;
+        
+        const ctaCount = allInteractions.filter((i: any) => i.action_type === "click_cta").length;
+        
         setInsights({
-          total_users: activeUserIds.size,
-          active_users: activeUserIds.size,
+          total_users: uniqueActiveUsers,
+          active_users: uniqueActiveUsers,
           feed_engagement: feedPct,
           conv_engagement: convPct,
-          avg_cta_interaction: totalInteractions > 0 ? Math.round((ctas ?? []).length / totalInteractions * 100) : 0,
+          avg_cta_interaction: totalInteractions > 0 ? Math.round((ctaCount / totalInteractions) * 100) : 0,
         });
-      } catch (e) { console.error("BrandInsights:", e); }
-      finally { setLoading(false); }
+      } catch (e) { 
+        console.error("BrandInsights:", e);
+        setError("Erro ao carregar insights");
+      } finally { 
+        setLoading(false); 
+      }
     })();
   }, [tenant?.id]);
 
-  if (!insights) return null;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-brand" />
+          <h3 className="font-display text-lg">Insights da Marca</h3>
+        </div>
+        <Skeleton />
+      </div>
+    );
+  }
 
-  // Gerar insights baseados em dados REAIS (não genéricos)
+  if (error || !insights) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-brand" />
+          <h3 className="font-display text-lg">Insights da Marca</h3>
+        </div>
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">{error || "Sem dados suficientes"}</p>
+        </div>
+      </div>
+    );
+  }
+
   const getInsights = () => {
     const list = [];
     const hasAnyInteraction = insights.total_users > 0 || insights.feed_engagement > 0 || insights.conv_engagement > 0;
@@ -112,7 +185,6 @@ export default function BrandInsights(_props: { conversationsCount?: number; cta
         <InsightCard label="Interação CTA" value={`${insights.avg_cta_interaction}%`} sub="dos cliques" icon={Zap} color="orange" />
       </div>
       
-      {/* Insights Condicionais */}
       {conditionalInsights.length > 0 && (
         <div className="space-y-2">
           {conditionalInsights.map((insight, idx) => (
