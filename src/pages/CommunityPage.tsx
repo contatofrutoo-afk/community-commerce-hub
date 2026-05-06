@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAccessStatus, requestAccess, AccessStatus } from "@/lib/communityAccess";
+import { getAccessStatus, requestAccess, addGlobalRequest, AccessStatus } from "@/lib/communityAccess";
 import { Building2, Users, MessageCircle, Calendar, ArrowRight, ArrowLeft, Clock, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -97,6 +97,14 @@ export default function CommunityPage() {
       user.user_metadata?.name || user.email?.split('@')[0] || null,
       user.email || "",
       tenant.id
+    );
+    
+    addGlobalRequest(
+      user.id,
+      user.user_metadata?.name || user.email?.split('@')[0] || null,
+      user.email || "",
+      tenant.id,
+      communitySlug
     );
     
     setAccessStatus("pending");

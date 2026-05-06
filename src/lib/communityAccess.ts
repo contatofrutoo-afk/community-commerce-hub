@@ -1,5 +1,16 @@
 export type AccessStatus = "none" | "pending" | "approved" | "rejected";
 
+export type GlobalAccessRequest = {
+  id: string;
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+  brandId: string;
+  slug: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+};
+
 export type B2BNotification = {
   type: "request_access";
   userId: string;
@@ -134,4 +145,97 @@ export const clearB2BNotifications = (tenantId: string): void => {
 export const clearUserAccessStatus = (slug: string, userId: string): void => {
   if (typeof window === "undefined") return;
   localStorage.removeItem(getAccessKey(slug, userId));
+};
+
+const GLOBAL_KEY = "global_access_requests";
+
+export const addGlobalRequest = (userId: string, userName: string | null, userEmail: string, brandId: string, slug: string): void => {
+  if (typeof window === "undefined") return;
+  
+  let requests: GlobalAccessRequest[] = [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_KEY);
+    requests = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    requests = [];
+  }
+  
+  const newRequest: GlobalAccessRequest = {
+    id: Date.now().toString(),
+    userId,
+    userName,
+    userEmail,
+    brandId,
+    slug,
+    status: "pending",
+    createdAt: new Date().toISOString()
+  };
+  
+  requests.unshift(newRequest);
+  localStorage.setItem(GLOBAL_KEY, JSON.stringify(requests));
+  console.log("Solicitação global adicionada:", newRequest);
+};
+
+export const getRequestsByBrandId = (brandId: string): GlobalAccessRequest[] => {
+  if (typeof window === "undefined") return [];
+  
+  let requests: GlobalAccessRequest[] = [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_KEY);
+    requests = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+  
+  return requests.filter(r => r.brandId === brandId);
+};
+
+export const getAllRequestsByBrandIds = (brandIds: string[]): GlobalAccessRequest[] => {
+  if (typeof window === "undefined") return [];
+  
+  let requests: GlobalAccessRequest[] = [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_KEY);
+    requests = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+  
+  return requests.filter(r => brandIds.includes(r.brandId));
+};
+
+export const updateRequestStatus = (requestId: string, newStatus: "approved" | "rejected"): void => {
+  if (typeof window === "undefined") return;
+  
+  let requests: GlobalAccessRequest[] = [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_KEY);
+    requests = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return;
+  }
+  
+  const updated = requests.map(r => {
+    if (r.id === requestId) {
+      return { ...r, status: newStatus };
+    }
+    return r;
+  });
+  
+  localStorage.setItem(GLOBAL_KEY, JSON.stringify(updated));
+  console.log("Status atualizado para:", newStatus);
+};
+
+export const getUserRequests = (userId: string): GlobalAccessRequest[] => {
+  if (typeof window === "undefined") return [];
+  
+  let requests: GlobalAccessRequest[] = [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_KEY);
+    requests = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+  
+  return requests.filter(r => r.userId === userId);
 };

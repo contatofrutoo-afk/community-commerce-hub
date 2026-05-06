@@ -34,6 +34,7 @@ const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
 const AdminFunnel = lazy(() => import("./pages/admin/Funnel"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Requests = lazy(() => import("./pages/Requests"));
 const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -136,6 +137,7 @@ const App = () => (
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/invite/:code" element={<InviteLanding />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
+                    <Route path="/requests" element={<Protected><Requests /></Protected>} />
                     <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
