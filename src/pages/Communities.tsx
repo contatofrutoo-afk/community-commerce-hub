@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, LogOut, Search, Users, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
-import { getCommunityAccess, requestCommunityAccess } from "@/lib/communityAccess";
+import { getAccessStatus, requestAccess } from "@/lib/communityAccess";
 
 type TenantCard = {
   id: string;
@@ -53,7 +53,7 @@ export default function Communities() {
       return;
     }
     
-    const status = getCommunityAccess(tenant.slug);
+    const status = getAccessStatus(tenant.slug, user.id);
     
     if (status === "approved") {
       selectTenant(id);
@@ -77,13 +77,13 @@ export default function Communities() {
       return;
     }
     
-    const status = getCommunityAccess(tenant.slug);
+    const status = getAccessStatus(tenant.slug, user.id);
     
     if (status === "approved") {
       selectTenant(id);
       nav("/feed");
     } else {
-      requestCommunityAccess(tenant.slug);
+      requestAccess(tenant.slug, user.id, user.user_metadata?.name || null, user.email || "", tenant.id);
       selectTenant(id);
       nav(`/c/${tenant.slug}`);
     }

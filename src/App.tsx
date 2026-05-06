@@ -7,7 +7,7 @@ import { Suspense, lazy, useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getCommunityAccess } from "@/lib/communityAccess";
+import { getAccessStatus } from "@/lib/communityAccess";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
@@ -78,8 +78,8 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
       return;
     }
 
-    // B2C: verificar localStorage
-    const status = getCommunityAccess(tenant.slug);
+    // B2C: verificar localStorage com user.id
+    const status = getAccessStatus(tenant.slug, user.id);
     const approved = status === "approved";
     setHasAccess(approved);
     setLoading(false);
