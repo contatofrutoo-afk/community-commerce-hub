@@ -52,7 +52,7 @@ export default function HeroSection() {
         <motion.div
           className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center"
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={stagger}
         >
           {/* LEFT */}
@@ -68,7 +68,6 @@ export default function HeroSection() {
             </motion.div>
 
             <motion.h1
-              variants={fadeInUp}
               className="font-display text-5xl sm:text-6xl lg:text-[4.25rem] leading-[1.02] tracking-tight text-[#0a0a0a] mb-6"
             >
               Transforme sua audiência em uma{" "}
@@ -79,7 +78,7 @@ export default function HeroSection() {
                 <motion.span
                   className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-[#630091] to-[#d81e62] origin-left"
                   initial={{ scaleX: 0 }}
-                  animate={isInView ? { scaleX: 1 } : {}}
+                  animate={{ scaleX: 1 }}
                   transition={{ delay: 0.8, duration: 0.8, ease: "easeOut" }}
                 />
               </span>
@@ -191,7 +190,7 @@ export default function HeroSection() {
             <motion.div
               className="absolute -left-6 top-12 bg-white rounded-2xl shadow-xl border border-[#630091]/10 px-4 py-3 flex items-center gap-3"
               initial={{ opacity: 0, x: -20 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 1.2, duration: 0.6 }}
             >
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center">
@@ -208,7 +207,7 @@ export default function HeroSection() {
             <motion.div
               className="absolute -right-4 bottom-20 bg-white rounded-2xl shadow-xl border border-[#d81e62]/10 px-4 py-3"
               initial={{ opacity: 0, x: 20 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 1.4, duration: 0.6 }}
             >
               <div className="text-xs text-[#6a6a6a] mb-0.5">Novo membro</div>
