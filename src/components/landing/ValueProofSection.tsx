@@ -1,80 +1,37 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
-
-const phrases = [
-  {
-    big: "Sua audiência já existe.",
-    small: "Falta a estrutura certa para transformar atenção em receita.",
-  },
-  {
-    big: "Pare de depender só de redes sociais.",
-    small: "Algoritmos mudam. Sua comunidade fica com você.",
-  },
-  {
-    big: "Construa um ativo próprio.",
-    small: "Dados, relacionamento e marca — tudo na sua mão.",
-  },
-];
+import { motion } from "framer-motion";
+import { MessageCircle, Users, TrendingUp, Check } from "lucide-react";
 
 export default function ValueProofSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden bg-[#0a0a0a]">
-      <motion.div
-        className="absolute -top-40 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#630091]/40 to-transparent blur-3xl"
-        animate={{ scale: [1, 1.2, 1] }}
-        transition={{ duration: 10, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute -bottom-40 right-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-[#d81e62]/40 to-transparent blur-3xl"
-        animate={{ scale: [1.2, 1, 1.2] }}
-        transition={{ duration: 12, repeat: Infinity }}
-      />
-
-      <div className="relative mx-auto max-w-5xl px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#d81e62] font-semibold mb-4">
-            Por que agora
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-white text-balance leading-[1.05]">
-            O jogo mudou.{" "}
-            <span className="bg-gradient-to-r from-[#d81e62] to-[#9c1f7e] bg-clip-text text-transparent">
-              E a sua marca também precisa mudar.
-            </span>
+    <section className="py-16 md:py-24 bg-[#0a0a0a]">
+      <div className="max-w-6xl mx-auto px-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+          <h2 className="font-display text-3xl md:text-4xl text-white mb-4">
+            Por que a Weaze funciona
           </h2>
+          <p className="text-lg text-[#a1a1a1a]">
+            Resultados reais de comunidades que cresceram com a gente
+          </p>
         </motion.div>
 
-        <div className="space-y-12">
-          {phrases.map((p, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { icon: TrendingUp, value: "+312%", label: "Engajamento", desc: "Aumento médio em 30 dias" },
+            { icon: Users, value: "85%", label: "Retenção", desc: "Membros ativos mensais" },
+            { icon: MessageCircle, value: "4.2k", label: "Mensagens", desc: "Conversas por comunidade" },
+          ].map((stat, i) => (
             <motion.div
-              key={p.big}
-              initial={{ opacity: 0, x: i % 2 === 0 ? -40 : 40 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: 0.15 * i, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className={`flex flex-col ${
-                i % 2 === 0 ? "items-start text-left" : "items-end text-right"
-              } max-w-3xl ${i % 2 === 0 ? "" : "ml-auto"}`}
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="text-center p-6 rounded-2xl bg-[#1a1a1a] border border-[#630091]/20"
             >
-              <div className="font-display text-3xl sm:text-4xl lg:text-5xl text-white font-semibold leading-tight mb-3">
-                {p.big}
-              </div>
-              <div className="text-base sm:text-lg text-white/60 max-w-md">
-                {p.small}
-              </div>
-              <div
-                className={`mt-5 h-px w-24 bg-gradient-to-r ${
-                  i % 2 === 0
-                    ? "from-[#d81e62] to-transparent"
-                    : "from-transparent to-[#d81e62]"
-                }`}
-              />
+              <stat.icon className="h-8 w-8 text-[#d81e62] mx-auto mb-4" />
+              <div className="font-display text-4xl font-bold text-white mb-2">{stat.value}</div>
+              <div className="font-semibold text-[#d81e62] mb-1">{stat.label}</div>
+              <div className="text-sm text-[#a1a1a1a]">{stat.desc}</div>
             </motion.div>
           ))}
         </div>

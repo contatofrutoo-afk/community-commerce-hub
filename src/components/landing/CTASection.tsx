@@ -1,77 +1,48 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, DollarSign } from "lucide-react";
+
+const handlePaymentClick = () => {
+  // TODO: inserir link do Mercado Pago aqui
+  console.log("CTA Final - botão de pagamento");
+};
 
 export default function CTASection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden bg-white">
-      <div className="mx-auto max-w-5xl px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-[2.5rem] p-12 sm:p-20 text-center"
-          style={{
-            background:
-              "linear-gradient(135deg, #630091 0%, #8b2091 50%, #d81e62 100%)",
-          }}
-        >
-          {/* Animated orbs */}
-          <motion.div
-            className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-white/15 blur-3xl"
-            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
-            transition={{ duration: 6, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-[#ff5a8a]/30 blur-3xl"
-            animate={{ scale: [1.3, 1, 1.3], opacity: [0.5, 0.8, 0.5] }}
-            transition={{ duration: 8, repeat: Infinity }}
-          />
-
-          <div className="relative">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 mb-8"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-white" />
-              <span className="text-xs font-medium text-white tracking-wide">
-                Pronto para começar
-              </span>
-            </motion.div>
-
-            <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl text-white text-balance leading-[1.05] mb-6">
-              Comece hoje a transformar
-              <br />
-              sua audiência em{" "}
-              <span className="italic">receita recorrente</span>.
-            </h2>
-
-            <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
-              Sem mensalidade por usuário. Sem letra miúda. Apenas a estrutura
-              certa para o próximo passo da sua marca.
-            </p>
-
+    <section className="py-16 md:py-24 bg-white">
+      <div className="max-w-3xl mx-auto px-6 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <h2 className="font-display text-3xl md:text-4xl text-[#1a1a1a] mb-6">
+            Pare de depender de algoritmos.
+            <br />
+            <span className="text-[#630091]">Comece a construir sua própria comunidade hoje.</span>
+          </h2>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/auth">
               <motion.button
-                className="group inline-flex items-center gap-3 bg-white text-[#630091] hover:bg-[#fafafa] shadow-2xl px-10 py-5 rounded-full font-bold text-lg"
-                whileHover={{ scale: 1.05, y: -3 }}
-                whileTap={{ scale: 0.97 }}
-                style={{ boxShadow: "0 20px 60px -10px rgba(0,0,0,0.4)" }}
+                className="inline-flex items-center justify-center gap-2 text-white px-8 py-4 rounded-full font-semibold"
+                style={{
+                  background: "linear-gradient(135deg, #630091 0%, #d81e62 100%)",
+                  boxShadow: "0 10px 40px -10px rgba(99, 0, 145, 0.5)",
+                }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
               >
-                Criar minha comunidade
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                Começar agora
+                <ArrowRight className="h-5 w-5" />
               </motion.button>
             </Link>
-
-            <div className="mt-6 text-sm text-white/70">
-              Grátis para começar · Sem cartão de crédito
-            </div>
+            
+            <motion.button
+              onClick={handlePaymentClick}
+              className="inline-flex items-center justify-center gap-2 bg-white text-[#630091] border-2 border-[#630091] hover:bg-[#630091]/5 px-8 py-4 rounded-full font-medium"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <DollarSign className="h-5 w-5" />
+              Assinar acesso
+            </motion.button>
           </div>
         </motion.div>
       </div>
