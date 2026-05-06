@@ -42,27 +42,62 @@ export default function LiveSocialProof() {
   }, []);
 
   return (
-    <div 
-      className={`fixed bottom-6 left-6 z-40 transition-all duration-500 ease-out ${
-        isVisible 
-          ? "opacity-100 translate-y-0" 
-          : "opacity-0 translate-y-4"
-      }`}
+    <div
+      style={{
+        position: "fixed",
+        bottom: "24px",
+        left: "24px",
+        zIndex: 40,
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0)" : "translateY(16px)",
+        transition: "opacity 500ms ease-out, transform 500ms ease-out",
+        pointerEvents: isVisible ? "auto" : "none",
+      }}
     >
-      <div className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden min-w-[220px] max-w-[280px]">
-        <div className="flex items-center gap-3 p-3">
-          <div className="relative">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
+      <div style={{
+        backgroundColor: "white",
+        border: "1px solid #e5e7eb",
+        borderRadius: "12px",
+        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+        overflow: "hidden",
+        minWidth: "220px",
+        maxWidth: "280px",
+      }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px",
+        }}>
+          <div style={{ position: "relative" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: "linear-gradient(to bottom right, #630091, #d81e62)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              <span style={{ color: "white", fontWeight: 600, fontSize: "14px" }}>
                 {name ? name.charAt(0).toUpperCase() : "?"}
               </span>
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+            <div style={{
+              position: "absolute",
+              bottom: "-2px",
+              right: "-2px",
+              width: "12px",
+              height: "12px",
+              borderRadius: "50%",
+              backgroundColor: "#22c55e",
+              border: "2px solid white",
+            }}></div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500">Novo membro</p>
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {name ? <><span className="text-[#630091]">@</span>{name} entrou na comunidade</> : "..."}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: "12px", color: "#6b7280" }}>Novo membro</p>
+            <p style={{ fontSize: "14px", fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {name ? <><span style={{ color: "#630091" }}>@</span>{name} entrou na comunidade</> : "..."}
             </p>
           </div>
         </div>
