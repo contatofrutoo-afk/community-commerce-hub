@@ -50,7 +50,7 @@ export default function HeroSection() {
 
       <div className="relative mx-auto max-w-6xl px-6 py-16 w-full">
         <motion.div
-          className="grid lg:grid-cols-[1.1fr_1fr] gap-16 items-center"
+          className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={stagger}
@@ -161,7 +161,7 @@ export default function HeroSection() {
           {/* RIGHT — mockup */}
           <motion.div
             variants={fadeInUp}
-            className="relative hidden lg:block"
+            className="relative mt-12 lg:mt-0"
           >
             <motion.div
               className="absolute -inset-8 rounded-[3rem] opacity-60 blur-2xl"
@@ -174,7 +174,7 @@ export default function HeroSection() {
             />
 
             <motion.div
-              className="relative rounded-[2rem] overflow-hidden shadow-2xl border border-white/40 bg-white"
+              className="relative rounded-[2rem] overflow-hidden shadow-2xl border border-white/40 bg-white mx-auto max-w-xs sm:max-w-md lg:max-w-none"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             >
