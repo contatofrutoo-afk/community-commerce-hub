@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
-import { getB2BNotifications, getB2CNotifications, approveAccess, rejectAccess, B2BNotification, B2CNotification } from "@/lib/communityAccess";
+import { getB2BNotifications, getB2CNotifications, approveRequest, rejectRequest, B2BNotification, B2CNotification } from "@/lib/communityAccess";
 import { Button } from "@/components/ui/button";
 import { Bell, Check, X, User, Mail, Building2, ArrowRight } from "lucide-react";
 
@@ -34,7 +34,7 @@ export default function Notifications() {
     console.log("isB2B:", isB2B);
     console.log("Tenants:", tenants?.length || 0);
 
-    console.log("GLOBAL ACCESS REQUESTS:", localStorage.getItem('global_access_requests'));
+    console.log("REQUESTS:", localStorage.getItem("community_access_requests"));
 
     if (isB2B) {
       let allNotifications: B2BNotification[] = [];
@@ -101,12 +101,12 @@ export default function Notifications() {
   }, [user, isB2B, tenants]);
 
   const handleApprove = async (notification: B2BNotification) => {
-    approveAccess(notification.slug, notification.userId, notification.tenantId);
+    approveRequest(notification.requestId);
     await loadNotifications();
   };
 
   const handleReject = async (notification: B2BNotification) => {
-    rejectAccess(notification.slug, notification.userId, notification.tenantId);
+    rejectRequest(notification.requestId);
     await loadNotifications();
   };
 
@@ -167,7 +167,7 @@ export default function Notifications() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Building2 className="h-4 w-4" />
-                    <span>Comunidade: {notification.slug}</span>
+                    <span>Comunidade: {notification.tenantName || notification.slug}</span>
                   </div>
                   
                   <div className="text-xs text-muted-foreground">
