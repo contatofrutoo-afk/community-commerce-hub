@@ -37,12 +37,24 @@ export const setAccessStatus = (slug: string, userId: string, status: AccessStat
 export const requestAccess = (slug: string, userId: string, userName: string | null, userEmail: string, tenantId: string): void => {
   if (typeof window === "undefined") return;
   
+  console.log("=== REQUEST ACCESS ===");
+  console.log("Salvando para tenantId:", tenantId);
+  console.log("Chave:", `notifications_b2b_${tenantId}`);
+  
   setAccessStatus(slug, userId, "pending");
   
   const key = `notifications_b2b_${tenantId}`;
-  const notifications: B2BNotification[] = JSON.parse(localStorage.getItem(key) || "[]");
+  let notifications: B2BNotification[] = [];
   
-  notifications.push({
+  try {
+    const stored = localStorage.getItem(key);
+    notifications = stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error("Erro ao ler notificações:", e);
+    notifications = [];
+  }
+  
+  const newNotification: B2BNotification = {
     type: "request_access",
     userId,
     userName,
@@ -50,9 +62,20 @@ export const requestAccess = (slug: string, userId: string, userName: string | n
     slug,
     tenantId,
     createdAt: new Date().toISOString()
-  });
+  };
+  
+  notifications.unshift(newNotification);
   
   localStorage.setItem(key, JSON.stringify(notifications));
+  
+  console.log("Notificação salva! Total:", notifications.length);
+  console.log("Todas as chaves de notificação B2B no localStorage:");
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith("notifications_b2b_")) {
+      console.log(" -", k);
+    }
+  }
 };
 
 export const approveAccess = (slug: string, userId: string, tenantId: string, tenantName: string): void => {

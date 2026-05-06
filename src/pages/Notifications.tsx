@@ -59,9 +59,21 @@ export default function Notifications() {
           }
         }
 
+        // Listar todas as chaves de notificação no localStorage
+        console.log("=== TODAS AS CHAVES NO LOCALSTORAGE ===");
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k?.startsWith("notifications")) {
+            const v = localStorage.getItem(k);
+            console.log(`${k}: ${v?.substring(0, 100)}...`);
+          }
+        }
+
         // Buscar notificações para cada tenant
         if (tenantList.length > 0) {
           tenantList.forEach((t: TenantInfo) => {
+            const key = `notifications_b2b_${t.id}`;
+            console.log(`Buscando chave: ${key}`);
             const notifications = getB2BNotifications(t.id);
             console.log(`Notificações para tenant ${t.name} (${t.id}):`, notifications);
             allNotifications = [...allNotifications, ...notifications];
