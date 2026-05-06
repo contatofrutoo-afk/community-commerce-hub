@@ -23,48 +23,72 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    const loadNotifications = async () => {
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
 
-    console.log("=== NOTIFICATIONS DEBUG ===");
-    console.log("User:", user.id);
-    console.log("isB2B:", isB2B);
-    console.log("Tenants do B2B:", tenants);
+      console.log("=== NOTIFICATIONS DEBUG ===");
+      console.log("User:", user.id);
+      console.log("isB2B:", isB2B);
+      console.log("Tenants do B2B:", tenants);
 
-    if (isB2B) {
-      // B2B: buscar notificações de TODOS os tenants que é dono
-      let allNotifications: B2BNotification[] = [];
-      
-      if (tenants && tenants.length > 0) {
+      if (isB2B) {
+        let allNotifications: B2BNotification[] = [];
+        let tenantList: TenantInfo[] = [];
+
+        // Se tenants já estiver carregado, usar
+        if (tenants && tenants.length > 0) {
+          tenantList = tenants as TenantInfo[];
+          console.log("Usando tenants do contexto:", tenantList.length);
+        } else {
+          // Se não tem tenants, buscar do banco
+          console.log("Buscando tenants do banco...");
+          const { data: mems } = await supabase
+            .from("memberships")
+            .select("tenant_id, role, tenants(id, name, slug)")
+            .eq("user_id", user.id)
+            .in("role", ["owner", "admin"]);
+          
+          if (mems) {
+            tenantList = mems
+              .map((m: any) => m.tenants)
+              .filter(Boolean) as TenantInfo[];
+            console.log("Tenants buscados do banco:", tenantList.length);
+          }
+        }
+
         // Buscar notificações para cada tenant
-        tenants.forEach((t: TenantInfo) => {
-          const notifications = getB2BNotifications(t.id);
-          console.log(`Notificações para tenant ${t.name} (${t.id}):`, notifications);
-          allNotifications = [...allNotifications, ...notifications];
-        });
-      } else {
-        // Se não tem tenants, pode ser que esteja acessando uma comunidade específica
-        console.log("B2B sem tenants carregados ainda");
+        if (tenantList.length > 0) {
+          tenantList.forEach((t: TenantInfo) => {
+            const notifications = getB2BNotifications(t.id);
+            console.log(`Notificações para tenant ${t.name} (${t.id}):`, notifications);
+            allNotifications = [...allNotifications, ...notifications];
+          });
+        } else {
+          console.log("B2B sem comunidades próprias");
+        }
+        
+        // Ordenar por data (mais recente primeiro)
+        allNotifications.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        
+        console.log("Total de notificações B2B:", allNotifications);
+        setB2bNotifications(allNotifications);
+        
+      } else if (user) {
+        // B2C: buscar suas próprias notificações
+        const notifications = getB2CNotifications(user.id);
+        console.log("B2C Notifications para user:", user.id, notifications);
+        setB2cNotifications(notifications);
       }
       
-      // Ordenar por data (mais recente primeiro)
-      allNotifications.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      
-      console.log("Total de notificações B2B:", allNotifications);
-      setB2bNotifications(allNotifications);
-      
-    } else if (user) {
-      // B2C: buscar suas próprias notificações
-      const notifications = getB2CNotifications(user.id);
-      console.log("B2C Notifications para user:", user.id, notifications);
-      setB2cNotifications(notifications);
-    }
-    
-    setLoading(false);
+      setLoading(false);
+    };
+
+    loadNotifications();
   }, [user, isB2B, tenants, navigate]);
 
   const handleApprove = async (notification: B2BNotification) => {
