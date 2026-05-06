@@ -117,11 +117,26 @@ export default function Communities() {
             )}
           </div>
 
-          {tenants.length === 0 ? (
+{tenants.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-8 text-center">
               <div className="h-12 w-12 mx-auto rounded-2xl bg-brand-soft grid place-items-center mb-3">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {isB2B
+                  ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."
+                  : "Você ainda não participa de nenhuma comunidade. Explore abaixo para entrar."}
+              </p>
+              {isB2B ? (
+                <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
+                  <Link to="/onboarding">Criar minha marca</Link>
+                </Button>
+              ) : (
+                <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
+                  <Link to="/auth">Explorar comunidades</Link>
+                </Button>
+              )}
+            </div>
               <p className="text-sm text-muted-foreground mb-4">
                 {isB2B
                   ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."

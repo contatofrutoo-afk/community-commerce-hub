@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ export default function Feed() {
   const { tenant, loading: tLoading } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
+  const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [pinnedPost, setPinnedPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(false);
@@ -224,8 +225,18 @@ export default function Feed() {
           <div className="h-[calc(100dvh-3.5rem)] grid place-items-center px-6 text-center">
             <div>
               <Video className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-              <h2 className="font-display text-3xl mb-2">Feed vazio</h2>
-              <p className="text-muted-foreground">Nenhum vídeo disponível ainda.</p>
+              <h2 className="font-display text-3xl mb-2">Sua comunidade ainda não possui conteúdo</h2>
+              <p className="text-muted-foreground">Os conteúdos aparecerão aqui assim que forem publicados.</p>
+              {isB2B && (
+                <Button 
+                  size="lg" 
+                  onClick={() => nav("/create")}
+                  className="mt-6 bg-brand text-primary-foreground hover:opacity-90 rounded-full"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Criar primeiro post
+                </Button>
+              )}
             </div>
           </div>
         )}

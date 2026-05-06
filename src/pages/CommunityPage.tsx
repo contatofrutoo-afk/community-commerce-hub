@@ -185,11 +185,10 @@ export default function CommunityPage() {
         <div className="bg-amber-50 rounded-3xl border border-amber-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-amber-700">
             <Clock className="h-8 w-8" />
-            <h2 className="font-semibold text-lg">Aguardando Aprovação</h2>
+            <h2 className="font-semibold text-lg">Solicitação enviada</h2>
           </div>
           <p className="text-amber-800">
-            Sua solicitação foi enviada para <strong>{tenant.name}</strong>. 
-            Você receberá uma notificação quando seu acesso for aprovado.
+            A marca precisa aprovar seu acesso. Você será notificado assim que for liberado.
           </p>
           <div className="bg-white/50 rounded-xl p-4 text-center">
             <p className="text-sm text-amber-700">

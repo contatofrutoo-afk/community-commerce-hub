@@ -134,7 +134,7 @@ setB2bNotifications(allNotifications);
             {b2bNotifications.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma solicitação pendente</p>
+                <p>Nenhuma solicitação de acesso no momento</p>
               </div>
             ) : (
               b2bNotifications.map((notification) => (
@@ -186,7 +186,7 @@ setB2bNotifications(allNotifications);
             {b2cNotifications.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma notificação</p>
+                <p>Nenhuma atualização no momento</p>
               </div>
             ) : (
               b2cNotifications.map((notification) => (

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserState, UserState } from "@/lib/userState";
 
 export type AppRole = "admin" | "b2b" | "b2c";
 
@@ -12,13 +13,17 @@ type AuthCtx = {
   isB2B: boolean;
   isB2C: boolean;
   isAdmin: boolean;
+  userState: UserState | null;
+  redirectTo: string | null;
   signOut: () => Promise<void>;
+  clearRedirect: () => void;
 };
 
 const Ctx = createContext<AuthCtx>({
   user: null, session: null, loading: true,
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
-  signOut: async () => {},
+  userState: null, redirectTo: null,
+  signOut: async () => {}, clearRedirect: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -26,6 +31,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
+  const [userState, setUserState] = useState<UserState | null>(null);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const [redirected, setRedirected] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
@@ -33,6 +41,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(s?.user ?? null);
       if (!s?.user) {
         setAppRole(null);
+        setUserState(null);
+        setRedirectTo(null);
       }
       if (s?.user) {
         setTimeout(() => setUser(s?.user ?? null), 100);
@@ -85,7 +95,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { cancelled = true; };
   }, [user]);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+  // Buscar estado do usuário e definir redirecionamento
+  useEffect(() => {
+    if (!user || !appRole || redirected) return;
+    
+    let cancelled = false;
+    (async () => {
+      const state = await getUserState(user.id);
+      if (cancelled) return;
+      
+      setUserState(state);
+      
+      // Definir redirecionamento apenas uma vez por sessão
+      if (state.isB2B && !state.hasCommunity) {
+        setRedirectTo("/create");
+        setRedirected(true);
+      } else if (!state.isB2B && !state.hasJoinedCommunities) {
+        setRedirectTo("/communities");
+        setRedirected(true);
+      }
+    })();
+    
+    return () => { cancelled = true; };
+  }, [user, appRole]);
+
+  const signOut = async () => { 
+    setRedirected(false);
+    setRedirectTo(null);
+    await supabase.auth.signOut(); 
+  };
+
+  const clearRedirect = () => {
+    setRedirectTo(null);
+  };
 
   return (
     <Ctx.Provider
@@ -95,7 +137,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isB2B: appRole === "b2b" || appRole === "admin",
         isB2C: appRole === "b2c",
         isAdmin: appRole === "admin",
+        userState,
+        redirectTo,
         signOut,
+        clearRedirect,
       }}
     >
       {children}

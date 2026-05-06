@@ -45,9 +45,18 @@ const Offline = lazy(() => import("./pages/Offline"));
 const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, redirectTo } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (redirectTo) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [redirectTo, navigate]);
+  
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
+  if (redirectTo) return null;
   return children;
 };
 
