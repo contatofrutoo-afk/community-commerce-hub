@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 import PWAInstallButton from "@/components/PWAInstallButton";
+import LiveSocialProof from "@/components/LiveSocialProof";
 import {
   HeroSection,
   ProblemSection,
@@ -40,6 +41,8 @@ export default function Landing() {
       <ComparisonSection />
       <PricingSection />
       <CTASection />
+
+      <LiveSocialProof />
 
       <footer className="border-t border-border/50 py-6">
         <div className="mx-auto max-w-5xl px-6 flex justify-between text-xs text-muted-foreground">
