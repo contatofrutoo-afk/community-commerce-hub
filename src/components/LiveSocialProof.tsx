@@ -50,7 +50,7 @@ export default function LiveSocialProof() {
         position: "fixed",
         bottom: "24px",
         left: "24px",
-        zIndex: 40,
+        zIndex: 9999,
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? "translateY(0)" : "translateY(16px)",
         transition: "opacity 500ms ease-out, transform 500ms ease-out",
