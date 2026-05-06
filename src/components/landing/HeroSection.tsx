@@ -19,12 +19,12 @@ const stagger = {
 
 export default function HeroSection() {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
     <section
       ref={ref}
-      className="relative min-h-screen flex flex-col justify-center pt-20 overflow-hidden bg-white"
+      className="relative min-h-screen flex flex-col justify-center pt-12 pb-8 overflow-hidden bg-white"
     >
       {/* Animated gradient orbs */}
       <motion.div
@@ -160,7 +160,6 @@ export default function HeroSection() {
 
           {/* RIGHT — mockup */}
           <motion.div
-            variants={fadeInUp}
             className="relative mt-12 lg:mt-0"
           >
             <motion.div
@@ -175,8 +174,9 @@ export default function HeroSection() {
 
             <motion.div
               className="relative rounded-[2rem] overflow-hidden shadow-2xl border border-white/40 bg-white mx-auto max-w-[280px] sm:max-w-md lg:max-w-none"
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ y: [0, -10, 0], opacity: 1 }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
             >
               <img
                 src={heroMockup}
