@@ -46,17 +46,12 @@ export default function Landing() {
       <ComparisonSection />
       <ValueProofSection />
       <PricingSection />
-      <CTASection />
+<CTASection />
 
-<<<<<<< HEAD
       <LiveSocialProof />
 
-      <footer className="border-t border-border/50 py-6">
-        <div className="mx-auto max-w-5xl px-6 flex justify-between text-xs text-muted-foreground">
-=======
       <footer className="border-t border-[#1a1a1a]/5 py-8 bg-white">
         <div className="mx-auto max-w-6xl px-6 flex flex-wrap gap-4 justify-between text-xs text-muted-foreground">
->>>>>>> f5d9fa1113d9be065198bcac1e0ffd0d11fe604c
           <span>&copy; {new Date().getFullYear()} weaze</span>
           <span>Infraestrutura para comunidades.</span>
         </div>

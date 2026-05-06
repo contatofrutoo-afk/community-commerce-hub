@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const fakeUsers = [
   "ana", "carlos", "marina", "joao",
@@ -9,6 +9,7 @@ const fakeUsers = [
 export default function LiveSocialProof() {
   const [name, setName] = useState("");
   const [isVisible, setIsVisible] = useState(false);
+  const lastNameRef = useRef("");
 
   useEffect(() => {
     let showTimeout: NodeJS.Timeout;
@@ -16,7 +17,9 @@ export default function LiveSocialProof() {
     let nextTimeout: NodeJS.Timeout;
 
     const showNotification = () => {
-      const randomName = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
+      const availableUsers = fakeUsers.filter(u => u !== lastNameRef.current);
+      const randomName = availableUsers[Math.floor(Math.random() * availableUsers.length)];
+      lastNameRef.current = randomName;
       setName(randomName);
       setIsVisible(true);
 
