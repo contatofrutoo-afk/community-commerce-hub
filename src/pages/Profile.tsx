@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
-  const { user, signOut, isB2C, isB2B } = useAuth();
+  const { user, signOut, isB2B } = useAuth();
   const { tenant, isOwner, tenants } = useTenant();
   const nav = useNavigate();
   const [name, setName] = useState("");

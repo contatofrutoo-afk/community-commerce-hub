@@ -24,17 +24,9 @@ export default function Notifications() {
 
   const loadNotifications = async () => {
     if (!user || !user.id) {
-      console.warn("Usuário inválido");
       navigate("/auth");
       return;
     }
-
-    console.log("=== NOTIFICATIONS DEBUG ===");
-    console.log("User ID:", user.id);
-    console.log("isB2B:", isB2B);
-    console.log("Tenants:", tenants?.length || 0);
-
-    console.log("REQUESTS:", localStorage.getItem("community_access_requests"));
 
     if (isB2B) {
       let allNotifications: B2BNotification[] = [];
@@ -42,9 +34,7 @@ export default function Notifications() {
 
       if (tenants && tenants.length > 0) {
         tenantList = tenants as TenantInfo[];
-        console.log("Tenants do contexto:", tenantList.length);
       } else {
-        console.log("Buscando tenants do banco...");
         const { data: mems, error } = await supabase
           .from("memberships")
           .select("tenant_id, role, tenants(id, name, slug)")
@@ -59,7 +49,6 @@ export default function Notifications() {
           tenantList = mems
             .map((m: any) => m.tenants)
             .filter(Boolean) as TenantInfo[];
-          console.log("Tenants do banco:", tenantList.length);
         }
       }
 
@@ -83,17 +72,14 @@ export default function Notifications() {
       );
       
       console.log("B2B Notifications carregadas:", allNotifications.length);
-      setB2bNotifications(allNotifications);
-      
+setB2bNotifications(allNotifications);
+       
     } else if (user) {
       const notifications = getB2CNotifications(user.id);
-      console.log("B2C Notifications carregadas:", notifications.length);
       setB2cNotifications(notifications);
     }
     
     setLoading(false);
-    console.log("Estado final B2B:", b2bNotifications.length);
-    console.log("Estado final B2C:", b2cNotifications.length);
   };
 
   useEffect(() => {

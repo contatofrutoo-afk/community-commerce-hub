@@ -29,7 +29,6 @@ export default function Feed() {
   const loadPosts = useCallback(async (offset = 0) => {
     if (!tenant || loading || done) return;
     setLoading(true);
-    console.log("Loading posts for tenant:", tenant.id, "offset:", offset);
     
     // Fetch posts
     const { data, error } = await supabase
@@ -40,8 +39,7 @@ export default function Feed() {
       .range(offset, offset + PAGE - 1);
     
     setLoading(false);
-    if (error) { console.error("Feed load error:", error); return; }
-    console.log("Loaded posts:", data);
+    if (error) return;
     
     if (!data || data.length === 0) {
       setDone(true);
@@ -51,7 +49,6 @@ export default function Feed() {
     
     // Fetch CTAs for all posts (including pagination)
     const postIds = data.map(p => p.id);
-    console.log("Post IDs:", postIds);
     
     let ctas: any[] = [];
     if (postIds.length > 0) {
@@ -61,8 +58,6 @@ export default function Feed() {
         .in("post_id", postIds);
       ctas = ctasData || [];
     }
-    
-    console.log("Loaded CTAs:", ctas);
     
     // Map CTAs to posts
     const ctaMap: Record<string, any> = {};
@@ -74,8 +69,6 @@ export default function Feed() {
       ...p,
       post_cta: ctaMap[p.id] ? [ctaMap[p.id]] : []
     }));
-    
-    console.log("Posts with CTAs:", postsWithCtas);
     
     if (data.length < PAGE) setDone(true);
     setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
@@ -111,7 +104,6 @@ export default function Feed() {
   useEffect(() => {
     if (initialized.current || !tenant) return;
     initialized.current = true;
-    console.log("Feed initial load, tenant:", tenant.id);
     setPosts([]); setDone(false); setActiveIdx(0);
     loadPosts(0);
   }, [tenant?.id]); // Only run once when tenant changes
@@ -120,7 +112,6 @@ export default function Feed() {
   useEffect(() => {
     const t = searchParams.get("t");
     if (t && tenant) {
-      console.log("Force refresh triggered by t param");
       setPosts([]); setDone(false);
       loadPosts(0);
     }

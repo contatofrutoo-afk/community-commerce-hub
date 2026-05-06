@@ -22,10 +22,6 @@ export default function Requests() {
         return;
       }
 
-      console.log("=== REQUESTS DEBUG ===");
-      console.log("User:", user.id);
-      console.log("Tenants:", tenants);
-
       let brandIds: string[] = [];
       
       if (tenants && tenants.length > 0) {
@@ -42,11 +38,7 @@ export default function Requests() {
         }
       }
 
-      console.log("Brand IDs:", brandIds);
-
       const allRequests = getAllRequestsByBrandIds(brandIds);
-      
-      console.log("Todas as solicitações:", allRequests);
       
       // Filtrar apenas pendentes
       const pendingRequests = allRequests.filter(r => r.status === "pending");
