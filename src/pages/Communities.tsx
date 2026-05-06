@@ -83,7 +83,7 @@ export default function Communities() {
       selectTenant(id);
       nav("/feed");
     } else {
-      requestAccess(tenant.slug, user.id, user.user_metadata?.name || null, user.email || "", tenant.id);
+      requestAccess(tenant.slug, user.id, user.user_metadata?.name || null, user.email || "", tenant.id, tenant.name);
       selectTenant(id);
       nav(`/c/${tenant.slug}`);
     }

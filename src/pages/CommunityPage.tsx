@@ -92,19 +92,12 @@ export default function CommunityPage() {
     console.log("Tenant ID (brandId):", tenant.id);
     
     requestAccess(
-      communitySlug, 
-      user.id, 
-      user.user_metadata?.name || user.email?.split('@')[0] || null,
-      user.email || "",
-      tenant.id
-    );
-    
-    addGlobalRequest(
+      communitySlug,
       user.id,
       user.user_metadata?.name || user.email?.split('@')[0] || null,
       user.email || "",
       tenant.id,
-      communitySlug
+      tenant.name,
     );
     
     setAccessStatus("pending");

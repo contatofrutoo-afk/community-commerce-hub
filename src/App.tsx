@@ -33,7 +33,6 @@ const AdminOverview = lazy(() => import("./pages/admin/Overview"));
 const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
 const AdminFunnel = lazy(() => import("./pages/admin/Funnel"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
-const Notifications = lazy(() => import("./pages/Notifications"));
 const Requests = lazy(() => import("./pages/Requests"));
 const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
