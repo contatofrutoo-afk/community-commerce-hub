@@ -1,6 +1,7 @@
 -- Fix: Restringir política SELECT na tabela profiles
 -- Apenas o próprio usuário pode ler seu perfil, ou owners/admins de um tenant para gestão da comunidade
 
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
 
 CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT USING (

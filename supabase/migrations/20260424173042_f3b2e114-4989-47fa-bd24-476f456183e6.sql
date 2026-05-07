@@ -23,7 +23,20 @@ CREATE TABLE public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT USING (
+  auth.uid() = user_id
+  OR EXISTS (
+    SELECT 1 FROM public.memberships m
+    WHERE m.user_id = auth.uid()
+      AND m.role IN ('owner', 'admin')
+      AND EXISTS (
+        SELECT 1 FROM public.community_members cm
+        WHERE cm.user_id = profiles.user_id
+          AND cm.tenant_id = m.tenant_id
+          AND cm.status = 'approved'
+      )
+  )
+);
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "profiles_insert_own" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE TRIGGER trg_profiles_updated BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
