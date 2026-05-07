@@ -769,12 +769,11 @@ export default function Topics() {
                         <p className="text-sm text-gray-700 whitespace-pre-wrap">
                           {msg.content}
                         </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
+</div>
             )}
+          )}
+        </div>
+      )}
             <div ref={messagesEndRef} />
           </div>
           
