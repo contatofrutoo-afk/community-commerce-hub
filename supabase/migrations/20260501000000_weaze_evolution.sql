@@ -45,9 +45,24 @@ CREATE POLICY "topic_messages_select_member" ON public.topic_messages FOR SELECT
     WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
   )
 );
-CREATE POLICY "topic_messages_insert_auth" ON public.topic_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "topic_messages_update_own" ON public.topic_messages FOR UPDATE USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.topics t WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)));
-CREATE POLICY "topic_messages_delete_own" ON public.topic_messages FOR DELETE USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.topics t WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)));
+CREATE POLICY "topic_messages_insert_auth" ON public.topic_messages FOR INSERT WITH CHECK (
+  auth.uid() = user_id AND EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
+  )
+);
+CREATE POLICY "topic_messages_update_own" ON public.topic_messages FOR UPDATE USING (
+  auth.uid() = user_id AND EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
+  )
+);
+CREATE POLICY "topic_messages_delete_own" ON public.topic_messages FOR DELETE USING (
+  auth.uid() = user_id OR EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)
+  )
+);
 
 -- Trigger to update topics.replies_count and last_activity_at
 CREATE OR REPLACE FUNCTION public.update_topic_reply_count()
