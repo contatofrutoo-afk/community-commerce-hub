@@ -159,7 +159,9 @@ ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_posts_tenant_created ON public.posts(tenant_id, created_at DESC);
 CREATE TRIGGER trg_posts_updated BEFORE UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE POLICY "posts_select_all" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "posts_select_member" ON public.posts FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "posts_insert_member" ON public.posts FOR INSERT WITH CHECK (public.is_tenant_member(auth.uid(), tenant_id));
 CREATE POLICY "posts_update_owner" ON public.posts FOR UPDATE USING (public.is_tenant_owner(auth.uid(), tenant_id) OR auth.uid() = author_id);
 CREATE POLICY "posts_delete_owner" ON public.posts FOR DELETE USING (public.is_tenant_owner(auth.uid(), tenant_id) OR auth.uid() = author_id);
@@ -176,7 +178,9 @@ CREATE TABLE public.post_cta (
 ALTER TABLE public.post_cta ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_post_cta_post ON public.post_cta(post_id);
 
-CREATE POLICY "post_cta_select_all" ON public.post_cta FOR SELECT USING (true);
+CREATE POLICY "post_cta_select_member" ON public.post_cta FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.posts p WHERE p.id = post_id AND public.is_tenant_member(auth.uid(), p.tenant_id))
+);
 CREATE POLICY "post_cta_manage_owner" ON public.post_cta FOR ALL USING (
   EXISTS (SELECT 1 FROM public.posts p WHERE p.id = post_id AND public.is_tenant_member(auth.uid(), p.tenant_id))
 );
@@ -232,7 +236,9 @@ CREATE TABLE public.services (
 );
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 CREATE TRIGGER trg_services_updated BEFORE UPDATE ON public.services FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-CREATE POLICY "services_select_all" ON public.services FOR SELECT USING (true);
+CREATE POLICY "services_select_member" ON public.services FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "services_manage_member" ON public.services FOR ALL USING (public.is_tenant_member(auth.uid(), tenant_id));
 
 CREATE TABLE public.availability_rules (
@@ -243,7 +249,9 @@ CREATE TABLE public.availability_rules (
   end_time TIME NOT NULL
 );
 ALTER TABLE public.availability_rules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "avail_select_all" ON public.availability_rules FOR SELECT USING (true);
+CREATE POLICY "avail_select_member" ON public.availability_rules FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.services s WHERE s.id = service_id AND public.is_tenant_member(auth.uid(), s.tenant_id))
+);
 CREATE POLICY "avail_manage_member" ON public.availability_rules FOR ALL USING (
   EXISTS (SELECT 1 FROM public.services s WHERE s.id = service_id AND public.is_tenant_member(auth.uid(), s.tenant_id))
 );
@@ -254,7 +262,9 @@ CREATE TABLE public.blocked_dates (
   date DATE NOT NULL
 );
 ALTER TABLE public.blocked_dates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "blocked_select_all" ON public.blocked_dates FOR SELECT USING (true);
+CREATE POLICY "blocked_select_member" ON public.blocked_dates FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.services s WHERE s.id = service_id AND public.is_tenant_member(auth.uid(), s.tenant_id))
+);
 CREATE POLICY "blocked_manage_member" ON public.blocked_dates FOR ALL USING (
   EXISTS (SELECT 1 FROM public.services s WHERE s.id = service_id AND public.is_tenant_member(auth.uid(), s.tenant_id))
 );
@@ -292,7 +302,9 @@ CREATE TABLE public.quotes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "quotes_insert_any" ON public.quotes FOR INSERT WITH CHECK (true);
+CREATE POLICY "quotes_insert_member" ON public.quotes FOR INSERT WITH CHECK (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "quotes_select_own_or_owner" ON public.quotes FOR SELECT
   USING (auth.uid() = user_id OR public.is_tenant_owner(auth.uid(), tenant_id));
 
@@ -307,7 +319,9 @@ CREATE TABLE public.events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "events_select_all" ON public.events FOR SELECT USING (true);
+CREATE POLICY "events_select_member" ON public.events FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "events_manage_member" ON public.events FOR ALL USING (public.is_tenant_member(auth.uid(), tenant_id));
 
 CREATE TABLE public.event_registrations (
@@ -318,7 +332,9 @@ CREATE TABLE public.event_registrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "evreg_insert_any" ON public.event_registrations FOR INSERT WITH CHECK (true);
+CREATE POLICY "evreg_insert_member" ON public.event_registrations FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.events e WHERE e.id = event_id AND public.is_tenant_member(auth.uid(), e.tenant_id))
+);
 CREATE POLICY "evreg_select_own_or_owner" ON public.event_registrations FOR SELECT
   USING (
     auth.uid() = user_id
@@ -388,7 +404,9 @@ CREATE TABLE public.plans (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "plans_select_all" ON public.plans FOR SELECT USING (true);
+CREATE POLICY "plans_select_auth" ON public.plans FOR SELECT USING (
+  auth.role() = 'authenticated'
+);
 CREATE POLICY "plans_admin_manage" ON public.plans FOR ALL USING (public.has_role(auth.uid(),'admin'));
 
 CREATE TABLE public.tenant_plans (
@@ -399,7 +417,9 @@ CREATE TABLE public.tenant_plans (
   UNIQUE (tenant_id)
 );
 ALTER TABLE public.tenant_plans ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "tenant_plans_select_all" ON public.tenant_plans FOR SELECT USING (true);
+CREATE POLICY "tenant_plans_select_owner" ON public.tenant_plans FOR SELECT USING (
+  public.is_tenant_owner(auth.uid(), tenant_id)
+);
 CREATE POLICY "tenant_plans_owner_manage" ON public.tenant_plans FOR ALL USING (public.is_tenant_owner(auth.uid(), tenant_id));
 
 CREATE TABLE public.usage_tracking (
