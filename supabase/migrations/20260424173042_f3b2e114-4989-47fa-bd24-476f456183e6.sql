@@ -126,7 +126,7 @@ CREATE POLICY "tenants_delete_owner" ON public.tenants FOR DELETE USING (public.
 CREATE POLICY "memberships_select_self_or_owner" ON public.memberships FOR SELECT
   USING (auth.uid() = user_id OR public.is_tenant_owner(auth.uid(), tenant_id));
 CREATE POLICY "memberships_insert_self" ON public.memberships FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id AND role = 'member');
 CREATE POLICY "memberships_owner_manage" ON public.memberships FOR ALL
   USING (public.is_tenant_owner(auth.uid(), tenant_id));
 
