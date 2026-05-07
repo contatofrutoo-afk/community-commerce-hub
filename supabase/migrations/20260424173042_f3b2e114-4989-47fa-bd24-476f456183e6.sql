@@ -285,7 +285,9 @@ CREATE TABLE public.appointments (
 );
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_appointments_tenant ON public.appointments(tenant_id, date);
-CREATE POLICY "appointments_insert_any" ON public.appointments FOR INSERT WITH CHECK (true);
+CREATE POLICY "appointments_insert_member" ON public.appointments FOR INSERT WITH CHECK (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "appointments_select_own_or_owner" ON public.appointments FOR SELECT
   USING (auth.uid() = user_id OR public.is_tenant_owner(auth.uid(), tenant_id));
 CREATE POLICY "appointments_update_owner" ON public.appointments FOR UPDATE USING (public.is_tenant_owner(auth.uid(), tenant_id));
