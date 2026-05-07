@@ -135,17 +135,6 @@ export default function Communities() {
                 </Button>
               )}
             </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                {isB2B
-                  ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."
-                  : "Você ainda não participa de nenhuma comunidade. Explore abaixo para entrar."}
-              </p>
-              {isB2B && (
-                <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
-                  <Link to="/onboarding">Criar minha marca</Link>
-                </Button>
-              )}
-            </div>
           ) : (
             <div className="grid gap-3">
               {tenants.map((t) => (
