@@ -18,7 +18,9 @@ ALTER TABLE public.topics ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_topics_tenant ON public.topics(tenant_id, last_activity_at DESC);
 CREATE INDEX idx_topics_post ON public.topics(related_post_id);
 
-CREATE POLICY "topics_select_all" ON public.topics FOR SELECT USING (true);
+CREATE POLICY "topics_select_member" ON public.topics FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "topics_insert_member" ON public.topics FOR INSERT WITH CHECK (public.is_tenant_member(auth.uid(), tenant_id));
 CREATE POLICY "topics_update_owner" ON public.topics FOR UPDATE USING (public.is_tenant_owner(auth.uid(), tenant_id) OR created_by = auth.uid());
 CREATE POLICY "topics_delete_owner" ON public.topics FOR DELETE USING (public.is_tenant_owner(auth.uid(), tenant_id));
@@ -37,7 +39,12 @@ ALTER TABLE public.topic_messages ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_topic_messages_topic ON public.topic_messages(topic_id, created_at DESC);
 CREATE INDEX idx_topic_messages_parent ON public.topic_messages(parent_id);
 
-CREATE POLICY "topic_messages_select_all" ON public.topic_messages FOR SELECT USING (true);
+CREATE POLICY "topic_messages_select_member" ON public.topic_messages FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
+  )
+);
 CREATE POLICY "topic_messages_insert_auth" ON public.topic_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "topic_messages_update_own" ON public.topic_messages FOR UPDATE USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.topics t WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)));
 CREATE POLICY "topic_messages_delete_own" ON public.topic_messages FOR DELETE USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.topics t WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)));
@@ -84,7 +91,9 @@ ALTER TABLE public.community_events ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_community_events_tenant ON public.community_events(tenant_id, start_at DESC);
 CREATE INDEX idx_community_events_active ON public.community_events(start_at, end_at) WHERE is_active = TRUE;
 
-CREATE POLICY "community_events_select_all" ON public.community_events FOR SELECT USING (true);
+CREATE POLICY "community_events_select_member" ON public.community_events FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
 CREATE POLICY "community_events_insert_owner" ON public.community_events FOR INSERT WITH CHECK (public.is_tenant_owner(auth.uid(), tenant_id));
 CREATE POLICY "community_events_update_owner" ON public.community_events FOR UPDATE USING (public.is_tenant_owner(auth.uid(), tenant_id));
 CREATE POLICY "community_events_delete_owner" ON public.community_events FOR DELETE USING (public.is_tenant_owner(auth.uid(), tenant_id));

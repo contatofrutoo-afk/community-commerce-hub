@@ -41,26 +41,41 @@ CREATE INDEX idx_topic_messages_created ON public.topic_messages(created_at);
 
 -- RLS Policies for topics
 DROP POLICY IF EXISTS "read topics" ON public.topics;
-CREATE POLICY "read topics" ON public.topics FOR SELECT USING (true);
+CREATE POLICY "read topics" ON public.topics FOR SELECT USING (public.is_tenant_member(auth.uid(), tenant_id));
 
 DROP POLICY IF EXISTS "insert topics" ON public.topics;
-CREATE POLICY "insert topics" ON public.topics FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "insert topics" ON public.topics FOR INSERT WITH CHECK (public.is_tenant_member(auth.uid(), tenant_id) AND auth.uid() = created_by);
 
 DROP POLICY IF EXISTS "update topics" ON public.topics;
-CREATE POLICY "update topics" ON public.topics FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "update topics" ON public.topics FOR UPDATE USING (auth.uid() = created_by OR public.is_tenant_owner(auth.uid(), tenant_id));
 
 DROP POLICY IF EXISTS "delete topics" ON public.topics;
-CREATE POLICY "delete topics" ON public.topics FOR DELETE USING (auth.uid() = created_by);
+CREATE POLICY "delete topics" ON public.topics FOR DELETE USING (auth.uid() = created_by OR public.is_tenant_owner(auth.uid(), tenant_id));
 
 -- RLS Policies for topic_messages
 DROP POLICY IF EXISTS "read topic_messages" ON public.topic_messages;
-CREATE POLICY "read topic_messages" ON public.topic_messages FOR SELECT USING (true);
+CREATE POLICY "read topic_messages" ON public.topic_messages FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
+  )
+);
 
 DROP POLICY IF EXISTS "insert topic_messages" ON public.topic_messages;
-CREATE POLICY "insert topic_messages" ON public.topic_messages FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "insert topic_messages" ON public.topic_messages FOR INSERT WITH CHECK (
+  auth.uid() = user_id AND EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_member(auth.uid(), t.tenant_id)
+  )
+);
 
 DROP POLICY IF EXISTS "delete topic_messages" ON public.topic_messages;
-CREATE POLICY "delete topic_messages" ON public.topic_messages FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "delete topic_messages" ON public.topic_messages FOR DELETE USING (
+  auth.uid() = user_id OR EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.id = topic_id AND public.is_tenant_owner(auth.uid(), t.tenant_id)
+  )
+);
 
 -- Trigger to update topics last_activity_at
 CREATE OR REPLACE FUNCTION public.update_topic_activity()
@@ -79,6 +94,6 @@ AFTER INSERT ON public.topic_messages
 FOR EACH ROW
 EXECUTE FUNCTION public.update_topic_activity();
 
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.topics;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.topic_messages;
+-- Enable realtime (optional - only enable if needed)
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.topics;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.topic_messages;
