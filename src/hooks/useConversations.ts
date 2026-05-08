@@ -40,7 +40,9 @@ export function useConversations(tenantId: string, userId: string) {
     queryKey: ["conversations", tenantId, userId],
     queryFn: () => conv.getMyConversationsWithRole(tenantId, userId),
     enabled: !!tenantId && !!userId,
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function useConversations(tenantId: string, userId: string) {
     conversations: conversationsQuery.data ?? [],
     isLoading: conversationsQuery.isLoading,
     error: conversationsQuery.error,
+    refetch: conversationsQuery.refetch,
     createConversation: createMutation.mutate,
     isCreating: createMutation.isPending,
     archiveConversation: archiveMutation.mutate,

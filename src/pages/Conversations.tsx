@@ -60,7 +60,7 @@ export default function ConversationsPage() {
   const [showMention, setShowMention] = useState(false);
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
 
-  const { conversations, isLoading: convLoading, createConversation, isCreating } = useConversations(tenant?.id ?? "", user?.id ?? "");
+  const { conversations, isLoading: convLoading, createConversation, isCreating, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
   const {
     messages, pinned, members, myRole, isLoadingMessages,
     sendMessage, updateMessage, deleteMessage,
@@ -240,6 +240,17 @@ export default function ConversationsPage() {
                         <div className="h-3 bg-gray-100 rounded w-1/2" />
                       </div>
                     ))}
+                  </motion.div>
+                ) : convError ? (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center py-16 text-center"
+                  >
+                    <p className="text-sm font-medium text-red-500 mb-2">Erro ao carregar conversas</p>
+                    <p className="text-xs text-gray-400 mb-4">{String(convError)}</p>
+                    <Button size="sm" variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
                   </motion.div>
                 ) : filtered.length === 0 ? (
                   <motion.div
