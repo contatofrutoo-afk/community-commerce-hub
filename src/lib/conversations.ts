@@ -107,8 +107,23 @@ export async function createConversation(params: {
 
   if (rpcError) {
     console.error("[createConversation] RPC failed:", rpcError);
+    // Check for duplicate key error and provide clear message
+    if (rpcError.code === "23505" || rpcError.message?.includes("duplicate")) {
+      throw new Error("Já existe uma conversa com esse nome neste comunidade");
+    }
     throw rpcError;
   }
+
+  console.log("[createConversation] RPC succeeded:", JSON.stringify(conv));
+
+  if (!conv) {
+    throw new Error("create_conversation returned empty result");
+  }
+
+  const conversation = conv as Conversation;
+  console.log("[createConversation] Returning conversation:", conversation.id, conversation.title);
+  return { ...conversation, my_role: "owner" };
+}
 
   console.log("[createConversation] RPC succeeded, result:", JSON.stringify(conv));
 
