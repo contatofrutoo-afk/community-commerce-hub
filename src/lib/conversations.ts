@@ -241,6 +241,15 @@ export async function getMyConversationsWithRole(tenantId: string, userId: strin
   
   console.log("[getMyConversationsWithRole] ALL conversations in tenant (no RLS):", allConvs?.length ?? 0, allConvs);
   
+  // Se não encontrou conversas via RLS, tentar via RPC (debug)
+  if (!allConvs || allConvs.length === 0) {
+    console.log("[getMyConversationsWithRole] Trying RPC debug function...");
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_all_conversations_for_tenant", {
+      p_tenant_id: tenantId
+    });
+    console.log("[getMyConversationsWithRole] RPC result:", rpcData?.length ?? 0, rpcData, rpcError);
+  }
+  
   // Segundo: buscar TODAS as conversas (sem filtro archived)
   const { data, error } = await supabase
     .from("conversations")
