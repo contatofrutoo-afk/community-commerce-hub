@@ -68,7 +68,7 @@ export async function getConversations(tenantId: string): Promise<Conversation[]
     .from("conversations")
     .select(`
       *,
-      conversation_members!inner(user_id, role)
+      conversation_members(user_id, role)
     `)
     .eq("tenant_id", tenantId)
     .eq("archived", false)
@@ -96,20 +96,20 @@ export async function createConversation(params: {
   visibility: ConversationVisibility;
   createdBy: string;
 }): Promise<Conversation> {
-  const { data, error } = await supabase
-    .from("conversations")
-    .insert({
-      tenant_id: params.tenantId,
-      title: params.title,
-      description: params.description ?? null,
-      visibility: params.visibility,
-      created_by: params.createdBy,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("create_conversation", {
+    p_tenant_id: params.tenantId,
+    p_title: params.title,
+    p_description: params.description ?? null,
+    p_visibility: params.visibility,
+    p_created_by: params.createdBy,
+  });
 
   if (error) throw error;
-  return data as Conversation;
+
+  const convId = data as string;
+  const conv = await getConversation(convId);
+  if (!conv) throw new Error("Conversation created but not found");
+  return conv;
 }
 
 export async function updateConversation(id: string, params: {
@@ -208,7 +208,7 @@ export async function getMyConversationsWithRole(tenantId: string, userId: strin
     .from("conversations")
     .select(`
       *,
-      conversation_members!inner(user_id, role)
+      conversation_members(user_id, role)
     `)
     .eq("tenant_id", tenantId)
     .eq("archived", false)

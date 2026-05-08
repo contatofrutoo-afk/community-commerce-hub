@@ -5,6 +5,37 @@ import * as conv from "@/lib/conversations";
 import { subscribeToConversation, unsubscribeAll } from "@/lib/conversationRealtime";
 import type { Conversation, ConversationMessage, ConversationMember, ConversationRole, ConversationVisibility } from "@/lib/conversations";
 
+let conversationsChannel: ReturnType<typeof supabase.channel> | null = null;
+const convChangeListeners = new Set<(conv: Conversation) => void>();
+
+function subscribeToConversationsList() {
+  if (conversationsChannel) return;
+
+  conversationsChannel = supabase
+    .channel("conversations-list")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "conversations" },
+      (payload) => {
+        convChangeListeners.forEach((listener) => listener(payload.new as Conversation));
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "conversations" },
+      (payload) => {
+        convChangeListeners.forEach((listener) => listener(payload.new as Conversation));
+      }
+    )
+    .subscribe();
+}
+
+export function onConversationChange(listener: (conv: Conversation) => void) {
+  subscribeToConversationsList();
+  convChangeListeners.add(listener);
+  return () => convChangeListeners.delete(listener);
+}
+
 export function useConversations(tenantId: string, userId: string) {
   const queryClient = useQueryClient();
 
@@ -13,6 +44,14 @@ export function useConversations(tenantId: string, userId: string) {
     queryFn: () => conv.getMyConversationsWithRole(tenantId, userId),
     enabled: !!tenantId && !!userId,
   });
+
+  useEffect(() => {
+    if (!tenantId || !userId) return;
+    const unsub = onConversationChange(() => {
+      queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] });
+    });
+    return unsub;
+  }, [tenantId, userId, queryClient]);
 
   const createMutation = useMutation({
     mutationFn: (params: { title: string; description?: string; visibility: ConversationVisibility }) =>
