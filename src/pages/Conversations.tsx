@@ -63,7 +63,7 @@ export default function ConversationsPage() {
 
   const { conversations, isLoading: convLoading, createConversation, isCreating, createError, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
   
-  console.log("[ConversationsPage] Context check - tenant:", tenant?.id, "user:", user?.id, "tenantExists:", !!tenant);
+  console.log("[ConversationsPage] Context check - tenant:", tenant, "tenantId:", tenant?.id, "user:", user?.id, "tenantExists:", !!tenant, "tenantName:", tenant?.name);
   
   const {
     messages, pinned, members, myRole, isLoadingMessages,
