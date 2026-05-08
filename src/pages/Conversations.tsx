@@ -68,22 +68,31 @@ export default function ConversationsPage() {
   } = useConversation(selectedConvId, user?.id ?? "");
 
   const filtered = conversations.filter((c) => c.visibility === activeTab);
+  console.log("[Conversations] Render:", {
+    tenantId: tenant?.id,
+    userId: user?.id,
+    convCount: conversations.length,
+    filteredCount: filtered.length,
+    activeTab,
+    selectedConvId,
+    isLoading: convLoading,
+  });
 
   useEffect(() => {
-    const msgId = searchParams.get("msg");
     const convId = searchParams.get("conv");
-    if (convId) setSelectedConvId(convId);
-  }, []);
-
-  useEffect(() => {
-    if (messages.length > 0 && !selectedConvId) {
-      setSelectedConvId(null);
+    if (convId) {
+      console.log("[Conversations] Opening conversation from URL:", convId);
+      setSelectedConvId(convId);
     }
-  }, []);
+  }, [searchParams]);
 
   const handleCreate = () => {
-    if (!tenant || !user || !newTitle.trim()) return;
+    if (!tenant || !user || !newTitle.trim()) {
+      console.warn("[handleCreate] Missing required fields");
+      return;
+    }
     const title = newTitle;
+    console.log("[handleCreate] Creating conversation:", title, newVis);
     createConversation({ title, description: newDesc, visibility: newVis });
     setShowCreate(false);
     setNewTitle("");
@@ -93,7 +102,11 @@ export default function ConversationsPage() {
   };
 
   const handleSend = () => {
-    if (!replyText.trim() || !selectedConvId || !user) return;
+    if (!replyText.trim() || !selectedConvId || !user) {
+      console.warn("[handleSend] Missing required fields");
+      return;
+    }
+    console.log("[handleSend] Sending message to", selectedConvId);
     sendMessage({ content: replyText.trim(), replyTo: replyingTo?.id ?? null });
     setReplyText("");
     setReplyingTo(null);
@@ -260,7 +273,7 @@ export default function ConversationsPage() {
                         <motion.div
                           key={conv.id}
                           whileTap={{ scale: 0.99 }}
-                          onClick={() => setSelectedConvId(conv.id)}
+                          onClick={() => { console.log("[Conversations] Selected conv:", conv.id, conv.title); setSelectedConvId(conv.id); }}
                           className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-[#630091]/20 hover:shadow-md transition-all cursor-pointer"
                         >
                           <div className="flex items-start gap-3">

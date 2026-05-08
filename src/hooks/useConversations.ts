@@ -1,39 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import * as conv from "@/lib/conversations";
-import { subscribeToConversation, unsubscribeAll } from "@/lib/conversationRealtime";
 import type { Conversation, ConversationMessage, ConversationMember, ConversationRole, ConversationVisibility } from "@/lib/conversations";
 
-let conversationsChannel: ReturnType<typeof supabase.channel> | null = null;
-const convChangeListeners = new Set<(conv: Conversation) => void>();
+let conversationsListChannel: ReturnType<typeof supabase.channel> | null = null;
+const convListListeners = new Set<() => void>();
 
-function subscribeToConversationsList() {
-  if (conversationsChannel) return;
+function getOrCreateConversationsListChannel() {
+  if (conversationsListChannel) return conversationsListChannel;
 
-  conversationsChannel = supabase
-    .channel("conversations-list")
+  conversationsListChannel = supabase
+    .channel("conversations-list-realtime")
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "conversations" },
-      (payload) => {
-        convChangeListeners.forEach((listener) => listener(payload.new as Conversation));
+      () => {
+        console.log("[Realtime] New conversation inserted");
+        convListListeners.forEach((l) => l());
       }
     )
     .on(
       "postgres_changes",
       { event: "UPDATE", schema: "public", table: "conversations" },
-      (payload) => {
-        convChangeListeners.forEach((listener) => listener(payload.new as Conversation));
+      () => {
+        console.log("[Realtime] Conversation updated");
+        convListListeners.forEach((l) => l());
       }
     )
     .subscribe();
-}
 
-export function onConversationChange(listener: (conv: Conversation) => void) {
-  subscribeToConversationsList();
-  convChangeListeners.add(listener);
-  return () => convChangeListeners.delete(listener);
+  return conversationsListChannel;
 }
 
 export function useConversations(tenantId: string, userId: string) {
@@ -43,20 +40,36 @@ export function useConversations(tenantId: string, userId: string) {
     queryKey: ["conversations", tenantId, userId],
     queryFn: () => conv.getMyConversationsWithRole(tenantId, userId),
     enabled: !!tenantId && !!userId,
+    staleTime: 30000,
   });
 
   useEffect(() => {
     if (!tenantId || !userId) return;
-    const unsub = onConversationChange(() => {
+
+    getOrCreateConversationsListChannel();
+    const listener = () => {
+      console.log("[useConversations] Invalidating conversations cache");
       queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] });
-    });
-    return unsub;
+    };
+    convListListeners.add(listener);
+
+    return () => {
+      convListListeners.delete(listener);
+    };
   }, [tenantId, userId, queryClient]);
 
   const createMutation = useMutation({
-    mutationFn: (params: { title: string; description?: string; visibility: ConversationVisibility }) =>
-      conv.createConversation({ tenantId, title: params.title, description: params.description, visibility: params.visibility, createdBy: userId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] }),
+    mutationFn: (params: { title: string; description?: string; visibility: ConversationVisibility }) => {
+      console.log("[useConversations] Creating conversation:", params);
+      return conv.createConversation({ tenantId, title: params.title, description: params.description, visibility: params.visibility, createdBy: userId });
+    },
+    onSuccess: (data) => {
+      console.log("[useConversations] Conversation created successfully:", data.id);
+      queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] });
+    },
+    onError: (error) => {
+      console.error("[useConversations] Failed to create conversation:", error);
+    },
   });
 
   const archiveMutation = useMutation({
@@ -76,6 +89,8 @@ export function useConversations(tenantId: string, userId: string) {
 
 export function useConversation(id: string | null, userId: string) {
   const queryClient = useQueryClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const listenersRef = useRef<Set<(msg: ConversationMessage) => void>>(new Set());
 
   const conversationQuery = useQuery({
     queryKey: ["conversation", id],
@@ -112,64 +127,138 @@ export function useConversation(id: string | null, userId: string) {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const MESSAGE_PAGE_SIZE = 50;
-
   useEffect(() => {
-    if (messagesQuery.data) setMessages(messagesQuery.data);
+    if (messagesQuery.data !== undefined) {
+      setMessages(messagesQuery.data);
+    }
   }, [messagesQuery.data]);
 
   useEffect(() => {
-    if (pinnedQuery.data) setPinned(pinnedQuery.data);
+    if (pinnedQuery.data !== undefined) {
+      setPinned(pinnedQuery.data);
+    }
   }, [pinnedQuery.data]);
 
   useEffect(() => {
-    if (!id) return;
-    const unsub = subscribeToConversation(id, (msg) => {
+    if (!id) {
+      setMessages([]);
+      setPinned([]);
+      return;
+    }
+
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      listenersRef.current.clear();
+    }
+
+    const handleRealtimeMessage = (msg: ConversationMessage) => {
+      console.log("[useConversation] Realtime message received:", msg.id);
       setMessages((prev) => {
-        const exists = prev.some((m) => m.id === msg.id);
-        if (exists) {
+        if (prev.some((m) => m.id === msg.id)) {
           return prev.map((m) => (m.id === msg.id ? msg : m));
         }
         return [...prev, msg];
       });
-      queryClient.invalidateQueries({ queryKey: ["conversation", id] });
-    });
-    return () => {
-      unsub();
-      unsubscribeAll();
     };
-  }, [id, queryClient]);
+
+    listenersRef.current.add(handleRealtimeMessage);
+
+    channelRef.current = supabase
+      .channel(`conv-msgs-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversation_messages",
+          filter: `conversation_id=eq.${id}`,
+        },
+        (payload) => {
+          const msg = payload.new as ConversationMessage;
+          if (msg.deleted === false) {
+            console.log("[useConversation] New message via realtime:", msg.id);
+            listenersRef.current.forEach((l) => l(msg));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversation_messages",
+          filter: `conversation_id=eq.${id}`,
+        },
+        (payload) => {
+          const msg = payload.new as ConversationMessage;
+          if (msg.deleted === false) {
+            console.log("[useConversation] Updated message via realtime:", msg.id);
+            listenersRef.current.forEach((l) => l(msg));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+        listenersRef.current.clear();
+      }
+    };
+  }, [id]);
 
   const loadMore = useCallback(async () => {
     if (!id || !hasMore || loadingMore) return;
     setLoadingMore(true);
     const newOffset = messages.length;
-    const newMessages = await conv.getConversationMessages(id, MESSAGE_PAGE_SIZE, newOffset);
-    if (newMessages.length < MESSAGE_PAGE_SIZE) setHasMore(false);
+    const newMessages = await conv.getConversationMessages(id, 50, newOffset);
+    if (newMessages.length < 50) setHasMore(false);
     setMessages((prev) => [...prev, ...newMessages]);
     setLoadingMore(false);
   }, [id, hasMore, loadingMore, messages.length]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: (params: { content: string; replyTo?: string | null }) =>
-      conv.sendMessage({ conversationId: id!, userId, content: params.content, replyTo: params.replyTo }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] }),
+    mutationFn: (params: { content: string; replyTo?: string | null }) => {
+      if (!id) throw new Error("No conversation selected");
+      return conv.sendMessage({ conversationId: id, userId, content: params.content, replyTo: params.replyTo });
+    },
+    onSuccess: (data) => {
+      console.log("[useConversation] Message sent:", data.id);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data.id)) return prev;
+        return [...prev, data];
+      });
+      queryClient.invalidateQueries({ queryKey: ["conversation", id] });
+    },
+    onError: (error) => {
+      console.error("[useConversation] Failed to send message:", error);
+    },
   });
 
   const updateMessageMutation = useMutation({
     mutationFn: (params: { messageId: string; content: string }) =>
       conv.updateMessage(params.messageId, params.content),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] }),
+    onSuccess: (data) => {
+      setMessages((prev) => prev.map((m) => (m.id === data.id ? data : m)));
+    },
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) => conv.softDeleteMessage(messageId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] }),
+    onSuccess: (_, messageId) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, deleted: true, content: "[mensagem removida]" } : m))
+      );
+    },
   });
 
   const pinMessageMutation = useMutation({
-    mutationFn: (messageId: string) =>
-      conv.pinMessage({ messageId, conversationId: id!, pinnedBy: userId }),
+    mutationFn: (messageId: string) => {
+      if (!id) throw new Error("No conversation selected");
+      return conv.pinMessage({ messageId, conversationId: id, pinnedBy: userId });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
       queryClient.invalidateQueries({ queryKey: ["conversation-pinned", id] });
@@ -185,8 +274,10 @@ export function useConversation(id: string | null, userId: string) {
   });
 
   const addMemberMutation = useMutation({
-    mutationFn: (params: { userId: string; role: ConversationRole }) =>
-      conv.addConversationMember({ conversationId: id!, ...params, addedBy: userId }),
+    mutationFn: (params: { userId: string; role: ConversationRole }) => {
+      if (!id) throw new Error("No conversation selected");
+      return conv.addConversationMember({ conversationId: id, ...params, addedBy: userId });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["conversation-members", id] }),
   });
 

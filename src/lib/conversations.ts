@@ -16,6 +16,7 @@ export type Conversation = {
   max_pins: number;
   member_count?: number;
   my_role?: ConversationRole | null;
+  conversation_members?: Array<{ user_id: string; role: ConversationRole }>;
 };
 
 export type ConversationMember = {
@@ -44,48 +45,42 @@ export type ConversationMessage = {
   reply_preview?: { content: string; profiles: { name: string | null } | null } | null;
 };
 
-export type ConversationMessagePin = {
-  id: string;
-  conversation_id: string;
-  message_id: string;
-  pinned_by: string | null;
-  created_at: string;
-};
-
-export type NotificationType = "conversation_message" | "mention" | "message_pinned" | "member_added";
-
-export type PinnedMessage = {
-  id: string;
-  conversation_id: string;
-  message_id: string;
-  pinned_by: string | null;
-  created_at: string;
-  message?: ConversationMessage;
-};
-
 export async function getConversations(tenantId: string): Promise<Conversation[]> {
+  if (!tenantId) {
+    console.warn("[getConversations] Missing tenantId, skipping");
+    return [];
+  }
   const { data, error } = await supabase
     .from("conversations")
-    .select(`
-      *,
-      conversation_members(user_id, role)
-    `)
+    .select("*, conversation_members(user_id, role)")
     .eq("tenant_id", tenantId)
     .eq("archived", false)
     .order("updated_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error("[getConversations] Error:", error);
+    throw error;
+  }
+  console.log("[getConversations] Fetched", data?.length ?? 0, "conversations for tenant", tenantId);
   return (data as any[]) ?? [];
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
+  if (!id) {
+    console.warn("[getConversation] Missing id");
+    return null;
+  }
   const { data, error } = await supabase
     .from("conversations")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error) return null;
+  if (error) {
+    console.error("[getConversation] Error fetching conversation", id, error);
+    return null;
+  }
+  console.log("[getConversation] Fetched conversation", id, data?.title);
   return data as Conversation;
 }
 
@@ -96,20 +91,52 @@ export async function createConversation(params: {
   visibility: ConversationVisibility;
   createdBy: string;
 }): Promise<Conversation> {
-  const { data, error } = await supabase.rpc("create_conversation", {
-    p_tenant_id: params.tenantId,
-    p_title: params.title,
-    p_description: params.description ?? null,
-    p_visibility: params.visibility,
-    p_created_by: params.createdBy,
+  console.log("[createConversation] Starting with params:", {
+    tenantId: params.tenantId,
+    title: params.title,
+    visibility: params.visibility,
+    createdBy: params.createdBy,
   });
 
-  if (error) throw error;
+  if (!params.tenantId || !params.createdBy || !params.title) {
+    throw new Error("Missing required fields: tenantId, createdBy, or title");
+  }
 
-  const convId = data as string;
-  const conv = await getConversation(convId);
-  if (!conv) throw new Error("Conversation created but not found");
-  return conv;
+  const { data: conv, error: convError } = await supabase
+    .from("conversations")
+    .insert({
+      tenant_id: params.tenantId,
+      title: params.title.trim(),
+      description: params.description?.trim() || null,
+      visibility: params.visibility,
+      created_by: params.createdBy,
+    })
+    .select()
+    .single();
+
+  if (convError) {
+    console.error("[createConversation] Failed to insert conversation:", convError);
+    throw convError;
+  }
+
+  console.log("[createConversation] Conversation created:", conv.id, conv.title);
+
+  const { error: memberError } = await supabase
+    .from("conversation_members")
+    .insert({
+      conversation_id: conv.id,
+      user_id: params.createdBy,
+      role: "owner",
+      added_by: params.createdBy,
+    });
+
+  if (memberError) {
+    console.error("[createConversation] Failed to add creator as member:", memberError);
+    throw memberError;
+  }
+
+  console.log("[createConversation] Creator added as owner of conversation", conv.id);
+  return { ...conv, my_role: "owner" } as Conversation;
 }
 
 export async function updateConversation(id: string, params: {
@@ -145,7 +172,10 @@ export async function getConversationMembers(conversationId: string): Promise<Co
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error("[getConversationMembers] Error:", error);
+    throw error;
+  }
   return (data as any[]) ?? [];
 }
 
@@ -203,18 +233,29 @@ export async function getMyRole(conversationId: string, userId: string): Promise
   return data.role as ConversationRole;
 }
 
-export async function getMyConversationsWithRole(tenantId: string, userId: string): Promise<Array<Conversation & { my_role: ConversationRole | null }>> {
+export async function getMyConversationsWithRole(tenantId: string, userId: string): Promise<Conversation[]> {
+  if (!tenantId) {
+    console.warn("[getMyConversationsWithRole] Missing tenantId");
+    return [];
+  }
+  if (!userId) {
+    console.warn("[getMyConversationsWithRole] Missing userId");
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("conversations")
-    .select(`
-      *,
-      conversation_members(user_id, role)
-    `)
+    .select("*, conversation_members(user_id, role)")
     .eq("tenant_id", tenantId)
     .eq("archived", false)
     .order("updated_at", { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error("[getMyConversationsWithRole] Error:", error);
+    return [];
+  }
+
+  console.log("[getMyConversationsWithRole] Got", data?.length ?? 0, "conversations for tenant", tenantId, "user", userId);
 
   return (data as any[]).map((c) => {
     const myMembership = c.conversation_members?.find((m: any) => m.user_id === userId);
@@ -222,33 +263,40 @@ export async function getMyConversationsWithRole(tenantId: string, userId: strin
   });
 }
 
-export async function getConversationMessages(conversationId: string, limit = 50, offset = 0): Promise<ConversationMessage[]> {
+export async function getConversationMessages(conversationId: string, limit = 100, offset = 0): Promise<ConversationMessage[]> {
+  if (!conversationId) {
+    console.warn("[getConversationMessages] Missing conversationId");
+    return [];
+  }
   const { data, error } = await supabase
     .from("conversation_messages")
-    .select(`
-      *,
-      profiles(name, avatar_url),
-      reply_to(content, profiles(name))
-    `)
+    .select("*, profiles(name, avatar_url), reply_to(content, profiles(name))")
     .eq("conversation_id", conversationId)
     .eq("deleted", false)
     .order("created_at", { ascending: true })
     .range(offset, offset + limit - 1);
 
-  if (error) throw error;
+  if (error) {
+    console.error("[getConversationMessages] Error:", error);
+    throw error;
+  }
+  console.log("[getConversationMessages] Got", data?.length ?? 0, "messages for conversation", conversationId);
   return (data as any[]) ?? [];
 }
 
 export async function getPinnedMessages(conversationId: string): Promise<ConversationMessage[]> {
   const { data, error } = await supabase
     .from("conversation_messages")
-    .select(`*, profiles(name, avatar_url)`)
+    .select("*, profiles(name, avatar_url)")
     .eq("conversation_id", conversationId)
     .eq("pinned", true)
     .eq("deleted", false)
     .order("pinned_at", { ascending: true });
 
-  if (error) return [];
+  if (error) {
+    console.error("[getPinnedMessages] Error:", error);
+    return [];
+  }
   return (data as any[]) ?? [];
 }
 
@@ -258,6 +306,8 @@ export async function sendMessage(params: {
   content: string;
   replyTo?: string | null;
 }): Promise<ConversationMessage> {
+  console.log("[sendMessage] Sending message to conversation", params.conversationId);
+
   const { data, error } = await supabase
     .from("conversation_messages")
     .insert({
@@ -266,10 +316,15 @@ export async function sendMessage(params: {
       content: params.content,
       reply_to: params.replyTo ?? null,
     })
-    .select(`*, profiles(name, avatar_url)`)
+    .select("*, profiles(name, avatar_url)")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[sendMessage] Error:", error);
+    throw error;
+  }
+
+  console.log("[sendMessage] Message sent:", data.id);
   return data as ConversationMessage;
 }
 
@@ -278,7 +333,7 @@ export async function updateMessage(messageId: string, content: string): Promise
     .from("conversation_messages")
     .update({ content, updated_at: new Date().toISOString() })
     .eq("id", messageId)
-    .select(`*, profiles(name, avatar_url)`)
+    .select("*, profiles(name, avatar_url)")
     .single();
 
   if (error) throw error;
@@ -298,39 +353,25 @@ export async function pinMessage(params: {
   messageId: string;
   conversationId: string;
   pinnedBy: string;
-}): Promise<{ success: boolean; error?: string }> {
-  const pinnedCount = await supabase
-    .from("conversation_messages")
-    .select("id", { count: "exact" })
-    .eq("conversation_id", params.conversationId)
-    .eq("pinned", true);
-
-  if ((pinnedCount.count ?? 0) >= 3) {
-    return { success: false, error: "Limite de 3 mensagens fixadas atingido. Remova uma antes de fixar outra." };
-  }
-
-  await supabase
+}): Promise<void> {
+  const { error } = await supabase
     .from("conversation_message_pins")
     .insert({
       conversation_id: params.conversationId,
       message_id: params.messageId,
       pinned_by: params.pinnedBy,
-    })
-    .then(async ({ error: pinError }) => {
-      if (pinError) return { success: false, error: pinError.message };
-      const { error } = await supabase
-        .from("conversation_messages")
-        .update({
-          pinned: true,
-          pinned_at: new Date().toISOString(),
-          pinned_by: params.pinnedBy,
-        })
-        .eq("id", params.messageId);
-      if (error) return { success: false, error: error.message };
-      return { success: true };
     });
 
-  return { success: true };
+  if (error) throw error;
+
+  await supabase
+    .from("conversation_messages")
+    .update({
+      pinned: true,
+      pinned_at: new Date().toISOString(),
+      pinned_by: params.pinnedBy,
+    })
+    .eq("id", params.messageId);
 }
 
 export async function unpinMessage(messageId: string): Promise<void> {
