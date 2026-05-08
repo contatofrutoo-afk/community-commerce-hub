@@ -64,11 +64,11 @@ export function useConversations(tenantId: string, userId: string) {
       return conv.createConversation({ tenantId, title: params.title, description: params.description, visibility: params.visibility, createdBy: userId });
     },
     onSuccess: (data) => {
-      console.log("[useConversations] Conversation created successfully:", data.id);
+      console.log("[useConversations] onSuccess fired! Conversation:", data.id, data.title);
       queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] });
     },
     onError: (error) => {
-      console.error("[useConversations] Failed to create conversation:", error);
+      console.error("[useConversations] onError fired! Failed to create conversation:", error);
     },
   });
 

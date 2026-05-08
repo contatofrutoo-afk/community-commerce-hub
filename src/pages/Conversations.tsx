@@ -92,13 +92,12 @@ export default function ConversationsPage() {
       return;
     }
     const title = newTitle;
-    console.log("[handleCreate] Creating conversation:", title, newVis);
+    console.log("[handleCreate] Creating conversation:", title, newVis, "tenant:", tenant.id, "user:", user.id);
     createConversation({ title, description: newDesc, visibility: newVis });
     setShowCreate(false);
     setNewTitle("");
     setNewDesc("");
     setNewVis("public");
-    toast.success(`Conversa "${title}" criada`);
   };
 
   const handleSend = () => {

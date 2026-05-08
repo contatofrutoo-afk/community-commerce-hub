@@ -119,7 +119,7 @@ export async function createConversation(params: {
     throw convError;
   }
 
-  console.log("[createConversation] Conversation created:", conv.id, conv.title);
+  console.log("[createConversation] Conversation INSERT succeeded:", conv.id, conv.title, "visibility:", conv.visibility, "tenant_id:", conv.tenant_id);
 
   const { error: memberError } = await supabase
     .from("conversation_members")
@@ -256,6 +256,16 @@ export async function getMyConversationsWithRole(tenantId: string, userId: strin
   }
 
   console.log("[getMyConversationsWithRole] Got", data?.length ?? 0, "conversations for tenant", tenantId, "user", userId);
+  if (data?.length === 0) {
+    const { data: rawData, error: rawError } = await supabase
+      .from("conversations")
+      .select("id, title, visibility, tenant_id, archived")
+      .eq("tenant_id", tenantId);
+    console.log("[getMyConversationsWithRole] Raw query (no RLS check):", rawData?.length ?? 0, "rows. Error:", rawError);
+    if (rawData && rawData.length > 0) {
+      console.log("[getMyConversationsWithRole] RLS is blocking visibility! Conversations:", rawData);
+    }
+  }
 
   return (data as any[]).map((c) => {
     const myMembership = c.conversation_members?.find((m: any) => m.user_id === userId);
