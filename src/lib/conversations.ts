@@ -91,20 +91,13 @@ export async function createConversation(params: {
   visibility: ConversationVisibility;
   createdBy: string;
 }): Promise<Conversation> {
-  console.log("[createConversation] Starting RPC call with:", {
-    p_tenant_id: params.tenantId,
-    p_title: params.title,
-    p_visibility: params.visibility,
-    p_created_by: params.createdBy,
-  });
+  console.log("[createConversation] Starting RPC call:", params.tenantId, params.title, params.visibility);
 
   if (!params.tenantId || !params.createdBy || !params.title) {
-    throw new Error("Missing required fields: tenantId, createdBy, or title");
+    throw new Error("Missing required fields");
   }
 
-  // Use RPC with SECURITY DEFINER to bypass RLS
-  // The create_conversation function handles everything atomically
-  const { data: convId, error: rpcError } = await supabase.rpc("create_conversation", {
+  const { data: conv, error: rpcError } = await supabase.rpc("create_conversation", {
     p_tenant_id: params.tenantId,
     p_title: params.title.trim(),
     p_description: params.description?.trim() || null,
@@ -117,17 +110,16 @@ export async function createConversation(params: {
     throw rpcError;
   }
 
-  console.log("[createConversation] RPC succeeded, convId:", convId);
+  console.log("[createConversation] RPC succeeded, result:", JSON.stringify(conv));
 
-  if (!convId) {
-    throw new Error("create_conversation returned no ID");
+  if (!conv) {
+    throw new Error("create_conversation returned empty result");
   }
 
-  // Fetch the full conversation with SELECT (RLS will work since user is now member)
-  const conv = await getConversation(convId as string);
-  if (!conv) throw new Error("Conversation created but fetch returned null");
-  console.log("[createConversation] Conversation fetched:", conv.id, conv.title);
-  return { ...conv, my_role: "owner" } as Conversation;
+  // conv should be the full conversation object from the RPC
+  const conversation = conv as Conversation;
+  console.log("[createConversation] Returning conversation:", conversation.id, conversation.title);
+  return { ...conversation, my_role: "owner" };
 }
 
 export async function updateConversation(id: string, params: {
