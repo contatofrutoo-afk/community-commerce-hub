@@ -70,6 +70,10 @@ export function useConversation(id: string | null, userId: string) {
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [pinned, setPinned] = useState<ConversationMessage[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const MESSAGE_PAGE_SIZE = 50;
 
   useEffect(() => {
     if (messagesQuery.data) setMessages(messagesQuery.data);
@@ -96,6 +100,16 @@ export function useConversation(id: string | null, userId: string) {
       unsubscribeAll();
     };
   }, [id, queryClient]);
+
+  const loadMore = useCallback(async () => {
+    if (!id || !hasMore || loadingMore) return;
+    setLoadingMore(true);
+    const newOffset = messages.length;
+    const newMessages = await conv.getConversationMessages(id, MESSAGE_PAGE_SIZE, newOffset);
+    if (newMessages.length < MESSAGE_PAGE_SIZE) setHasMore(false);
+    setMessages((prev) => [...prev, ...newMessages]);
+    setLoadingMore(false);
+  }, [id, hasMore, loadingMore, messages.length]);
 
   const sendMessageMutation = useMutation({
     mutationFn: (params: { content: string; replyTo?: string | null }) =>
@@ -167,6 +181,9 @@ export function useConversation(id: string | null, userId: string) {
     addMember: addMemberMutation.mutate,
     removeMember: removeMemberMutation.mutate,
     updateMemberRole: updateMemberRoleMutation.mutate,
+    loadMore,
+    hasMore,
+    loadingMore,
   };
 }
 

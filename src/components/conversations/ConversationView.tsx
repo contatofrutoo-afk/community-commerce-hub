@@ -1,5 +1,7 @@
+import { useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Conversation, ConversationMessage, ConversationMember } from "@/lib/conversations";
 import ConversationHeader from "./ConversationHeader";
 import PinnedMessagesBar from "./PinnedMessagesBar";
@@ -26,6 +28,10 @@ type Props = {
   mentionUsers: Array<{ id: string; name: string; avatar_url?: string }>;
   onMembersClick: () => void;
   userId: string;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onGoToMessage: (messageId: string) => void;
 };
 
 export default function ConversationView({
@@ -48,8 +54,32 @@ export default function ConversationView({
   mentionUsers,
   onMembersClick,
   userId,
+  onLoadMore,
+  hasMore,
+  loadingMore,
+  onGoToMessage,
 }: Props) {
   const canModerate = myRole === "owner" || myRole === "moderator";
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || !hasMore || loadingMore) return;
+    if (el.scrollTop <= 100) {
+      onLoadMore();
+    }
+  }, [hasMore, loadingMore, onLoadMore]);
+
+  const handleGoToMessage = (messageId: string) => {
+    onGoToMessage(messageId);
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = el.querySelector(`[data-msg-id="${messageId}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -65,11 +95,22 @@ export default function ConversationView({
         messages={messages}
         pinned={pinned}
         onUnpin={onUnpinMessage}
-        onGoToMessage={() => {}}
+        onGoToMessage={handleGoToMessage}
         canModerate={canModerate}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+      >
+        {loadingMore && (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            <span className="text-xs text-gray-400 ml-2">Carregando mensagens...</span>
+          </div>
+        )}
+
         {isLoadingConversation ? (
           <div className="p-4 space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -94,25 +135,29 @@ export default function ConversationView({
           <div className="py-2 pb-4">
             <AnimatePresence>
               {messages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isOwn={msg.user_id === userId}
-                  canModerate={canModerate}
-                  canPin={canModerate}
-                  canUnpin={canModerate}
-                  isPinned={msg.pinned}
-                  onReply={onReplyToMessage}
-                  onEdit={onEditMessage}
-                  onDelete={onDeleteMessage}
-                  onPin={onPinMessage}
-                  onUnpin={onUnpinMessage}
-                  onCopy={async (content: string) => {
-                    try { await navigator.clipboard.writeText(content); } catch {}
-                  }}
-                />
+                <div key={msg.id} data-msg-id={msg.id} ref={msg === messages[0] ? topRef : undefined}>
+                  <MessageBubble
+                    message={msg}
+                    isOwn={msg.user_id === userId}
+                    canModerate={canModerate}
+                    canPin={canModerate}
+                    canUnpin={canModerate}
+                    isPinned={msg.pinned}
+                    onReply={onReplyToMessage}
+                    onEdit={onEditMessage}
+                    onDelete={onDeleteMessage}
+                    onPin={onPinMessage}
+                    onUnpin={onUnpinMessage}
+                    onCopy={async (content: string) => {
+                      try { await navigator.clipboard.writeText(content); } catch {}
+                    }}
+                  />
+                </div>
               ))}
             </AnimatePresence>
+            {!hasMore && messages.length >= 10 && (
+              <p className="text-center text-xs text-gray-300 py-2">Fim da conversa</p>
+            )}
             <div className="h-px" />
           </div>
         )}

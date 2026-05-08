@@ -44,6 +44,16 @@ export type ConversationMessage = {
   reply_preview?: { content: string; profiles: { name: string | null } | null } | null;
 };
 
+export type ConversationMessagePin = {
+  id: string;
+  conversation_id: string;
+  message_id: string;
+  pinned_by: string | null;
+  created_at: string;
+};
+
+export type NotificationType = "conversation_message" | "mention" | "message_pinned" | "member_added";
+
 export type PinnedMessage = {
   id: string;
   conversation_id: string;
@@ -298,6 +308,39 @@ export async function pinMessage(params: {
   if ((pinnedCount.count ?? 0) >= 3) {
     return { success: false, error: "Limite de 3 mensagens fixadas atingido. Remova uma antes de fixar outra." };
   }
+
+  await supabase
+    .from("conversation_message_pins")
+    .insert({
+      conversation_id: params.conversationId,
+      message_id: params.messageId,
+      pinned_by: params.pinnedBy,
+    })
+    .then(async ({ error: pinError }) => {
+      if (pinError) return { success: false, error: pinError.message };
+      const { error } = await supabase
+        .from("conversation_messages")
+        .update({
+          pinned: true,
+          pinned_at: new Date().toISOString(),
+          pinned_by: params.pinnedBy,
+        })
+        .eq("id", params.messageId);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    });
+
+  return { success: true };
+}
+
+export async function unpinMessage(messageId: string): Promise<void> {
+  await supabase.from("conversation_message_pins").delete().eq("message_id", messageId);
+  const { error } = await supabase
+    .from("conversation_messages")
+    .update({ pinned: false, pinned_at: null, pinned_by: null })
+    .eq("id", messageId);
+  if (error) throw error;
+}
 
   const { error } = await supabase
     .from("conversation_messages")

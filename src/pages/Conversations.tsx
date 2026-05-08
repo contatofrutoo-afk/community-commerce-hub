@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/layout/TopBar";
@@ -19,6 +20,7 @@ export default function ConversationsPage() {
   const [replyPreview, setReplyPreview] = useState<{ id: string; name: string; content: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { conversations, isLoading: convLoading, createConversation, isCreating } = useConversations(
@@ -43,15 +45,20 @@ export default function ConversationsPage() {
     addMember,
     removeMember,
     updateMemberRole,
+    loadMore,
+    hasMore,
+    loadingMore,
   } = useConversation(selectedId, user?.id ?? "");
 
   const { search, setSearch, results, searching } = useSearchMembers(selectedId);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    const msgId = searchParams.get("msg");
+    if (msgId && selectedId) {
+      const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [messages.length]);
+  }, [selectedId, searchParams, messages.length]);
 
   useEffect(() => {
     setReplyPreview(null);
@@ -167,6 +174,10 @@ export default function ConversationsPage() {
               mentionUsers={results}
               onMembersClick={() => setShowMembers(true)}
               userId={user?.id ?? ""}
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              onGoToMessage={(id) => {}}
             />
           )}
         </div>
