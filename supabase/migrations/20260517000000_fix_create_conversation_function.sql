@@ -1,11 +1,43 @@
 -- =============================================
--- FIX: Conversation Creation Function
--- Fixes: memberships table has NO status column
+-- FIX ALL RLS POLICIES FOR CONVERSATIONS
+-- Fixes: is_tenant_member_check uses m.status (doesn't exist)
 -- memberships columns: id, user_id, tenant_id, role, created_at
 -- Run this in Supabase SQL Editor
 -- =============================================
 
--- Fix the helper function first (remove status check)
+-- Fix is_tenant_member_check (was checking non-existent m.status column)
+DROP FUNCTION IF EXISTS public.is_tenant_member_check(UUID, UUID);
+CREATE OR REPLACE FUNCTION public.is_tenant_member_check(p_user_id UUID, p_tenant_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.memberships m
+    WHERE m.user_id = p_user_id AND m.tenant_id = p_tenant_id
+  );
+END;
+$$;
+
+-- Fix is_tenant_admin_check (was checking non-existent m.status column)
+DROP FUNCTION IF EXISTS public.is_tenant_admin_check(UUID, UUID);
+CREATE OR REPLACE FUNCTION public.is_tenant_admin_check(p_user_id UUID, p_tenant_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.memberships m
+    WHERE m.user_id = p_user_id AND m.tenant_id = p_tenant_id AND m.role IN ('owner', 'admin')
+  );
+END;
+$$;
+
+-- Fix the helper function (remove status check)
 DROP FUNCTION IF EXISTS public.get_user_tenant_role(UUID, UUID);
 CREATE OR REPLACE FUNCTION public.get_user_tenant_role(p_user_id UUID, p_tenant_id UUID)
 RETURNS TEXT
@@ -73,7 +105,65 @@ BEGIN
 END;
 $$;
 
--- Verify both functions
+-- =============================================
+-- FIX RLS POLICIES (the root cause of empty list)
+-- =============================================
+
+-- conversations SELECT: member of tenant OR member of conversation
+DROP POLICY IF EXISTS conversations_select ON public.conversations;
+CREATE POLICY conversations_select ON public.conversations FOR SELECT USING (
+  archived = false
+  AND (
+    public.is_tenant_member_check(auth.uid(), tenant_id)
+    OR EXISTS (
+      SELECT 1 FROM public.conversation_members cm
+      WHERE cm.conversation_id = id AND cm.user_id = auth.uid()
+    )
+  )
+);
+
+-- conversations INSERT: member of tenant (function handles role restrictions)
+DROP POLICY IF EXISTS conversations_insert ON public.conversations;
+CREATE POLICY conversations_insert ON public.conversations FOR INSERT WITH CHECK (
+  public.is_tenant_member_check(auth.uid(), tenant_id)
+);
+
+-- conversation_members SELECT: member of tenant OR member of conversation
+DROP POLICY IF EXISTS conv_members_select ON public.conversation_members;
+CREATE POLICY conv_members_select ON public.conversation_members FOR SELECT USING (
+  public.is_tenant_member_check(auth.uid(),
+    (SELECT tenant_id FROM public.conversations WHERE id = conversation_id)
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.conversation_members cm2
+    WHERE cm2.conversation_id = conversation_id AND cm2.user_id = auth.uid()
+  )
+);
+
+-- conversation_members INSERT: member of conversation
+DROP POLICY IF EXISTS conv_members_insert ON public.conversation_members;
+CREATE POLICY conv_members_insert ON public.conversation_members FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.conversation_members cm
+    WHERE cm.conversation_id = conversation_id AND cm.user_id = auth.uid() AND cm.role IN ('owner', 'moderator')
+  )
+);
+
+-- conversation_messages SELECT
+DROP POLICY IF EXISTS conv_messages_select ON public.conversation_messages;
+CREATE POLICY conv_messages_select ON public.conversation_messages FOR SELECT USING (
+  public.is_tenant_member_check(auth.uid(),
+    (SELECT tenant_id FROM public.conversations WHERE id = conversation_id)
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.conversation_members cm
+    WHERE cm.conversation_id = conversation_id AND cm.user_id = auth.uid()
+  )
+);
+
+-- Verify all
 SELECT proname, proargnames FROM pg_proc
-WHERE proname IN ('create_conversation', 'get_user_tenant_role')
+WHERE proname IN ('create_conversation', 'get_user_tenant_role', 'is_tenant_member_check', 'is_tenant_admin_check')
 AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+
+SELECT policyname, cmd FROM pg_policies WHERE tablename IN ('conversations', 'conversation_members', 'conversation_messages');
