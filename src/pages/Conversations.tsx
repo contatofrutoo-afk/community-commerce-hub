@@ -221,11 +221,25 @@ export default function ConversationsPage() {
     );
   }
 
+  // Debug visual - mostrar tenants disponíveis
+  const debugTenantInfo = (
+    <div className="bg-yellow-100 p-2 text-xs text-yellow-800 mb-2">
+      <p><strong>Tenant atual:</strong> {tenant?.name} (ID: {tenant?.id})</p>
+      <p><strong>Você tem {tenants.length} comunidades:</strong></p>
+      {tenants.map(t => (
+        <p key={t.id} className={t.id === tenant?.id ? "font-bold" : ""}>
+          {t.id === tenant?.id ? "👉 " : "   "}{t.name}
+        </p>
+      ))}
+    </div>
+  );
+
   if (!tenant) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-gray-50">
         <TopBar />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center flex-col">
+          {debugTenantInfo}
           <p className="text-gray-500">Selecione uma comunidade</p>
         </main>
         <BottomNav />
@@ -239,6 +253,7 @@ export default function ConversationsPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50">
       <TopBar />
+      {debugTenantInfo}
 
       {!selectedConvId ? (
         <>
