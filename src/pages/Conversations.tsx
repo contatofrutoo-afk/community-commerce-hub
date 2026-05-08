@@ -43,7 +43,7 @@ const tabConfig = {
 };
 
 export default function ConversationsPage() {
-  const { tenant, isOwner, loading: tenantLoading } = useTenant();
+  const { tenant, tenants, isOwner, loading: tenantLoading } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("public");
@@ -63,7 +63,7 @@ export default function ConversationsPage() {
 
   const { conversations, isLoading: convLoading, createConversation, isCreating, createError, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
   
-  console.log("[ConversationsPage] Context check - tenant:", tenant, "tenantId:", tenant?.id, "user:", user?.id, "tenantExists:", !!tenant, "tenantName:", tenant?.name);
+  console.log("[ConversationsPage] Context check - tenant:", tenant, "tenantId:", tenant?.id, "user:", user?.id, "tenantExists:", !!tenant, "tenantName:", tenant?.name, "allTenants:", tenants.map(t => ({ id: t.id, name: t.name })));
   
   const {
     messages, pinned, members, myRole, isLoadingMessages,
