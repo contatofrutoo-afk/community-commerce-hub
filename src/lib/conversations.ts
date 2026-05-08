@@ -341,35 +341,3 @@ export async function unpinMessage(messageId: string): Promise<void> {
     .eq("id", messageId);
   if (error) throw error;
 }
-
-  const { error } = await supabase
-    .from("conversation_messages")
-    .update({
-      pinned: true,
-      pinned_at: new Date().toISOString(),
-      pinned_by: params.pinnedBy,
-    })
-    .eq("id", params.messageId);
-
-  if (error) return { success: false, error: error.message };
-  return { success: true };
-}
-
-export async function unpinMessage(messageId: string): Promise<void> {
-  const { error } = await supabase
-    .from("conversation_messages")
-    .update({ pinned: false, pinned_at: null, pinned_by: null })
-    .eq("id", messageId);
-
-  if (error) throw error;
-}
-
-export async function canPinInConversation(conversationId: string): Promise<boolean> {
-  const pinnedCount = await supabase
-    .from("conversation_messages")
-    .select("id", { count: "exact" })
-    .eq("conversation_id", conversationId)
-    .eq("pinned", true);
-
-  return (pinnedCount.count ?? 0) < 3;
-}

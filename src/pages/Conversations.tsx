@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  MessageCircle, Plus, Lock, Users, Hash, ChevronLeft,
-  Send, MoreHorizontal, Pin, Pencil, Trash2, AtSign, X, ArrowLeft
+  MessageCircle, Plus, Lock, Users, Hash,
+  Send, Pin, Trash2, AtSign, X, ArrowLeft
 } from "lucide-react";
 import { useConversations, useConversation } from "@/hooks/useConversations";
 import type { ConversationVisibility } from "@/lib/conversations";
@@ -45,7 +45,6 @@ const tabConfig = {
 export default function ConversationsPage() {
   const { tenant } = useTenant();
   const { user, isB2B } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("public");
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
@@ -53,22 +52,19 @@ export default function ConversationsPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newVis, setNewVis] = useState<ConversationVisibility>("public");
-  const [creating, setCreating] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
-  const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showMention, setShowMention] = useState(false);
-  const [mentionSearch, setMentionSearch] = useState("");
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
 
-  const { conversations, isLoading: convLoading, createConversation } = useConversations(tenant?.id ?? "", user?.id ?? "");
+  const { conversations, isLoading: convLoading, createConversation, isCreating } = useConversations(tenant?.id ?? "", user?.id ?? "");
   const {
-    messages, pinned, myRole, isLoadingMessages,
+    messages, pinned, members, myRole, isLoadingMessages,
     sendMessage, updateMessage, deleteMessage,
-    pinMessage, isPinning, addMember,
+    pinMessage, isPinning, unpinMessage,
   } = useConversation(selectedConvId, user?.id ?? "");
 
   const filtered = conversations.filter((c) => c.visibility === activeTab);
@@ -87,23 +83,20 @@ export default function ConversationsPage() {
 
   const handleCreate = () => {
     if (!tenant || !user || !newTitle.trim()) return;
-    setCreating(true);
-    createConversation({ title: newTitle, description: newDesc, visibility: newVis });
+    const title = newTitle;
+    createConversation({ title, description: newDesc, visibility: newVis });
     setShowCreate(false);
     setNewTitle("");
     setNewDesc("");
     setNewVis("public");
-    toast.success(`Conversa "${newTitle}" criada`);
-    setCreating(false);
+    toast.success(`Conversa "${title}" criada`);
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!replyText.trim() || !selectedConvId || !user) return;
-    setSending(true);
     sendMessage({ content: replyText.trim(), replyTo: replyingTo?.id ?? null });
     setReplyText("");
     setReplyingTo(null);
-    setSending(false);
   };
 
   const handleEdit = () => {
@@ -120,10 +113,9 @@ export default function ConversationsPage() {
     toast.success("Mensagem removida");
   };
 
-  const handlePin = async (msgId: string) => {
-    const result = await pinMessage(msgId);
-    if (!result.success) toast.error(result.error || "Erro");
-    else toast.success("Mensagem fixada");
+  const handlePin = (msgId: string) => {
+    pinMessage(msgId);
+    toast.success("Mensagem fixada");
   };
 
   const handleMention = (name: string) => {
@@ -137,15 +129,16 @@ export default function ConversationsPage() {
     if (lastAt !== -1) {
       const after = replyText.slice(lastAt + 1);
       if (!after.includes(" ")) {
-        setMentionSearch(after);
-        const users = conversations.flatMap((c) => (c as any).conversation_members ?? [])
-          .filter((m: any) => (m as any).profiles?.name?.toLowerCase().includes(after.toLowerCase()))
-          .slice(0, 5);
-        setMentionUsers(users.map((m: any) => m.profiles).filter(Boolean));
+        const users = members
+          .filter((m) => m.profiles?.name?.toLowerCase().includes(after.toLowerCase()))
+          .slice(0, 5)
+          .map((m) => m.profiles)
+          .filter(Boolean);
+        setMentionUsers(users);
         setShowMention(true);
       } else setShowMention(false);
     } else setShowMention(false);
-  }, [replyText, conversations]);
+  }, [replyText, members]);
 
   if (!tenant) {
     return (
@@ -524,7 +517,7 @@ export default function ConversationsPage() {
                 <Button
                   size="icon"
                   onClick={handleSend}
-                  disabled={!replyText.trim() || sending}
+                  disabled={!replyText.trim()}
                   className="h-11 w-11 rounded-xl bg-gradient-to-r from-[#630091] to-[#d81e62] hover:opacity-90 flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
@@ -572,10 +565,10 @@ export default function ConversationsPage() {
             </div>
             <Button
               onClick={handleCreate}
-              disabled={!newTitle.trim() || creating}
+              disabled={!newTitle.trim() || isCreating}
               className="w-full bg-gradient-to-r from-[#630091] to-[#d81e62] hover:opacity-90"
             >
-              {creating ? "Criando..." : "Criar conversa"}
+              {isCreating ? "Criando..." : "Criar conversa"}
             </Button>
           </div>
         </DialogContent>
