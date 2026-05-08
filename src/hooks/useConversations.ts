@@ -5,10 +5,13 @@ import * as conv from "@/lib/conversations";
 import type { Conversation, ConversationMessage, ConversationMember, ConversationRole, ConversationVisibility } from "@/lib/conversations";
 
 let conversationsListChannel: ReturnType<typeof supabase.channel> | null = null;
+let channelInitialized = false;
 const convListListeners = new Set<() => void>();
 
 function getOrCreateConversationsListChannel() {
-  if (conversationsListChannel) return conversationsListChannel;
+  if (conversationsListChannel && channelInitialized) {
+    return conversationsListChannel;
+  }
 
   conversationsListChannel = supabase
     .channel("conversations-list-realtime")
@@ -27,8 +30,14 @@ function getOrCreateConversationsListChannel() {
         console.log("[Realtime] Conversation updated");
         convListListeners.forEach((l) => l());
       }
-    )
-    .subscribe();
+    );
+
+  conversationsListChannel.subscribe((status) => {
+    if (status === "SUBSCRIBED") {
+      channelInitialized = true;
+      console.log("[Realtime] Channel subscribed");
+    }
+  });
 
   return conversationsListChannel;
 }
