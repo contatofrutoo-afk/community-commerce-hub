@@ -5,16 +5,19 @@ import * as conv from "@/lib/conversations";
 import type { Conversation, ConversationMessage, ConversationMember, ConversationRole, ConversationVisibility } from "@/lib/conversations";
 
 let conversationsListChannel: ReturnType<typeof supabase.channel> | null = null;
-let channelInitialized = false;
 const convListListeners = new Set<() => void>();
 
 function getOrCreateConversationsListChannel() {
-  if (conversationsListChannel && channelInitialized) {
+  // Se já existe um canal, simplesmente retorna
+  if (conversationsListChannel) {
     return conversationsListChannel;
   }
 
-  conversationsListChannel = supabase
-    .channel("conversations-list-realtime")
+  // Criar novo canal
+  conversationsListChannel = supabase.channel("conversations-list-realtime");
+
+  // Adicionar os listeners ANTES de fazer subscribe
+  conversationsListChannel
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "conversations" },
@@ -30,14 +33,10 @@ function getOrCreateConversationsListChannel() {
         console.log("[Realtime] Conversation updated");
         convListListeners.forEach((l) => l());
       }
-    );
-
-  conversationsListChannel.subscribe((status) => {
-    if (status === "SUBSCRIBED") {
-      channelInitialized = true;
-      console.log("[Realtime] Channel subscribed");
-    }
-  });
+    )
+    .subscribe((status) => {
+      console.log("[Realtime] Channel status:", status);
+    });
 
   return conversationsListChannel;
 }
@@ -67,10 +66,15 @@ export function useConversations(tenantId: string, userId: string) {
     refetchOnWindowFocus: true,
   });
 
-  useEffect(() => {
-    if (!tenantId || !userId) return;
+  const channelCreated = useRef(false);
 
+  useEffect(() => {
+    if (!tenantId || !userId || channelCreated.current) return;
+
+    console.log("[useConversations] Creating realtime channel");
     getOrCreateConversationsListChannel();
+    channelCreated.current = true;
+
     const listener = () => {
       console.log("[useConversations] Invalidating conversations cache");
       queryClient.invalidateQueries({ queryKey: ["conversations", tenantId, userId] });
