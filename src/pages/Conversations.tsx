@@ -43,7 +43,7 @@ const tabConfig = {
 };
 
 export default function ConversationsPage() {
-  const { tenant, isOwner } = useTenant();
+  const { tenant, isOwner, loading: tenantLoading } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("public");
@@ -208,6 +208,18 @@ export default function ConversationsPage() {
       } else setShowMention(false);
     } else setShowMention(false);
   }, [replyText, members]);
+
+  if (tenantLoading) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-gray-50">
+        <TopBar />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Carregando...</p>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (!tenant) {
     return (

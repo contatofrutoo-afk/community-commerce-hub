@@ -36,7 +36,9 @@ function getOrCreateConversationsListChannel() {
 export function useConversations(tenantId: string, userId: string) {
   const queryClient = useQueryClient();
 
-  console.log("[useConversations] Hook called with:", { tenantId, userId, enabled: !!tenantId && !!userId, tenantIdEmpty: !tenantId, userIdEmpty: !userId });
+  const isReady = !!tenantId && tenantId.length > 0 && !!userId && userId.length > 0;
+  
+  console.log("[useConversations] Hook called with:", { tenantId, userId, isReady });
 
   const conversationsQuery = useQuery({
     queryKey: ["conversations", tenantId, userId],
@@ -50,7 +52,7 @@ export function useConversations(tenantId: string, userId: string) {
       console.log("[useConversations] Query result:", result?.length ?? 0, "items");
       return result;
     },
-    enabled: !!tenantId && !!userId,
+    enabled: isReady,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
