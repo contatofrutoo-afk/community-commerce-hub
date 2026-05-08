@@ -99,10 +99,11 @@ export function useConversations(tenantId: string, userId: string) {
     },
     onSuccess: (data) => {
       console.log("[useConversations] onSuccess - replacing optimistic with real conv:", data.id, data.title);
-      // Replace temp conv with real conv
-      queryClient.setQueryData<any[]>(["conversations", tenantId, userId], (old = []) =>
-        old.map((c) => (c.id.startsWith("temp-") ? { ...data, my_role: "owner" } : c))
-      );
+      const currentData = queryClient.getQueryData<any[]>(["conversations", tenantId, userId]);
+      console.log("[useConversations] Cache BEFORE replacement:", currentData?.map(c => ({id: c.id, title: c.title})) ?? "empty");
+      const next = (currentData ?? []).map((c) => (c.id.startsWith("temp-") ? { ...data, my_role: "owner" } : c));
+      queryClient.setQueryData(["conversations", tenantId, userId], next);
+      console.log("[useConversations] Cache AFTER replacement:", next.map(c => ({id: c.id, title: c.title})));
     },
   });
 
