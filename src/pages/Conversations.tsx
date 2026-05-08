@@ -72,6 +72,20 @@ export default function ConversationsPage() {
   } = useConversation(selectedConvId, user?.id ?? "");
 
   const filtered = conversations.filter((c) => c.visibility === activeTab);
+  
+  // Debug visual mais detalhado
+  const debugQueryInfo = (
+    <div className="bg-blue-100 p-2 text-xs text-blue-800 mb-2">
+      <p><strong>Debug:</strong></p>
+      <p>Tenant ID: {tenant?.id}</p>
+      <p>User ID: {user?.id}</p>
+      <p>Total conversas encontradas: {conversations.length}</p>
+      <p>Filtradas (Públicas): {filtered.length}</p>
+      <p>Carregando: {convLoading ? "Sim" : "Não"}</p>
+      {convError && <p className="text-red-600">Erro: {String(convError)}</p>}
+    </div>
+  );
+  
   console.log("[Conversations] Render:", {
     tenantId: tenant?.id,
     userId: user?.id,
@@ -254,6 +268,7 @@ export default function ConversationsPage() {
     <div className="min-h-[100dvh] flex flex-col bg-gray-50">
       <TopBar />
       {debugTenantInfo}
+      {debugQueryInfo}
 
       {!selectedConvId ? (
         <>
