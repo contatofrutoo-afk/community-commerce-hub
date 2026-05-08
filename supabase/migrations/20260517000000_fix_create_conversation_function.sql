@@ -1,12 +1,31 @@
 -- =============================================
 -- FIX: Conversation Creation Function
+-- Fixes: memberships table has NO status column
+-- memberships columns: id, user_id, tenant_id, role, created_at
 -- Run this in Supabase SQL Editor
 -- =============================================
 
--- Drop existing function first (prevents signature mismatch)
-DROP FUNCTION IF EXISTS public.create_conversation(UUID, TEXT, TEXT, TEXT, UUID);
+-- Fix the helper function first (remove status check)
+DROP FUNCTION IF EXISTS public.get_user_tenant_role(UUID, UUID);
+CREATE OR REPLACE FUNCTION public.get_user_tenant_role(p_user_id UUID, p_tenant_id UUID)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role TEXT;
+BEGIN
+  SELECT m.role INTO v_role
+  FROM public.memberships m
+  WHERE m.user_id = p_user_id AND m.tenant_id = p_tenant_id
+  LIMIT 1;
+  RETURN COALESCE(v_role, 'none');
+END;
+$$;
 
--- Create function with exact signature that matches the RPC call
+-- Drop and recreate create_conversation with correct references
+DROP FUNCTION IF EXISTS public.create_conversation(UUID, TEXT, TEXT, TEXT, UUID);
 CREATE OR REPLACE FUNCTION public.create_conversation(
   p_tenant_id UUID,
   p_title TEXT,
@@ -23,7 +42,7 @@ DECLARE
   v_conv_id UUID;
   v_user_role TEXT;
 BEGIN
-  -- Verify user is a member of the tenant
+  -- Verify user is a member of the tenant (no status column)
   v_user_role := public.get_user_tenant_role(p_created_by, p_tenant_id);
 
   IF v_user_role = 'none' THEN
@@ -53,8 +72,7 @@ BEGIN
 END;
 $$;
 
--- Verify it was created
-SELECT proname, pronargs, proargnames
-FROM pg_proc
-WHERE proname = 'create_conversation'
+-- Verify both functions
+SELECT proname, proargnames FROM pg_proc
+WHERE proname IN ('create_conversation', 'get_user_tenant_role')
 AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
