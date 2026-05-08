@@ -1,5 +1,4 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play, Sparkles } from "lucide-react";
 import heroMockup from "@/assets/landing-hero-mockup.jpg";
@@ -18,12 +17,8 @@ const stagger = {
 };
 
 export default function HeroSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
   return (
     <section
-      ref={ref}
       className="relative min-h-screen flex flex-col justify-center pt-12 pb-8 overflow-hidden bg-white"
     >
       {/* Animated gradient orbs */}
@@ -90,7 +85,7 @@ export default function HeroSection() {
               className="text-lg sm:text-xl text-[#4a4a4a] max-w-xl mb-10 leading-relaxed"
             >
               Feed, mensagens, agenda e dados em um único app com a sua marca.
-              Pare de depender de algoritmos — construa um ativo que é só seu.
+              Pare de depender de algoritmos - construa um ativo que é só seu.
             </motion.p>
 
             <motion.div
@@ -157,7 +152,7 @@ export default function HeroSection() {
             </motion.div>
           </div>
 
-          {/* RIGHT — mockup */}
+          {/* RIGHT - mockup */}
           <motion.div
             className="relative mt-12 lg:mt-0"
           >
