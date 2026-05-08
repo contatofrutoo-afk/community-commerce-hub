@@ -43,7 +43,7 @@ const tabConfig = {
 };
 
 export default function ConversationsPage() {
-  const { tenant } = useTenant();
+  const { tenant, isOwner } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("public");
@@ -234,7 +234,7 @@ export default function ConversationsPage() {
                   <h1 className="text-xl font-semibold text-gray-900">Conversas</h1>
                   <p className="text-xs text-gray-400 mt-0.5">Comunicação da comunidade</p>
                 </div>
-                {isB2B && (
+                {(isB2B || isOwner) && (
                   <Button
                     size="sm"
                     onClick={() => setShowCreate(true)}
