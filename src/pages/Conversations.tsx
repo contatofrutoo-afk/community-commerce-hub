@@ -60,7 +60,7 @@ export default function ConversationsPage() {
   const [showMention, setShowMention] = useState(false);
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
 
-  const { conversations, isLoading: convLoading, createConversation, isCreating, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
+  const { conversations, isLoading: convLoading, createConversation, isCreating, createError, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
   const {
     messages, pinned, members, myRole, isLoadingMessages,
     sendMessage, updateMessage, deleteMessage,
@@ -85,6 +85,23 @@ export default function ConversationsPage() {
       setSelectedConvId(convId);
     }
   }, [searchParams]);
+
+  // Show error toast when creation fails
+  useEffect(() => {
+    if (createError) {
+      console.error("[Conversations] Creation error:", createError);
+      toast.error(`Erro ao criar conversa: ${createError.message}`);
+    }
+  }, [createError]);
+
+  // Show success toast when conversations change (creation succeeded)
+  const [prevConvCount, setPrevConvCount] = useState(conversations.length);
+  useEffect(() => {
+    if (conversations.length > prevConvCount && prevConvCount >= 0) {
+      toast.success("Conversa criada com sucesso!");
+    }
+    setPrevConvCount(conversations.length);
+  }, [conversations.length, prevConvCount]);
 
   const handleCreate = () => {
     if (!tenant || !user || !newTitle.trim()) {

@@ -91,51 +91,42 @@ export async function createConversation(params: {
   visibility: ConversationVisibility;
   createdBy: string;
 }): Promise<Conversation> {
-  console.log("[createConversation] Starting with params:", {
-    tenantId: params.tenantId,
-    title: params.title,
-    visibility: params.visibility,
-    createdBy: params.createdBy,
+  console.log("[createConversation] Starting RPC call with:", {
+    p_tenant_id: params.tenantId,
+    p_title: params.title,
+    p_visibility: params.visibility,
+    p_created_by: params.createdBy,
   });
 
   if (!params.tenantId || !params.createdBy || !params.title) {
     throw new Error("Missing required fields: tenantId, createdBy, or title");
   }
 
-  const { data: conv, error: convError } = await supabase
-    .from("conversations")
-    .insert({
-      tenant_id: params.tenantId,
-      title: params.title.trim(),
-      description: params.description?.trim() || null,
-      visibility: params.visibility,
-      created_by: params.createdBy,
-    })
-    .select()
-    .single();
+  // Use RPC with SECURITY DEFINER to bypass RLS
+  // The create_conversation function handles everything atomically
+  const { data: convId, error: rpcError } = await supabase.rpc("create_conversation", {
+    p_tenant_id: params.tenantId,
+    p_title: params.title.trim(),
+    p_description: params.description?.trim() || null,
+    p_visibility: params.visibility,
+    p_created_by: params.createdBy,
+  });
 
-  if (convError) {
-    console.error("[createConversation] Failed to insert conversation:", convError);
-    throw convError;
+  if (rpcError) {
+    console.error("[createConversation] RPC failed:", rpcError);
+    throw rpcError;
   }
 
-  console.log("[createConversation] Conversation INSERT succeeded:", conv.id, conv.title, "visibility:", conv.visibility, "tenant_id:", conv.tenant_id);
+  console.log("[createConversation] RPC succeeded, convId:", convId);
 
-  const { error: memberError } = await supabase
-    .from("conversation_members")
-    .insert({
-      conversation_id: conv.id,
-      user_id: params.createdBy,
-      role: "owner",
-      added_by: params.createdBy,
-    });
-
-  if (memberError) {
-    console.error("[createConversation] Failed to add creator as member:", memberError);
-    throw memberError;
+  if (!convId) {
+    throw new Error("create_conversation returned no ID");
   }
 
-  console.log("[createConversation] Creator added as owner of conversation", conv.id);
+  // Fetch the full conversation with SELECT (RLS will work since user is now member)
+  const conv = await getConversation(convId as string);
+  if (!conv) throw new Error("Conversation created but fetch returned null");
+  console.log("[createConversation] Conversation fetched:", conv.id, conv.title);
   return { ...conv, my_role: "owner" } as Conversation;
 }
 

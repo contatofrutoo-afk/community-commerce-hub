@@ -42,19 +42,15 @@ BEGIN
     RAISE EXCEPTION 'User is not a member of this tenant';
   END IF;
 
-  -- Only owner, admin, and moderator can create conversations
-  IF v_user_role NOT IN ('owner', 'admin', 'moderator') THEN
-    RAISE EXCEPTION 'Insufficient permissions to create conversations';
+  -- Any member can create conversations (RLS policy handles restrictions)
+  -- Internal conversations only for admin/owner
+  IF p_visibility = 'internal' AND v_user_role NOT IN ('owner', 'admin') THEN
+    RAISE EXCEPTION 'Only admins can create internal conversations';
   END IF;
 
   -- Validate visibility
   IF p_visibility NOT IN ('public', 'private', 'internal') THEN
     RAISE EXCEPTION 'Invalid visibility value';
-  END IF;
-
-  -- Internal conversations only for admin/owner
-  IF p_visibility = 'internal' AND v_user_role NOT IN ('owner', 'admin') THEN
-    RAISE EXCEPTION 'Only admins can create internal conversations';
   END IF;
 
   -- Insert conversation
