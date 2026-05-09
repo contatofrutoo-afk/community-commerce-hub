@@ -195,12 +195,10 @@ export default function CommunityPage() {
           </p>
           <div className="bg-white/50 rounded-xl p-4 text-center">
             <p className="text-sm text-amber-700">
-              Enquanto isso, você pode explorar outras comunidades ou voltar mais tarde.
+              Você pode voltar mais tarde para verificar o status.
             </p>
           </div>
-          <Button variant="outline" className="w-full" onClick={() => navigate("/communities")}>
-            Explorar outras comunidades
-          </Button>
+          
         </div>
       );
     }
@@ -218,9 +216,7 @@ export default function CommunityPage() {
           <p className="text-sm text-red-600">
             Entre em contato diretamente com a marca para mais informações.
           </p>
-          <Button variant="outline" className="w-full" onClick={() => navigate("/communities")}>
-            Explorar outras comunidades
-          </Button>
+          
         </div>
       );
     }
@@ -264,7 +260,7 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <Button variant="ghost" onClick={() => navigate("/communities")} className="mb-4">
+          <Button variant="ghost" onClick={() => navigate("/feed")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
           </Button>
           <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">

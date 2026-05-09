@@ -234,12 +234,47 @@ export default function Profile() {
         <section className="bg-card rounded-2xl border border-border p-5 space-y-2 shadow-soft">
           <h2 className="font-semibold mb-2">Comunidade</h2>
           <p className="text-sm text-muted-foreground mb-3">Você está em <strong>{tenant?.name ?? "—"}</strong></p>
-          {isB2C && (
-            <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-              <Link to="/communities"><ArrowLeftRight className="h-4 w-4 mr-2" />Trocar de comunidade ({tenants.length})</Link>
-            </Button>
-          )}
         </section>
+
+        {isOwner && tenant && (
+          <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-purple-600" />
+              <h2 className="font-semibold text-purple-900">Compartilhar Comunidade</h2>
+            </div>
+            <p className="text-sm text-purple-700">Copie o link e compartilhe com seus clientes para que eles acessem sua comunidade.</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-white rounded-lg px-4 py-3 border border-purple-200 text-sm text-gray-700 truncate">
+                {typeof window !== "undefined" ? `${window.location.origin}/m/${tenant.slug}` : `/m/${tenant.slug}`}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const link = `${window.location.origin}/m/${tenant.slug}`;
+                  await navigator.clipboard.writeText(link);
+                  setCopied(true);
+                  toast.success("Link copiado!");
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                {copied ? "Copiado!" : "Copiar"}
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
+              asChild
+            >
+              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant.name)}%20${encodeURIComponent(window.location.origin + "/m/" + tenant.slug)}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Compartilhar no WhatsApp
+              </a>
+            </Button>
+          </section>
+        )}
 
         <Button variant="ghost" onClick={async () => { await signOut(); nav("/"); }} className="w-full text-destructive">
           <LogOut className="h-4 w-4 mr-2" />Sair

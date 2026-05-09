@@ -131,7 +131,7 @@ export default function Communities() {
                 </Button>
               ) : (
                 <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
-                  <Link to="/auth">Explorar comunidades</Link>
+                  <Link to="/feed">Voltar ao feed</Link>
                 </Button>
               )}
             </div>

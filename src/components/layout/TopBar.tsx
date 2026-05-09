@@ -13,7 +13,7 @@ export default function TopBar() {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/communities");
+      navigate("/feed");
     }
   };
 

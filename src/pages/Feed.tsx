@@ -188,13 +188,6 @@ export default function Feed() {
             <div className="h-20 w-20 mx-auto rounded-full bg-brand-soft grid place-items-center mb-6">
               <Play className="h-10 w-10 text-primary" />
             </div>
-            <h1 className="font-display text-4xl mb-3">Descubra conteúdo</h1>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Entre em uma comunidade para ver vídeos imersivos.
-            </p>
-            <Button asChild size="lg" className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full h-14 text-lg">
-              <Link to="/communities">Explorar comunidades</Link>
-            </Button>
           </div>
         </main>
         <BottomNav />
