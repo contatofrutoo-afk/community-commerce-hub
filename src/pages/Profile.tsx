@@ -16,6 +16,13 @@ export default function Profile() {
   const { user, signOut, isB2B } = useAuth();
   const { tenant, isOwner, tenants } = useTenant();
   const nav = useNavigate();
+
+  console.log("[PROFILE] Debug B2B identification:", {
+    userId: user?.id,
+    isB2B,
+    tenant: tenant ? { id: tenant.id, slug: tenant.slug, name: tenant.name } : null,
+    tenantLoading: false
+  });
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);

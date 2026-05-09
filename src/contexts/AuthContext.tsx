@@ -61,14 +61,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user) { setAppRole(null); return; }
     let cancelled = false;
     (async () => {
+      console.log("[AUTH] Checking memberships for user:", user.id);
       const { data: memberships } = await supabase
         .from("memberships")
         .select("role")
         .eq("user_id", user.id);
       
+      console.log("[AUTH] Memberships:", memberships);
+      
       if (cancelled) return;
       
       const roles = (memberships ?? []).map((m) => m.role);
+      console.log("[AUTH] Roles array:", roles);
       
       let newRole: AppRole | null = null;
       
@@ -79,6 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         newRole = "b2c";
       }
+      
+      console.log("[AUTH] Calculated role:", newRole);
       
       if (!cancelled) {
         setAppRole(newRole);

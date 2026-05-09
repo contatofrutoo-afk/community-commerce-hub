@@ -41,6 +41,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const load = useCallback(async () => {
     setLoading(true);
     if (!user) {
+      console.log("[TENANT] No user, clearing state");
       setTenants([]);
       setTenant(null);
       setIsOwner(false);
@@ -48,30 +49,39 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
+    console.log("[TENANT] Loading tenants for user:", user.id);
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
       .eq("user_id", user.id);
+    console.log("[TENANT] Memberships raw:", mems);
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
+    console.log("[TENANT] Tenants list:", list);
     const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
       const membership = m as { tenant_id: string; role: "owner" | "admin" | "member" };
       roles[membership.tenant_id] = membership.role;
     });
+    console.log("[TENANT] Roles map:", roles);
     setMemRoles(roles);
     setTenants(list);
     
     // Auto-selecionar tenant - qualquer membro pode gerenciar
     const savedId = localStorage.getItem("wenity:active_tenant");
+    console.log("[TENANT] Saved tenant ID:", savedId);
     const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
+    console.log("[TENANT] Target tenant ID:", targetId);
     const targetRole = targetId ? roles[targetId] : null;
+    console.log("[TENANT] Target role:", targetRole);
     if (targetId && targetRole) {
+      console.log("[TENANT] Setting tenant:", list.find(t => t.id === targetId));
       setTenant(list.find(t => t.id === targetId)!);
       setIsOwner(targetRole === "owner");
       // Qualquer membro (owner/admin/member) com vínculo pode gerenciar lives
       setCanManage(true);
       if (savedId) localStorage.setItem("wenity:active_tenant", targetId);
     } else {
+      console.log("[TENANT] No valid tenant/role, clearing");
       setTenant(null);
       setIsOwner(false);
       setCanManage(false);
