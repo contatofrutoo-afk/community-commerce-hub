@@ -243,20 +243,7 @@ export default function Profile() {
           <p className="text-sm text-muted-foreground mb-3">Você está em <strong>{tenant?.name ?? "—"}</strong></p>
         </section>
 
-{/* Compartilhar Comunidade */}
-        {(tenant?.slug) && (
-          <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-purple-600" />
-              <h2 className="font-semibold text-purple-900">Compartilhar Comunidade</h2>
-            </div>
-            <p className="text-sm text-purple-700">Copie o link e compartilhe com seus clientes para que eles acessem sua comunidade.</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-white rounded-lg px-4 py-3 border border-purple-200 text-sm text-gray-700 truncate">
-                {typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant.slug}` : `/invite/${tenant.slug}`}
-              </div>
-
-        {(tenant?.slug) && (
+{isB2B && tenant?.slug && (
           <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-purple-600" />
