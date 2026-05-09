@@ -160,7 +160,7 @@ const App = () => (
                     <Route path="/conversations" element={<Protected><NeedsTenant><NeedsAccess><Conversations /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/conversations/:conversationId" element={<Protected><NeedsTenant><NeedsAccess><Conversations /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/invite/:code" element={<InviteLanding />} />
+                    <Route path="/invite/:slug" element={<InviteLanding />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
                     <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
