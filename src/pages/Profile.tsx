@@ -17,11 +17,17 @@ export default function Profile() {
   const { tenant, isOwner, tenants } = useTenant();
   const nav = useNavigate();
 
-  console.log("[PROFILE] Debug B2B identification:", {
+  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
+
+  console.log("[PROFILE] Full debug:", {
     userId: user?.id,
     isB2B,
-    tenant: tenant ? { id: tenant.id, slug: tenant.slug, name: tenant.name } : null,
-    tenantLoading: false
+    appRole: (user as any)?._id,
+    tenant,
+    tenantSlug: tenant?.slug,
+    tenantsCount: tenants.length,
+    tenantsList: tenants.map(t => ({ id: t.id, name: t.name, slug: t.slug })),
+    shouldShowShare: isB2B && !!tenant?.slug,
   });
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -41,6 +47,17 @@ export default function Profile() {
   // Gamification
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("role, tenant_id")
+        .eq("user_id", user.id);
+      console.log("[PROFILE] Direct memberships query:", mems);
+    })();
+  }, [user?.id]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -252,14 +269,13 @@ export default function Profile() {
             <p className="text-sm text-purple-700">Copie o link e compartilhe com seus clientes para que eles acessem sua comunidade.</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-white rounded-lg px-4 py-3 border border-purple-200 text-sm text-gray-700 truncate">
-                {typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant.slug}` : `/invite/${tenant.slug}`}
+                {shareLink}
               </div>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  const link = `${window.location.origin}/invite/${tenant.slug}`;
-                  await navigator.clipboard.writeText(link);
+                  await navigator.clipboard.writeText(shareLink);
                   setCopied(true);
                   toast.success("Link copiado!");
                   setTimeout(() => setCopied(false), 2000);
@@ -275,7 +291,7 @@ export default function Profile() {
               className="w-full bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
               asChild
             >
-              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant.name)}%20${encodeURIComponent(window.location.origin + "/invite/" + tenant.slug)}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant?.name ?? "")}%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Compartilhar no WhatsApp
               </a>
