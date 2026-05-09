@@ -56,36 +56,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Buscar papel do usuário (b2b / b2c / admin)
+  // Buscar papel do usuário via memberships (fonte oficial)
   useEffect(() => {
     if (!user) { setAppRole(null); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("user_roles")
+      const { data: memberships } = await supabase
+        .from("memberships")
         .select("role")
         .eq("user_id", user.id);
       
       if (cancelled) return;
       
-      const roles = (data ?? []).map((r) => r.role as AppRole);
+      const roles = (memberships ?? []).map((m) => m.role);
       
       let newRole: AppRole | null = null;
       
-      if (roles.length === 0) {
-        // Sem role explícita → verificar se é owner de alguma marca → B2B
-        const { data: memberships } = await supabase
-          .from("memberships")
-          .select("role")
-          .eq("user_id", user.id);
-        
-        newRole = (memberships && memberships.length > 0 && memberships[0].role === 'owner') ? 'b2b' : 'b2c';
+      if (roles.includes("owner") || roles.includes("admin")) {
+        newRole = roles.includes("admin") ? "admin" : "b2b";
+      } else if (roles.includes("member")) {
+        newRole = "b2c";
       } else {
-        newRole = roles.includes("admin")
-          ? "admin"
-          : roles.includes("b2b")
-            ? "b2b"
-            : "b2c";
+        newRole = "b2c";
       }
       
       if (!cancelled) {
