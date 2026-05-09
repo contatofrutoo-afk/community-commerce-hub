@@ -16,7 +16,8 @@ import {
   MessageCircle, Plus, Lock, Users, Hash,
   Send, Pin, Trash2, AtSign, X, ArrowLeft
 } from "lucide-react";
-import { useConversations, useConversation } from "@/hooks/useConversations";
+import { useConversationsList } from "@/hooks/useConversationsList";
+import { useConversationMessages } from "@/hooks/useConversationMessages";
 import type { ConversationVisibility } from "@/lib/conversations";
 
 type Tab = "public" | "private" | "internal";
@@ -61,76 +62,28 @@ export default function ConversationsPage() {
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const { conversations, isLoading: convLoading, createConversation, isCreating, createError, error: convError, refetch } = useConversations(tenant?.id ?? "", user?.id ?? "");
-  
-  console.log("[ConversationsPage] Context check - tenant:", tenant, "tenantId:", tenant?.id, "user:", user?.id, "tenantExists:", !!tenant, "tenantName:", tenant?.name, "allTenants:", tenants.map(t => ({ id: t.id, name: t.name })));
+  const { conversations, isLoading: convLoading, createConversation, isCreating, createError, error: convError, refetch } = useConversationsList(tenant?.id ?? "", user?.id ?? "");
   
   const {
     messages, pinned, members, myRole, isLoadingMessages,
     sendMessage, updateMessage, deleteMessage,
     pinMessage, isPinning, unpinMessage,
-  } = useConversation(selectedConvId, user?.id ?? "");
+  } = useConversationMessages(selectedConvId, user?.id ?? "");
 
   const filtered = conversations.filter((c) => c.visibility === activeTab);
+
   
-  // Debug visual mais detalhado
-  const debugQueryInfo = (
-    <div className="bg-blue-100 p-2 text-xs text-blue-800 mb-2">
-      <p><strong>Debug:</strong></p>
-      <p>Tenant ID: {tenant?.id}</p>
-      <p>User ID: {user?.id}</p>
-      <p>Total conversas encontradas: {conversations.length}</p>
-      <p>Filtradas (Públicas): {filtered.length}</p>
-      <p>Carregando: {convLoading ? "Sim" : "Não"}</p>
-      {convError && <p className="text-red-600">Erro: {String(convError)}</p>}
-    </div>
-  );
-  
-  console.log("[Conversations] Render:", {
-    tenantId: tenant?.id,
-    userId: user?.id,
-    convCount: conversations.length,
-    filteredCount: filtered.length,
-    activeTab,
-    selectedConvId,
-    isLoading: convLoading,
-  });
 
   useEffect(() => {
     const convId = searchParams.get("conv");
-    if (convId) {
-      console.log("[Conversations] Opening conversation from URL:", convId);
-      setSelectedConvId(convId);
-    }
+    if (convId) setSelectedConvId(convId);
   }, [searchParams]);
 
-  // Show error toast when creation fails
-  useEffect(() => {
-    if (createError) {
-      console.error("[Conversations] Creation error:", createError);
-      toast.error(`Erro ao criar conversa: ${createError.message}`);
-    }
-  }, [createError]);
-
-  // Show success toast when conversations change (creation succeeded)
-  const [prevConvCount, setPrevConvCount] = useState(conversations.length);
-  useEffect(() => {
-    if (conversations.length > prevConvCount && prevConvCount >= 0) {
-      toast.success("Conversa criada com sucesso!");
-    }
-    setPrevConvCount(conversations.length);
-  }, [conversations.length, prevConvCount]);
+  
 
   const handleCreate = async () => {
-    if (!tenant || !user || !newTitle.trim()) {
-      console.warn("[handleCreate] Missing required fields");
-      return;
-    }
-
-    if (submitting) {
-      console.warn("[handleCreate] Already submitting");
-      return;
-    }
+    if (!tenant || !user || !newTitle.trim()) return;
+    if (submitting) return;
 
     const title = newTitle.trim();
     const existingConv = conversations.find(
@@ -141,30 +94,15 @@ export default function ConversationsPage() {
       return;
     }
 
-    console.log("[handleCreate] Creating conversation:", title, newVis, "tenant:", tenant.id, "user:", user.id, "timestamp:", Date.now());
     setSubmitting(true);
     try {
-      await new Promise<void>((resolve, reject) => {
-        createConversation(
-          { title, description: newDesc, visibility: newVis },
-          {
-            onSuccess: () => {
-              console.log("[handleCreate] Success callback at", Date.now());
-              resolve();
-            },
-            onError: (err) => {
-              console.error("[handleCreate] Error callback:", err);
-              reject(err);
-            },
-          }
-        );
-      });
+      await createConversation({ title, description: newDesc, visibility: newVis });
       setShowCreate(false);
       setNewTitle("");
       setNewDesc("");
       setNewVis("public");
+      toast.success("Conversa criada com sucesso!");
     } catch (err) {
-      console.error("[handleCreate] Failed:", err);
       toast.error(`Erro ao criar conversa: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     } finally {
       setSubmitting(false);
@@ -172,11 +110,7 @@ export default function ConversationsPage() {
   };
 
   const handleSend = () => {
-    if (!replyText.trim() || !selectedConvId || !user) {
-      console.warn("[handleSend] Missing required fields");
-      return;
-    }
-    console.log("[handleSend] Sending message to", selectedConvId);
+    if (!replyText.trim() || !selectedConvId || !user) return;
     sendMessage({ content: replyText.trim(), replyTo: replyingTo?.id ?? null });
     setReplyText("");
     setReplyingTo(null);
@@ -235,25 +169,13 @@ export default function ConversationsPage() {
     );
   }
 
-  // Debug visual - mostrar tenants disponíveis
-  const debugTenantInfo = (
-    <div className="bg-yellow-100 p-2 text-xs text-yellow-800 mb-2">
-      <p><strong>Tenant atual:</strong> {tenant?.name} (ID: {tenant?.id})</p>
-      <p><strong>Você tem {tenants.length} comunidades:</strong></p>
-      {tenants.map(t => (
-        <p key={t.id} className={t.id === tenant?.id ? "font-bold" : ""}>
-          {t.id === tenant?.id ? "👉 " : "   "}{t.name}
-        </p>
-      ))}
-    </div>
-  );
+  
 
   if (!tenant) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-gray-50">
         <TopBar />
-        <main className="flex-1 flex items-center justify-center flex-col">
-          {debugTenantInfo}
+        <main className="flex-1 flex items-center justify-center">
           <p className="text-gray-500">Selecione uma comunidade</p>
         </main>
         <BottomNav />
@@ -267,8 +189,6 @@ export default function ConversationsPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50">
       <TopBar />
-      {debugTenantInfo}
-      {debugQueryInfo}
 
       {!selectedConvId ? (
         <>
@@ -382,7 +302,7 @@ export default function ConversationsPage() {
                         <motion.div
                           key={conv.id}
                           whileTap={{ scale: 0.99 }}
-                          onClick={() => { console.log("[Conversations] Selected conv:", conv.id, conv.title); setSelectedConvId(conv.id); }}
+                          onClick={() => setSelectedConvId(conv.id)}
                           className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-[#630091]/20 hover:shadow-md transition-all cursor-pointer"
                         >
                           <div className="flex items-start gap-3">
