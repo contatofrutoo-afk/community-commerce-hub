@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .select("role")
           .eq("user_id", user.id);
         
-        newRole = (memberships && memberships.length > 0 && memberships[0].role === 'owner') ? 'b2b' : 'b2c';
+        const isB2BUser = memberships && memberships.some(m => m.role === 'owner' || m.role === 'admin');
+        newRole = isB2BUser ? 'b2b' : 'b2c';
       } else {
         newRole = roles.includes("admin")
           ? "admin"
