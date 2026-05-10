@@ -44,9 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserState(null);
         setRedirectTo(null);
       }
-      if (s?.user) {
-        setTimeout(() => setUser(s?.user ?? null), 100);
-      }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -56,36 +53,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Buscar papel do usuário (b2b / b2c / admin)
   useEffect(() => {
     if (!user) { setAppRole(null); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("user_roles")
+      const { data: memberships } = await supabase
+        .from("memberships")
         .select("role")
         .eq("user_id", user.id);
       
       if (cancelled) return;
       
-      const roles = (data ?? []).map((r) => r.role as AppRole);
+      const roles = (memberships ?? []).map((m) => m.role);
       
       let newRole: AppRole | null = null;
       
-      if (roles.length === 0) {
-        // Sem role explícita → verificar se é owner de alguma marca → B2B
-        const { data: memberships } = await supabase
-          .from("memberships")
-          .select("role")
-          .eq("user_id", user.id);
-        
-        newRole = (memberships && memberships.length > 0 && memberships[0].role === 'owner') ? 'b2b' : 'b2c';
+      if (roles.includes("owner") || roles.includes("admin")) {
+        newRole = roles.includes("admin") ? "admin" : "b2b";
+      } else if (roles.includes("member")) {
+        newRole = "b2c";
       } else {
-        newRole = roles.includes("admin")
-          ? "admin"
-          : roles.includes("b2b")
-            ? "b2b"
-            : "b2c";
+        newRole = "b2c";
       }
       
       if (!cancelled) {
@@ -95,38 +83,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Buscar estado do usuário e definir redirecionamento
+// Buscar estado do usuário e definir redirecionamento
   useEffect(() => {
     if (!user || !appRole || redirected) return;
-    
     let cancelled = false;
     (async () => {
       const state = await getUserState(user.id);
       if (cancelled) return;
-      
       setUserState(state);
-      
-      // Verificar pending invite primeiro
       const pendingSlug = localStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
-        // Não redirecionar, o sistema de convite vai lidar com isso
         setRedirected(true);
         return;
       }
-      
-      // Definir redirecionamento apenas uma vez por sessão
       if (state.isB2B && !state.hasCommunity) {
         setRedirectTo("/create");
         setRedirected(true);
       } else if (!state.isB2B && state.hasJoinedCommunities) {
-        // B2C com comunidade - vai para o feed da comunidade selecionada
         setRedirected(true);
       }
-      // B2C sem comunidade nenhuma será direcionado pelo InviteLanding
     })();
-    
     return () => { cancelled = true; };
-  }, [user, appRole]);
+  }, [user, appRole, redirected]);
 
   const signOut = async () => { 
     setRedirected(false);

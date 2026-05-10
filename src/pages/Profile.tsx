@@ -8,14 +8,18 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
+import { LogOut, Building2, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
   const { user, signOut, isB2B } = useAuth();
   const { tenant } = useTenant();
+
   const nav = useNavigate();
+
+  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -26,16 +30,13 @@ export default function Profile() {
   const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
   const tenantFileRef = useRef<HTMLInputElement>(null);
   
-  // Location fields
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("");
-  
-  // Gamification
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
   const [copied, setCopied] = useState(false);
-
-  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
+  
+  
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -60,7 +61,7 @@ export default function Profile() {
     try {
       const ext = avatarFile.name.split(".").pop();
       const path = `avatars/${user.id}.${ext}`;
-      const { data, error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
+      const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
       const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
       const avatarUrl = urlData.publicUrl;
@@ -75,7 +76,7 @@ export default function Profile() {
     try {
       const ext = tenantLogoFile.name.split(".").pop();
       const path = `logos/${tenant.id}.${ext}`;
-      const { data, error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
+      const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
       const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
       const logoUrl = urlData.publicUrl;
