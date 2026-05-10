@@ -14,7 +14,7 @@ import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
   const { user, signOut, isB2B } = useAuth();
-  const { tenant, isOwner, tenants } = useTenant();
+  const { tenant } = useTenant();
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,6 +34,8 @@ export default function Profile() {
   // Gamification
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -106,9 +108,7 @@ export default function Profile() {
     })();
   }, [user?.id, tenant?.id]);
 
-  useEffect(() => {
-    if (tenant) { setTenantLogo(tenant.logo_url); }
-  }, [tenant?.logo_url]);
+  
 
   const save = async () => {
     if (!user) return;
@@ -201,58 +201,29 @@ export default function Profile() {
           </Button>
         </section>
 
-        {isOwner && tenant && (
-          <section className="bg-card rounded-2xl border border-border p-5 space-y-4 shadow-soft">
-            <h2 className="font-semibold">Logotipo da marca</h2>
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={() => tenantFileRef.current?.click()} className="relative group">
-                <div className="h-20 w-20 rounded-2xl bg-brand grid place-items-center text-primary-foreground text-2xl font-bold overflow-hidden">
-                  {tenantLogo ? (
-                    <img src={tenantLogo} alt="Logo" className="w-full h-full object-cover" />
-                  ) : (
-                    <Building2 className="h-8 w-8" />
-                  )}
-                </div>
-                <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Upload className="h-5 w-5 text-white" />
-                </div>
-              </button>
-              <input ref={tenantFileRef} type="file" accept="image/*" className="hidden" onChange={handleTenantLogoChange} />
-              <div className="text-sm text-muted-foreground">
-                <p>PNG, JPG ou GIF</p>
-                <p>Máx. 5MB</p>
-              </div>
-            </div>
-            {tenantLogoFile && (
-              <Button onClick={async () => { setLoading(true); const ok = await uploadTenantLogo(); setLoading(false); if (ok) toast.success("Logo atualizado"); }} disabled={loading} className="w-full">
-                {loading ? "Salvando…" : "Salvar logo"}
-              </Button>
-            )}
-          </section>
-        )}
+        
 
         <section className="bg-card rounded-2xl border border-border p-5 space-y-2 shadow-soft">
           <h2 className="font-semibold mb-2">Comunidade</h2>
           <p className="text-sm text-muted-foreground mb-3">Você está em <strong>{tenant?.name ?? "—"}</strong></p>
         </section>
 
-        {isOwner && tenant && (
+        {isB2B && tenant?.slug && (
           <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-purple-600" />
               <h2 className="font-semibold text-purple-900">Compartilhar Comunidade</h2>
             </div>
-            <p className="text-sm text-purple-700">Copie o link e compartilhe com seus clientes para que eles acessem sua comunidade.</p>
+            <p className="text-sm text-purple-700">Envie este link para que pessoas entrem diretamente na sua comunidade.</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-white rounded-lg px-4 py-3 border border-purple-200 text-sm text-gray-700 truncate">
-                {typeof window !== "undefined" ? `${window.location.origin}/m/${tenant.slug}` : `/m/${tenant.slug}`}
+                {shareLink}
               </div>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  const link = `${window.location.origin}/m/${tenant.slug}`;
-                  await navigator.clipboard.writeText(link);
+                  await navigator.clipboard.writeText(shareLink);
                   setCopied(true);
                   toast.success("Link copiado!");
                   setTimeout(() => setCopied(false), 2000);
@@ -268,7 +239,7 @@ export default function Profile() {
               className="w-full bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
               asChild
             >
-              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant.name)}%20${encodeURIComponent(window.location.origin + "/m/" + tenant.slug)}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant?.name ?? "")}%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Compartilhar no WhatsApp
               </a>
