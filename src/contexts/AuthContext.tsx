@@ -44,9 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserState(null);
         setRedirectTo(null);
       }
-      if (s?.user) {
-        setTimeout(() => setUser(s?.user ?? null), 100);
-      }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -56,23 +53,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Buscar papel do usuário via memberships (fonte oficial)
   useEffect(() => {
     if (!user) { setAppRole(null); return; }
     let cancelled = false;
     (async () => {
-      console.log("[AUTH] Checking memberships for user:", user.id);
       const { data: memberships } = await supabase
         .from("memberships")
         .select("role")
         .eq("user_id", user.id);
       
-      console.log("[AUTH] Memberships:", memberships);
-      
       if (cancelled) return;
       
       const roles = (memberships ?? []).map((m) => m.role);
-      console.log("[AUTH] Roles array:", roles);
       
       let newRole: AppRole | null = null;
       
@@ -84,8 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         newRole = "b2c";
       }
       
-      console.log("[AUTH] Calculated role:", newRole);
-      
       if (!cancelled) {
         setAppRole(newRole);
       }
@@ -93,38 +83,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Buscar estado do usuário e definir redirecionamento
+// Buscar estado do usuário e definir redirecionamento
   useEffect(() => {
     if (!user || !appRole || redirected) return;
-    
     let cancelled = false;
     (async () => {
       const state = await getUserState(user.id);
       if (cancelled) return;
-      
       setUserState(state);
-      
-      // Verificar pending invite primeiro
       const pendingSlug = localStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
-        // Não redirecionar, o sistema de convite vai lidar com isso
         setRedirected(true);
         return;
       }
-      
-      // Definir redirecionamento apenas uma vez por sessão
       if (state.isB2B && !state.hasCommunity) {
         setRedirectTo("/create");
         setRedirected(true);
       } else if (!state.isB2B && state.hasJoinedCommunities) {
-        // B2C com comunidade - vai para o feed da comunidade selecionada
         setRedirected(true);
       }
-      // B2C sem comunidade nenhuma será direcionado pelo InviteLanding
     })();
-    
     return () => { cancelled = true; };
-  }, [user, appRole]);
+  }, [user, appRole, redirected]);
 
   const signOut = async () => { 
     setRedirected(false);
