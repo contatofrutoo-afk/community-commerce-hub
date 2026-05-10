@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, BarChart3, DollarSign, Filter, Users, Building2, FileText, LogOut, Link2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const AdminConversations = lazy(() => import("./Conversations"));
-
 const items = [
   { to: "/metrics", icon: BarChart3, label: "Visão geral", end: true },
   { to: "/metrics/revenue", icon: DollarSign, label: "Receita" },
