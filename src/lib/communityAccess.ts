@@ -1,43 +1,39 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { AccessStatus } from "@/types/community";
 
 export const getAccessStatus = async (
   tenantId: string,
   userId: string
-): Promise<AccessStatus> => {
+): Promise<string> => {
   if (!userId || !tenantId) return "none";
 
   const { data, error } = await supabase
-    .from("community_members")
-    .select("status")
+    .from("memberships")
+    .select("role")
     .eq("user_id", userId)
     .eq("tenant_id", tenantId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return "none";
 
-  return data.status as AccessStatus;
+  return "approved";
 };
 
 export const requestAccess = async (
   tenantId: string,
-  userId: string,
-  userName: string,
-  userEmail: string
+  userId: string
 ): Promise<{ success: boolean; error?: string }> => {
   if (!userId || !tenantId) {
     return { success: false, error: "Missing user or tenant" };
   }
 
-  const { error } = await supabase.from("community_members").insert({
-    user_id: userId,
+  const { error } = await supabase.from("community_requests").insert({
     tenant_id: tenantId,
-    status: "pending",
+    user_id: userId,
   });
 
   if (error) {
     if (error.code === "23505") {
-      return { success: false, error: "Request already exists" };
+      return { success: false, error: "Solicitação já existe" };
     }
     return { success: false, error: error.message };
   }
@@ -49,31 +45,39 @@ export const approveRequest = async (
   requestId: string,
   adminUserId: string
 ): Promise<{ success: boolean; error?: string }> => {
-  const { data: member } = await supabase
-    .from("community_members")
-    .select("tenant_id")
+  const { data: request } = await supabase
+    .from("community_requests")
+    .select("tenant_id, user_id")
     .eq("id", requestId)
     .single();
 
-  if (!member) return { success: false, error: "Request not found" };
+  if (!request) return { success: false, error: "Solicitação não encontrada" };
 
   const { data: membership } = await supabase
     .from("memberships")
     .select("role")
     .eq("user_id", adminUserId)
-    .eq("tenant_id", member.tenant_id)
+    .eq("tenant_id", request.tenant_id)
     .single();
 
   if (!membership || !["owner", "admin"].includes(membership.role)) {
-    return { success: false, error: "Not authorized" };
+    return { success: false, error: "Não autorizado" };
   }
 
-  const { error } = await supabase
-    .from("community_members")
-    .update({ status: "approved", approved_at: new Date().toISOString() })
+  const { error: updateError } = await supabase
+    .from("community_requests")
+    .update({ status: "approved" })
     .eq("id", requestId);
 
-  if (error) return { success: false, error: error.message };
+  if (updateError) return { success: false, error: updateError.message };
+
+  const { error: insertError } = await supabase.from("memberships").insert({
+    tenant_id: request.tenant_id,
+    user_id: request.user_id,
+    role: "member",
+  });
+
+  if (insertError) return { success: false, error: insertError.message };
 
   return { success: true };
 };
@@ -82,27 +86,27 @@ export const rejectRequest = async (
   requestId: string,
   adminUserId: string
 ): Promise<{ success: boolean; error?: string }> => {
-  const { data: member } = await supabase
-    .from("community_members")
+  const { data: request } = await supabase
+    .from("community_requests")
     .select("tenant_id")
     .eq("id", requestId)
     .single();
 
-  if (!member) return { success: false, error: "Request not found" };
+  if (!request) return { success: false, error: "Solicitação não encontrada" };
 
   const { data: membership } = await supabase
     .from("memberships")
     .select("role")
     .eq("user_id", adminUserId)
-    .eq("tenant_id", member.tenant_id)
+    .eq("tenant_id", request.tenant_id)
     .single();
 
   if (!membership || !["owner", "admin"].includes(membership.role)) {
-    return { success: false, error: "Not authorized" };
+    return { success: false, error: "Não autorizado" };
   }
 
   const { error } = await supabase
-    .from("community_members")
+    .from("community_requests")
     .update({ status: "rejected" })
     .eq("id", requestId);
 
@@ -123,21 +127,18 @@ export const getPendingRequests = async (
     .single();
 
   if (!membership || !["owner", "admin"].includes(membership.role)) {
-    return { data: [], error: "Not authorized" };
+    return { data: [], error: "Não autorizado" };
   }
 
   const { data, error } = await supabase
-    .from("community_members")
+    .from("community_requests")
     .select(`
       id,
       user_id,
       tenant_id,
       status,
       created_at,
-      profiles (
-        name,
-        email
-      )
+      profiles (name, email)
     `)
     .eq("tenant_id", tenantId)
     .eq("status", "pending")
