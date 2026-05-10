@@ -8,30 +8,28 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, BarChart3, Building2, ArrowLeftRight, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
+import { LogOut, ArrowLeftRight, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
-  const { user, signOut, isB2C, isB2B } = useAuth();
+  const { user, signOut, isB2B } = useAuth();
   const { tenant, isOwner, tenants } = useTenant();
   const nav = useNavigate();
+
+  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tenantLogo, setTenantLogo] = useState<string | null>(null);
-  const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
-  const tenantFileRef = useRef<HTMLInputElement>(null);
   
-  // Location fields
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("");
   
-  // Gamification
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -42,15 +40,6 @@ export default function Profile() {
     if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setAvatarFile(f);
     setAvatar(URL.createObjectURL(f));
-  };
-
-  const handleTenantLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
-    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
-    setTenantLogoFile(f);
-    setTenantLogo(URL.createObjectURL(f));
   };
 
   const uploadAvatar = async (): Promise<boolean> => {
@@ -64,21 +53,6 @@ export default function Profile() {
       const avatarUrl = urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
       setAvatar(avatarUrl);
-      return true;
-    } catch (e: any) { toast.error(e.message); return false; }
-  };
-
-  const uploadTenantLogo = async (): Promise<boolean> => {
-    if (!tenantLogoFile || !tenant) return false;
-    try {
-      const ext = tenantLogoFile.name.split(".").pop();
-      const path = `logos/${tenant.id}.${ext}`;
-      const { data, error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
-      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
-      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
-      const logoUrl = urlData.publicUrl;
-      await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", tenant.id);
-      setTenantLogo(logoUrl);
       return true;
     } catch (e: any) { toast.error(e.message); return false; }
   };
@@ -105,10 +79,6 @@ export default function Profile() {
       if (stats) setUserPoints({ total: stats.total_points, monthly: stats.monthly_points, yearly: stats.yearly_points });
     })();
   }, [user?.id, tenant?.id]);
-
-  useEffect(() => {
-    if (tenant) { setTenantLogo(tenant.logo_url); }
-  }, [tenant?.logo_url]);
 
   const save = async () => {
     if (!user) return;
@@ -202,36 +172,40 @@ export default function Profile() {
         </section>
 
         {isB2B && tenant?.slug && (
-          <section className="bg-card rounded-2xl border border-border p-5 space-y-4 shadow-soft">
+          <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-brand" />
-              <h2 className="font-semibold">Compartilhar Comunidade</h2>
+              <Link2 className="h-5 w-5 text-purple-600" />
+              <h2 className="font-semibold text-purple-900">Compartilhar Comunidade</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Convide membros para {tenant?.name}</p>
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-xl">
-              <code className="flex-1 text-sm font-mono truncate">{typeof window !== 'undefined' ? `${window.location.origin}/invite/${tenant?.slug}` : ''}</code>
+            <p className="text-sm text-purple-700">Envie este link para que pessoas entrem diretamente na sua comunidade.</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-white rounded-lg px-4 py-3 border border-purple-200 text-sm text-gray-700 truncate">
+                {shareLink}
+              </div>
               <Button
                 size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const link = `${window.location.origin}/invite/${tenant?.slug}`;
-                  navigator.clipboard.writeText(link);
+                variant="outline"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(shareLink);
                   setCopied(true);
+                  toast.success("Link copiado!");
                   setTimeout(() => setCopied(false), 2000);
                 }}
+                className="bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
               >
-                {copied ? <span className="text-green-600 text-xs">Copiado!</span> : <Copy className="h-4 w-4" />}
+                <Copy className="h-4 w-4 mr-1" />
+                {copied ? "Copiado!" : "Copiar"}
               </Button>
             </div>
             <Button
               variant="outline"
-              className="w-full"
-              onClick={() => {
-                const link = `${window.location.origin}/invite/${tenant?.slug}`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(`${tenant?.name}: ${link}`)}`, '_blank');
-              }}
+              className="w-full bg-white border-purple-300 text-purple-700 hover:bg-purple-50"
+              asChild
             >
-              <ExternalLink className="h-4 w-4 mr-2" />Compartilhar via WhatsApp
+              <a href={`https://wa.me/?text=Venha%20participar%20da%20comunidade%20${encodeURIComponent(tenant?.name ?? "")}%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Compartilhar no WhatsApp
+              </a>
             </Button>
           </section>
         )}
