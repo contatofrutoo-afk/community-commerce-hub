@@ -53,6 +53,8 @@ export default function OnboardingTour() {
   useEffect(() => {
     if (!user || !tenant) return;
     
+    const hasSeenOnboarding = localStorage.getItem(`weaze:onboarding_${tenant.id}`);
+    
     (async () => {
       const { data } = await (supabase as any)
         .from("onboarding_progress")
@@ -61,18 +63,16 @@ export default function OnboardingTour() {
         .eq("tenant_id", tenant.id)
         .maybeSingle();
       
-      if (!data || !data.completed) {
-        if (isOwner) {
-          setOpen(true);
-        } else {
-          const seen = localStorage.getItem("wenity:onboarding_seen");
-          if (!seen) {
-            setOpen(true);
-            localStorage.setItem("wenity:onboarding_seen", "true");
-          }
-        }
+      // Show onboarding only if:
+      // 1. No progress in DB OR not completed
+      // 2. User hasn't seen this specific tenant's onboarding (localStorage)
+      // 3. User is owner (B2B)
+      if (!data?.completed && !hasSeenOnboarding && isOwner) {
+        setOpen(true);
+        localStorage.setItem(`weaze:onboarding_${tenant.id}`, "true");
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user, tenant, isOwner]);
 
@@ -120,8 +120,7 @@ export default function OnboardingTour() {
 
   if (loading || !open) return null;
 
-  const steps = isOwner ? STEPS_B2B : STEPS_B2C;
-  const currentStep = steps[step];
+  const currentStep = STEPS_B2B[step];
   const Icon = currentStep?.icon || Play;
 
   return (
@@ -136,14 +135,14 @@ export default function OnboardingTour() {
         </div>
 
         <h2 className="font-display text-2xl text-center mb-2">
-          {isOwner ? "Configure sua marca" : currentStep?.title || "Bem-vindo!"}
+          {currentStep?.title || "Configure sua marca"}
         </h2>
         <p className="text-muted-foreground text-center mb-6">
           {currentStep?.desc || "Vamos começar!"}
         </p>
 
         <div className="flex justify-center gap-2 mb-4">
-          {steps.map((_, i) => (
+          {STEPS_B2B.map((_, i) => (
             <div 
               key={i} 
               className={`h-1.5 rounded-full transition-all ${
@@ -166,17 +165,15 @@ export default function OnboardingTour() {
             onClick={handleNext}
             className="flex-1 py-2.5 px-4 rounded-md bg-brand text-primary-foreground text-sm font-medium"
           >
-            {step < steps.length - 1 ? "Próximo" : "Concluir"} <ChevronRight className="h-4 w-4 inline ml-1" />
+            {step < STEPS_B2B.length - 1 ? "Próximo" : "Concluir"} <ChevronRight className="h-4 w-4 inline ml-1" />
           </button>
         </div>
         
-        {isOwner && (
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-xs text-center text-muted-foreground">
-              Passo {step + 1} de {steps.length}
-            </p>
-          </div>
-        )}
+        <div className="mt-4 pt-4 border-t">
+          <p className="text-xs text-center text-muted-foreground">
+            Passo {step + 1} de {STEPS_B2B.length}
+          </p>
+        </div>
       </div>
     </div>
   );
