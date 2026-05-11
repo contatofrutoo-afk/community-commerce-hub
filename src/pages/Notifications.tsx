@@ -28,65 +28,67 @@ type NotificationItem = {
 };
 
 export default function Notifications() {
-  const { user, isB2B } = useAuth();
+  const { user } = useAuth();
   const { tenants } = useTenant();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [activeTab, setActiveTab] = useState<"requests" | "all">("requests");
 
-  const loadRequests = async () => {
-    if (!user || !isB2B) { setLoading(false); return; }
-    
-    const { data: mems } = await supabase
-      .from("memberships")
-      .select("tenant_id")
-      .eq("user_id", user.id)
-      .in("role", ["owner", "admin"]);
-    
-    if (!mems || mems.length === 0) { setRequests([]); setDataLoaded(true); return; }
-    
-    const tenantIds = mems.map(m => m.tenant_id);
-    
-    const { data } = await supabase
-      .from("community_requests")
-      .select("*, profiles(name, email), tenants(name)")
-      .in("tenant_id", tenantIds)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-    
-    setRequests(data || []);
-    setDataLoaded(true);
-  };
-
-  const loadNotifications = async () => {
-    if (!user) { setDataLoaded(true); return; }
-    
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    
-    setNotifications(data || []);
-    setDataLoaded(true);
-  };
-
-  useEffect(() => { 
-    setDataLoaded(false);
-    setLoading(true);
-    loadRequests(); 
-    loadNotifications();
-  }, [user, isB2B, tenants]);
-
   useEffect(() => {
-    if (isB2B && tenants.length > 0 && !dataLoaded) {
-      loadRequests();
+    if (!user) {
+      setLoading(false);
+      return;
     }
-  }, [isB2B, tenants, dataLoaded]);
+
+    (async () => {
+      setLoading(true);
+      
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", user.id);
+      
+      const ownerMems = (mems || []).filter(m => m.role === "owner" || m.role === "admin");
+      const hasOwnership = ownerMems.length > 0;
+      setIsOwner(hasOwnership);
+      
+      if (!hasOwnership) {
+        const { data: notifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        setNotifications(notifs || []);
+        setLoading(false);
+        return;
+      }
+      
+      const tenantIds = ownerMems.map(m => m.tenant_id);
+      
+      const { data } = await supabase
+        .from("community_requests")
+        .select("*, profiles(name, email), tenants(name)")
+        .in("tenant_id", tenantIds)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      
+      setRequests(data || []);
+      
+      const { data: notifs } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      
+      setNotifications(notifs || []);
+      setLoading(false);
+    })();
+  }, [user, tenants]);
 
   const handleApprove = async (request: PendingRequest) => {
     const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
@@ -94,19 +96,20 @@ export default function Notifications() {
     
     await supabase.from("memberships").insert({ tenant_id: request.tenant_id, user_id: request.user_id, role: "member" });
     toast.success("Membro aprovado!");
-    loadRequests();
+    
+    setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
   const handleReject = async (requestId: string) => {
     const { error } = await supabase.from("community_requests").update({ status: "rejected" }).eq("id", requestId);
     if (error) { toast.error("Erro ao recusar"); return; }
     toast.success("Solicitação recusada");
-    loadRequests();
+    setRequests(prev => prev.filter(r => r.id !== requestId));
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-  if (loading || !dataLoaded) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,7 +118,7 @@ export default function Notifications() {
           <h1 className="text-xl font-semibold">Notificações</h1>
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>Voltar</Button>
         </div>
-        {isB2B && (
+        {isOwner && (
           <div className="flex border-b border-border">
             <button
               onClick={() => setActiveTab("requests")}
@@ -137,7 +140,7 @@ export default function Notifications() {
       </header>
 
       <div className="max-w-xl mx-auto px-4 py-6">
-        {activeTab === "requests" && isB2B ? (
+        {activeTab === "requests" && isOwner ? (
           <div className="space-y-4">
             {requests.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
