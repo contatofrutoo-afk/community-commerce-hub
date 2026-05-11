@@ -48,33 +48,30 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
+    
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
       .eq("user_id", user.id);
+    
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
     const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
       const membership = m as { tenant_id: string; role: "owner" | "admin" | "member" };
       roles[membership.tenant_id] = membership.role;
     });
+    
     setMemRoles(roles);
     setTenants(list);
     
+    // Determine target tenant quickly
     const justJoinedId = sessionStorage.getItem("just_joined_community");
     const savedId = localStorage.getItem("weaze:active_tenant");
+    let targetId: string | null = justJoinedId || savedId || (list[0]?.id ?? null);
     
-    let targetId: string | null = null;
-    
-    if (justJoinedId) {
-      sessionStorage.removeItem("just_joined_community");
-      if (list.find(t => t.id === justJoinedId)) {
-        targetId = justJoinedId;
-      }
-    } else if (savedId && list.find(t => t.id === savedId)) {
-      targetId = savedId;
-    } else if (list.length > 0) {
-      targetId = list[0].id;
+    // Validate targetId exists in list
+    if (!list.find(t => t.id === targetId)) {
+      targetId = list[0]?.id ?? null;
     }
     
     if (targetId && roles[targetId]) {
@@ -82,12 +79,16 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       setTenant(list.find(t => t.id === targetId)!);
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
-      localStorage.setItem("weaze:active_tenant", targetId);
+      if (justJoinedId) {
+        sessionStorage.removeItem("just_joined_community");
+        localStorage.setItem("weaze:active_tenant", targetId);
+      }
     } else {
       setTenant(null);
       setIsOwner(false);
       setCanManage(false);
     }
+    
     setLoading(false);
   }, [user]);
 

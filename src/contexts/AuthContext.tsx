@@ -1,9 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserState, UserState } from "@/lib/userState";
 
 export type AppRole = "admin" | "b2b" | "b2c";
+
+type UserState = {
+  isB2B: boolean;
+  hasCommunity: boolean;
+  hasJoinedCommunities: boolean;
+};
 
 type AuthCtx = {
   user: User | null;
@@ -43,42 +48,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAppRole(null);
         setUserState(null);
         setRedirectTo(null);
+        setLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!user) { setAppRole(null); return; }
+    if (!user) { 
+      setAppRole(null);
+      setLoading(false);
+      return; 
+    }
+    
     let cancelled = false;
     (async () => {
-      const { data: memberships } = await supabase
+      const { data: mems } = await supabase
         .from("memberships")
-        .select("role")
-        .eq("user_id", user.id);
+        .select("tenant_id, role");
       
       if (cancelled) return;
       
-      const roles = (memberships ?? []).map((m) => m.role);
+      const roles = (mems ?? []).map((m) => m.role);
       
       let newRole: AppRole | null = null;
       
       if (roles.includes("owner") || roles.includes("admin")) {
         newRole = roles.includes("admin") ? "admin" : "b2b";
-      } else if (roles.includes("member")) {
-        newRole = "b2c";
       } else {
         newRole = "b2c";
       }
       
-      if (!cancelled) {
-        setAppRole(newRole);
-      }
+      setAppRole(newRole);
+      
+      // Set userState directly from memberships
+      const isB2B = roles.includes("owner") || roles.includes("admin");
+      setUserState({
+        isB2B,
+        hasCommunity: isB2B,
+        hasJoinedCommunities: mems && mems.length > 0,
+      });
+      
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
@@ -86,46 +101,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 // Buscar estado do usuário e definir redirecionamento
   useEffect(() => {
     if (!user || !appRole || redirected) return;
-    let cancelled = false;
-    (async () => {
-      const state = await getUserState(user.id);
-      if (cancelled) return;
-      setUserState(state);
-      
-      // Check both localStorage and sessionStorage for pending invite
-      let pendingSlug = localStorage.getItem("pending_invite_slug");
-      if (!pendingSlug) {
-        pendingSlug = sessionStorage.getItem("pending_invite_slug");
-      }
-      
-      if (pendingSlug) {
-        const redirectPath = `/waiting?slug=${pendingSlug}`;
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
-        setRedirectTo(redirectPath);
-        setRedirected(true);
-        return;
-      }
-      
-      const justJoined = sessionStorage.getItem("just_joined_community");
-      if (justJoined) {
-        sessionStorage.removeItem("just_joined_community");
-        setRedirected(true);
-        return;
-      }
-      
-      if (state.isB2B && !state.hasCommunity) {
-        setRedirectTo("/create");
-        setRedirected(true);
-      } else if (!state.isB2B && !state.hasJoinedCommunities) {
-        setRedirectTo("/");
-        setRedirected(true);
-      } else {
-        setRedirected(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [user, appRole, redirected]);
+    
+    // Check for pending invite slug
+    let pendingSlug = localStorage.getItem("pending_invite_slug");
+    if (!pendingSlug) {
+      pendingSlug = sessionStorage.getItem("pending_invite_slug");
+    }
+    
+    if (pendingSlug) {
+      const redirectPath = `/invite/${pendingSlug}`;
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
+      setRedirectTo(redirectPath);
+      setRedirected(true);
+      return;
+    }
+    
+    const justJoined = sessionStorage.getItem("just_joined_community");
+    if (justJoined) {
+      sessionStorage.removeItem("just_joined_community");
+      setRedirected(true);
+      return;
+    }
+    
+    if (userState?.isB2B && !userState.hasCommunity) {
+      setRedirectTo("/create");
+      setRedirected(true);
+    } else if (!userState?.isB2B && !userState?.hasJoinedCommunities) {
+      setRedirectTo("/");
+      setRedirected(true);
+    } else {
+      setRedirected(true);
+    }
+  }, [user, appRole, redirected, userState]);
 
   const signOut = async () => { 
     setRedirected(false);

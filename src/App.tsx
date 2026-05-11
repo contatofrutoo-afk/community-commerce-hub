@@ -14,7 +14,12 @@ import AppEntrance from "@/components/AppEntrance";
 const queryClient = new QueryClient();
 
 const Loading = () => (
-  <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-t-brand border-brand/20 rounded-full animate-spin" />
+      <span className="text-sm text-muted-foreground">Carregando...</span>
+    </div>
+  </div>
 );
 
 const Landing = lazy(() => import("./pages/Landing"));
