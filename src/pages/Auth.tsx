@@ -79,17 +79,21 @@ export default function Auth() {
         email: parsed.data.email,
       });
       
-      const pendingSlug = localStorage.getItem("pending_invite_slug");
+      // Check for pending invite
+      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
-        sessionStorage.setItem("pending_invite_slug", pendingSlug);
-        nav(`/invite/${pendingSlug}`);
+        localStorage.removeItem("pending_invite_slug");
+        sessionStorage.removeItem("pending_invite_slug");
+        nav(`/invite/${pendingSlug}`, { replace: true });
         return;
       }
+      
+      setLoading(false);
+      toast.success("Conta criada! Bem-vindo!");
+      
+      // New user without community -> go to profile to create
+      nav("/profile", { replace: true });
     }
-    
-    setLoading(false);
-    toast.success("Conta criada");
-    nav("/feed");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -101,38 +105,47 @@ export default function Auth() {
     const parsed = loginSchema.safeParse(login);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+    
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: parsed.data.email, 
+      password: parsed.data.password 
+    });
+    
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Bem-vindo");
     
-    const pendingSlug = localStorage.getItem("pending_invite_slug");
+    // Check for pending invite
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
     if (pendingSlug) {
-      sessionStorage.setItem("pending_invite_slug", pendingSlug);
-      nav(`/invite/${pendingSlug}`);
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
+      nav(`/invite/${pendingSlug}`, { replace: true });
       return;
     }
     
-    const { data: memberships } = await supabase
+    // Get user memberships
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role")
-      .eq("user_id", (await supabase.auth.getUser()).data.user?.id);
-
-    const roles = (memberships ?? []).map((m) => m.role);
+      .eq("user_id", authUser?.id);
+    
+    const roles = (mems ?? []).map((m) => m.role);
     const isOwner = roles.includes("owner") || roles.includes("admin");
-    const hasJoined = roles.includes("member");
-
-    if (isOwner && memberships?.length === 1) {
-      const tenantId = memberships![0].tenant_id;
-      localStorage.setItem("weaze:active_tenant", tenantId);
-      nav("/feed");
-    } else if (hasJoined && memberships?.length === 1) {
-      const tenantId = memberships![0].tenant_id;
-      localStorage.setItem("weaze:active_tenant", tenantId);
-      nav("/feed");
-    } else {
-      nav("/");
+    
+    // If B2B without community, go to profile to create
+    if (isOwner && (!mems || mems.length === 0)) {
+      nav("/profile", { replace: true });
+      return;
     }
+    
+    // If has memberships, go to feed with active tenant
+    if (mems && mems.length > 0) {
+      localStorage.setItem("weaze:active_tenant", mems[0].tenant_id);
+    }
+    
+    nav("/feed", { replace: true });
   };
 
   return (
