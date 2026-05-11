@@ -1,11 +1,12 @@
 {
-  "name": "weaze",
-  "short_name": "weaze",
-  "start_url": "/feed",
+  "name": "Weaze",
+  "short_name": "Weaze",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#630091",
   "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "/icons/weaze-192.png",
@@ -19,5 +20,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

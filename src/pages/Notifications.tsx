@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, X, User, Mail } from "lucide-react";
+import { Bell, Check, X, User, Mail, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type PendingRequest = {
@@ -17,12 +17,24 @@ type PendingRequest = {
   tenants?: { name: string };
 };
 
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  priority: string;
+  data: any;
+  created_at: string;
+  actor_id: string | null;
+};
+
 export default function Notifications() {
   const { user, isB2B } = useAuth();
   const { tenants } = useTenant();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"requests" | "all">("requests");
 
   const loadRequests = async () => {
     if (!user || !isB2B) { setLoading(false); return; }
@@ -45,10 +57,25 @@ export default function Notifications() {
       .order("created_at", { ascending: false });
     
     setRequests(data || []);
-    setLoading(false);
   };
 
-  useEffect(() => { loadRequests(); }, [user, isB2B]);
+  const loadNotifications = async () => {
+    if (!user) { setLoading(false); return; }
+    
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    
+    setNotifications(data || []);
+  };
+
+  useEffect(() => { 
+    loadRequests(); 
+    loadNotifications();
+  }, [user, isB2B]);
 
   const handleApprove = async (request: PendingRequest) => {
     const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
@@ -66,7 +93,7 @@ export default function Notifications() {
     loadRequests();
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 
@@ -77,16 +104,34 @@ export default function Notifications() {
           <h1 className="text-xl font-semibold">Notificações</h1>
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>Voltar</Button>
         </div>
+        {isB2B && (
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`flex-1 py-2 text-sm font-medium ${activeTab === "requests" ? "text-brand border-b-2 border-brand" : "text-muted-foreground"}`}
+            >
+              Solicitações
+              {requests.length > 0 && (
+                <span className="ml-1.5 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{requests.length}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`flex-1 py-2 text-sm font-medium ${activeTab === "all" ? "text-brand border-b-2 border-brand" : "text-muted-foreground"}`}
+            >
+              Todas
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="max-w-xl mx-auto px-4 py-6">
-        {isB2B ? (
+        {activeTab === "requests" && isB2B ? (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold mb-4">Solicitações de acesso</h2>
             {requests.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma solicitação de acesso no momento</p>
+                <p>Nenhuma solicitação pendente</p>
               </div>
             ) : requests.map(r => (
               <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
@@ -100,7 +145,7 @@ export default function Notifications() {
                   </div>
                 </div>
                 {r.tenants && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenants.name}</p>}
-                <div className="text-xs text-muted-foreground">Solicitado em: {formatDate(r.created_at)}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(r.created_at)}</div>
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" className="flex-1 gap-2" onClick={() => handleApprove(r)}><Check className="h-4 w-4" />Aprovar</Button>
                   <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleReject(r.id)}><X className="h-4 w-4" />Recusar</Button>
@@ -109,9 +154,39 @@ export default function Notifications() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma notificação</p>
+          <div className="space-y-3">
+            {notifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma notificação</p>
+              </div>
+            ) : notifications.map(n => (
+              <div key={n.id} className={`bg-card border rounded-2xl p-4 ${n.type === "join_request" ? "border-purple-200" : "border-border"}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${n.type === "join_request" ? "bg-purple-100" : "bg-brand/10"}`}>
+                    {n.type === "join_request" ? (
+                      <Users className="h-4 w-4 text-purple-600" />
+                    ) : (
+                      <Bell className="h-4 w-4 text-brand" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{n.title}</p>
+                    {n.data?.user_name && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="font-medium">{n.data.user_name}</span> ({n.data.user_email})
+                      </p>
+                    )}
+                    {n.data?.tenant_name && (
+                      <p className="text-xs text-purple-600 mt-0.5">{n.data.tenant_name}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {formatDate(n.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
