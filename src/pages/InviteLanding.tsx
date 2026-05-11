@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Sparkles, Loader2, Users } from "lucide-react";
+import { toast } from "sonner";
 
 type Tenant = {
   id: string;
@@ -93,25 +94,48 @@ export default function InviteLanding() {
     if (!tenant || !user) return;
     setProcessing(true);
     
-    const { data: existingRequest } = await supabase
-      .from("community_requests")
-      .select("status")
+    // Check if already a member
+    const { data: existingMembership } = await supabase
+      .from("memberships")
+      .select("id")
       .eq("tenant_id", tenant.id)
       .eq("user_id", user.id)
       .maybeSingle();
     
-    if (!existingRequest) {
-      await supabase.from("community_requests").upsert({
-        tenant_id: tenant.id,
-        user_id: user.id,
-        status: "pending",
-      }, { onConflict: "tenant_id,user_id" });
+    if (existingMembership) {
+      // Already a member, just go to feed
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+      sessionStorage.setItem("just_joined_community", tenant.id);
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
+      navigate("/feed", { replace: true });
+      return;
     }
     
-    localStorage.setItem("pending_invite_slug", tenant.slug);
-    sessionStorage.setItem("pending_invite_slug", tenant.slug);
+    // Create membership automatically
+    const { error: membershipError } = await supabase
+      .from("memberships")
+      .insert({
+        tenant_id: tenant.id,
+        user_id: user.id,
+        role: "member"
+      });
+    
+    if (membershipError) {
+      console.error("Error creating membership:", membershipError);
+      toast.error("Erro ao entrar na comunidade");
+      setProcessing(false);
+      return;
+    }
+    
+    // Success - go to feed
+    localStorage.removeItem("pending_invite_slug");
+    sessionStorage.removeItem("pending_invite_slug");
+    localStorage.setItem("weaze:active_tenant", tenant.id);
     sessionStorage.setItem("just_joined_community", tenant.id);
-    navigate(`/waiting?slug=${tenant.slug}`);
+    
+    toast.success(`Bem-vindo à ${tenant.name}!`);
+    navigate("/feed", { replace: true });
   };
 
   const handleAuth = (isSignUp: boolean) => {

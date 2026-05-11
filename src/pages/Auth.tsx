@@ -33,7 +33,8 @@ export default function Auth() {
     const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
     
     if (pendingSlug && user) {
-      nav(`/waiting?slug=${pendingSlug}`, { replace: true });
+      // Redirect back to invite page to create membership automatically
+      nav(`/invite/${pendingSlug}`, { replace: true });
       return;
     }
     
@@ -81,7 +82,7 @@ export default function Auth() {
       const pendingSlug = localStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
         sessionStorage.setItem("pending_invite_slug", pendingSlug);
-        nav(`/waiting?slug=${pendingSlug}`);
+        nav(`/invite/${pendingSlug}`);
         return;
       }
     }
@@ -108,7 +109,7 @@ export default function Auth() {
     const pendingSlug = localStorage.getItem("pending_invite_slug");
     if (pendingSlug) {
       sessionStorage.setItem("pending_invite_slug", pendingSlug);
-      nav(`/waiting?slug=${pendingSlug}`);
+      nav(`/invite/${pendingSlug}`);
       return;
     }
     
