@@ -34,6 +34,7 @@ export default function Notifications() {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"requests" | "all">("requests");
 
   const loadRequests = async () => {
@@ -45,7 +46,7 @@ export default function Notifications() {
       .eq("user_id", user.id)
       .in("role", ["owner", "admin"]);
     
-    if (!mems || mems.length === 0) { setLoading(false); return; }
+    if (!mems || mems.length === 0) { setRequests([]); setDataLoaded(true); return; }
     
     const tenantIds = mems.map(m => m.tenant_id);
     
@@ -57,10 +58,11 @@ export default function Notifications() {
       .order("created_at", { ascending: false });
     
     setRequests(data || []);
+    setDataLoaded(true);
   };
 
   const loadNotifications = async () => {
-    if (!user) { setLoading(false); return; }
+    if (!user) { setDataLoaded(true); return; }
     
     const { data } = await supabase
       .from("notifications")
@@ -70,18 +72,21 @@ export default function Notifications() {
       .limit(30);
     
     setNotifications(data || []);
+    setDataLoaded(true);
   };
 
   useEffect(() => { 
+    setDataLoaded(false);
+    setLoading(true);
     loadRequests(); 
     loadNotifications();
   }, [user, isB2B, tenants]);
 
   useEffect(() => {
-    if (isB2B && tenants.length > 0) {
+    if (isB2B && tenants.length > 0 && !dataLoaded) {
       loadRequests();
     }
-  }, [isB2B, tenants]);
+  }, [isB2B, tenants, dataLoaded]);
 
   const handleApprove = async (request: PendingRequest) => {
     const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
@@ -101,7 +106,7 @@ export default function Notifications() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
+  if (loading || !dataLoaded) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 
   return (
     <div className="min-h-screen bg-background">
