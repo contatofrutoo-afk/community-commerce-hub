@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Suspense, lazy, useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
-import { getAccessStatus } from "@/lib/communityAccess";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
@@ -54,6 +53,7 @@ const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading, redirectTo } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -62,9 +62,9 @@ const Protected = ({ children }: { children: JSX.Element }) => {
     }
   }, [redirectTo, navigate]);
   
-  if (loading) return <Loading />;
+  // Wait for both auth and tenant to load before checking
+  if (loading || tenantLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
-  if (redirectTo) return null;
   return children;
 };
 
@@ -93,36 +93,16 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user } = useAuth();
-  const { tenant } = useTenant();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
-
-  useEffect(() => {
-    if (!user || !tenant) {
-      setLoading(false);
-      return;
-    }
-
-    getAccessStatus(tenant.id, user.id).then((status) => {
-      const approved = status === "approved";
-      setHasAccess(approved);
-      setLoading(false);
-
-      if (!approved) {
-        const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-        if (pendingSlug && tenant.slug === pendingSlug) {
-          navigate(`/waiting?slug=${pendingSlug}`, { replace: true });
-        } else {
-          navigate(`/c?slug=${tenant.slug}`, { replace: true });
-        }
-      }
-    });
-  }, [user, tenant, navigate]);
-
-  if (loading) return <Loading />;
-  if (!hasAccess) return null;
+  const { user, loading } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
+  
+  // If still loading auth or tenant, show loading
+  if (loading || tenantLoading) return <Loading />;
+  
+  // If no user or tenant, the Protected wrapper will handle it
+  if (!user || !tenant) return children;
+  
+  // User has tenant, so they have access (membership exists)
   return children;
 };
 
