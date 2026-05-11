@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Clock, Users, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -15,24 +16,20 @@ type Tenant = {
 export default function WaitingApproval() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const slug = searchParams.get("slug");
   
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
+  const [error, setError] = useState<string | null>(null);
   const supabaseRef = useRef(supabase);
-  const [polling, setPolling] = useState(false);
   const tenantIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string | null>(null);
-
-  if (tenant) tenantIdRef.current = tenant.id;
-  if (user) userIdRef.current = user.id;
 
   useEffect(() => {
     if (status !== "pending" || !tenantIdRef.current || !userIdRef.current) return;
 
-    setPolling(true);
     const interval = setInterval(async () => {
       if (!tenantIdRef.current || !userIdRef.current) return;
       
@@ -47,31 +44,51 @@ export default function WaitingApproval() {
         setStatus(request.status as "approved" | "rejected");
         localStorage.removeItem("pending_invite_slug");
         sessionStorage.removeItem("pending_invite_slug");
-        setPolling(false);
         clearInterval(interval);
       }
     }, 10000);
     
-    return () => {
-      clearInterval(interval);
-      setPolling(false);
-    };
+    return () => clearInterval(interval);
   }, [status]);
 
   useEffect(() => {
-    if (!slug || !user) return;
+    if (!slug) {
+      setLoading(false);
+      setError("Slug não fornecido");
+      return;
+    }
+
+    if (authLoading) return;
+
+    if (!user) {
+      setLoading(false);
+      navigate("/auth", { replace: true });
+      return;
+    }
 
     let cancelled = false;
 
     (async () => {
-      const { data: tenantData } = await supabase
+      setLoading(true);
+      setError(null);
+      
+      const { data: tenantData, error: tenantError } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url")
         .eq("slug", slug)
         .single();
       
-      if (cancelled || !tenantData) { setLoading(false); return; }
+      if (cancelled) return;
+      
+      if (tenantError || !tenantData) {
+        setLoading(false);
+        setError("Comunidade não encontrada");
+        return;
+      }
+      
       setTenant(tenantData);
+      tenantIdRef.current = tenantData.id;
+      userIdRef.current = user.id;
 
       const { data: memberCheck } = await supabase
         .from("memberships")
@@ -119,14 +136,14 @@ export default function WaitingApproval() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [slug, user]);
+  }, [slug, user, authLoading, navigate, supabase]);
 
   const handleGoHome = () => {
     localStorage.removeItem("pending_invite_slug");
     sessionStorage.removeItem("pending_invite_slug");
-    if (tenant) {
-      sessionStorage.setItem("just_joined_community", tenant.id);
-      localStorage.setItem("weaze:active_tenant", tenant.id);
+    sessionStorage.setItem("just_joined_community", tenantIdRef.current || tenant?.id || "");
+    if (tenantIdRef.current || tenant) {
+      localStorage.setItem("weaze:active_tenant", tenantIdRef.current || tenant?.id || "");
     }
     navigate("/feed");
   };
