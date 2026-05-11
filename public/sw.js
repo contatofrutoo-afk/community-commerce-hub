@@ -1,14 +1,20 @@
-const CACHE_NAME = 'weaze-v5';
+const CACHE_NAME = 'weaze-v8';
 
-const STATIC_ASSETS = [
+const PRECACHE_URLS = [
   '/',
-  '/index.html'
+  '/index.html',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRECACHE_URLS).catch(() => {
+        // Ignore cache errors during install
+      });
+    })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -19,28 +25,77 @@ self.addEventListener('activate', (event) => {
           if (key !== CACHE_NAME) return caches.delete(key);
         })
       )
-    )
+    ).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
+  const { request } = event;
+  const url = new URL(request.url);
 
+  // Skip non-GET requests
+  if (request.method !== 'GET') return;
+
+  // Skip cross-origin requests (fonts, images, etc)
+  if (url.origin !== location.origin) {
+    // For CDN resources, try network first
+    if (request.destination === 'image' || request.destination === 'font') {
+      event.respondWith(fetch(request).catch(() => caches.match(request)));
+    }
+    return;
+  }
+
+  // Handle API/Supabase requests - network only
+  if (url.pathname.includes('/rest/') || url.pathname.includes('/auth/')) {
+    return; // Let these pass through
+  }
+
+  // Handle navigation requests (SPA routes)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html'))
+      fetch(request)
+        .then(response => {
+          // Cache successful responses
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Return cached index.html for SPA routes
+          return caches.match('/index.html');
+        })
     );
     return;
   }
 
-  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'image') {
+  // Handle static assets
+  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'image' || request.destination === 'font') {
     event.respondWith(
-      caches.match(request).then(cached => cached || fetch(request))
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(response => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, responseClone);
+          });
+          return response;
+        });
+      })
     );
     return;
   }
 
+  // Default: try network, fall back to cache
   event.respondWith(
     fetch(request).catch(() => caches.match(request))
   );
+});
+
+// Handle messages from the app
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
