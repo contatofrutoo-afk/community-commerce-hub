@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,72 +10,142 @@ import { z } from "zod";
 import { Users, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
+import { useAuth } from "@/contexts/AuthContext";
 
 const signupSchema = z.object({
   name: z.string().trim().min(2, "Nome muito curto").max(80),
   email: z.string().trim().email("Email inválido").max(255),
   password: z.string().min(6, "Mínimo 6 caracteres").max(72),
-  account_type: z.enum(["b2b", "b2c"]),
 });
-const loginSchema = z.object({
-  email: z.string().trim().email("Email inválido"),
-  password: z.string().min(1, "Senha obrigatória"),
-});
-
-type AccountType = "b2b" | "b2c";
 
 export default function Auth() {
   const nav = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [accountType, setAccountType] = useState<AccountType>("b2c");
+  const [fromInvite, setFromInvite] = useState(false);
+  const [inviteTenantName, setInviteTenantName] = useState<string | null>(null);
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
   const [login, setLogin] = useState({ email: "", password: "" });
 
+  useEffect(() => {
+    if (authLoading) return;
+    
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    
+    if (pendingSlug && user) {
+      // Redirect back to invite page to create membership automatically
+      nav(`/invite/${pendingSlug}`, { replace: true });
+      return;
+    }
+    
+    if (user && !pendingSlug) {
+      nav("/feed", { replace: true });
+      return;
+    }
+  }, [user, authLoading, nav]);
+
+  useEffect(() => {
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    if (pendingSlug) {
+      setFromInvite(true);
+      supabase.from("tenants").select("name").eq("slug", pendingSlug).single()
+        .then(({ data }) => {
+          if (data) setInviteTenantName(data.name);
+        });
+    }
+  }, []);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = signupSchema.safeParse({ ...signup, account_type: accountType });
+    const parsed = signupSchema.safeParse(signup);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    
+    const { data: authData, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/communities`,
-        data: { name: parsed.data.name, account_type: parsed.data.account_type },
+        emailRedirectTo: `${window.location.origin}/feed`,
+        data: { name: parsed.data.name, account_type: "b2c" },
       },
     });
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Conta criada");
-    // Todos vão direto pro feed; B2B verá popup de criação de marca lá
-    nav("/feed");
+    
+    if (error) { setLoading(false); toast.error(error.message); return; }
+    
+    if (authData.user) {
+      await supabase.from("profiles").upsert({
+        user_id: authData.user.id,
+        name: parsed.data.name,
+        email: parsed.data.email,
+      });
+      
+      // Check for pending invite
+      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+      if (pendingSlug) {
+        localStorage.removeItem("pending_invite_slug");
+        sessionStorage.removeItem("pending_invite_slug");
+        nav(`/invite/${pendingSlug}`, { replace: true });
+        return;
+      }
+      
+      setLoading(false);
+      toast.success("Conta criada! Bem-vindo!");
+      
+      // New user without community -> go to profile to create
+      nav("/profile", { replace: true });
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const loginSchema = z.object({
+      email: z.string().trim().email("Email inválido"),
+      password: z.string().min(1, "Senha obrigatória"),
+    });
     const parsed = loginSchema.safeParse(login);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    const { error, data } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+    
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: parsed.data.email, 
+      password: parsed.data.password 
+    });
+    
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Bem-vindo");
     
-    // Verificar role para redirecionar corretamente
-    if (data?.user) {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id);
-      
-      const userRoles = (roles ?? []).map((r) => r.role);
-      const isB2B = userRoles.includes("b2b") || userRoles.includes("admin");
-      
-      // B2B vai para feed; B2C vai para comunidades
-      nav(isB2B ? "/feed" : "/communities");
-    } else {
-      nav("/feed");
+    // Check for pending invite
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    if (pendingSlug) {
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
+      nav(`/invite/${pendingSlug}`, { replace: true });
+      return;
     }
+    
+    // Get user memberships
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: mems } = await supabase
+      .from("memberships")
+      .select("tenant_id, role")
+      .eq("user_id", authUser?.id);
+    
+    const roles = (mems ?? []).map((m) => m.role);
+    const isOwner = roles.includes("owner") || roles.includes("admin");
+    
+    // If B2B without community, go to profile to create
+    if (isOwner && (!mems || mems.length === 0)) {
+      nav("/profile", { replace: true });
+      return;
+    }
+    
+    // If has memberships, go to feed with active tenant
+    if (mems && mems.length > 0) {
+      localStorage.setItem("weaze:active_tenant", mems[0].tenant_id);
+    }
+    
+    nav("/feed", { replace: true });
   };
 
   return (
@@ -87,6 +157,13 @@ export default function Auth() {
         </Link>
 
         <div className="bg-card rounded-2xl shadow-elevated p-6 border border-border">
+          {fromInvite && inviteTenantName && (
+            <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-xl text-center">
+              <p className="text-sm text-purple-700">Você está entrando na comunidade</p>
+              <p className="font-semibold text-purple-900">{inviteTenantName}</p>
+            </div>
+          )}
+          
           <Tabs defaultValue="login">
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="login">Entrar</TabsTrigger>
@@ -113,28 +190,14 @@ export default function Auth() {
 
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>Tipo de conta</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <AccountTypeOption
-                      active={accountType === "b2c"}
-                      onClick={() => setAccountType("b2c")}
-                      icon={Users}
-                      title="Usuário"
-                      desc="Participar de comunidades"
-                    />
-                    <AccountTypeOption
-                      active={accountType === "b2b"}
-                      onClick={() => setAccountType("b2b")}
-                      icon={Building2}
-                      title="Marca"
-                      desc="Criar minha comunidade"
-                    />
+                {fromInvite && (
+                  <div className="p-3 bg-brand/5 border border-brand/20 rounded-xl text-center">
+                    <p className="text-sm text-muted-foreground">Cadastro para participar da comunidade</p>
                   </div>
-                </div>
+                )}
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-name">{accountType === "b2b" ? "Nome do responsável" : "Nome"}</Label>
-                  <Input id="su-name" maxLength={80} value={signup.name}
+                  <Label htmlFor="su-name">Nome</Label>
+                  <Input id="su-name" maxLength={80} value={signup.name} placeholder="Seu nome"
                     onChange={(e) => setSignup({ ...signup, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
@@ -148,7 +211,7 @@ export default function Auth() {
                     onChange={(e) => setSignup({ ...signup, password: e.target.value })} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
-                  {loading ? "Criando…" : accountType === "b2b" ? "Criar conta da marca" : "Criar conta"}
+                  {loading ? "Criando…" : "Criar conta"}
                 </Button>
               </form>
             </TabsContent>
@@ -160,28 +223,5 @@ export default function Auth() {
         </p>
       </div>
     </main>
-  );
-}
-
-function AccountTypeOption({
-  active, onClick, icon: Icon, title, desc,
-}: {
-  active: boolean; onClick: () => void; icon: any; title: string; desc: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-xl border p-3 text-left transition-all",
-        active
-          ? "border-primary bg-brand-soft ring-2 ring-primary/20"
-          : "border-border bg-card hover:bg-secondary/40",
-      )}
-    >
-      <Icon className={cn("h-4 w-4 mb-1.5", active ? "text-primary" : "text-muted-foreground")} />
-      <p className="text-sm font-semibold leading-tight">{title}</p>
-      <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{desc}</p>
-    </button>
   );
 }

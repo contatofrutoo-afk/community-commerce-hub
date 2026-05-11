@@ -4,6 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "b2b" | "b2c";
 
+type UserState = {
+  isB2B: boolean;
+  hasCommunity: boolean;
+  hasJoinedCommunities: boolean;
+};
+
 type AuthCtx = {
   user: User | null;
   session: Session | null;
@@ -12,13 +18,17 @@ type AuthCtx = {
   isB2B: boolean;
   isB2C: boolean;
   isAdmin: boolean;
+  userState: UserState | null;
+  redirectTo: string | null;
   signOut: () => Promise<void>;
+  clearRedirect: () => void;
 };
 
 const Ctx = createContext<AuthCtx>({
   user: null, session: null, loading: true,
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
-  signOut: async () => {},
+  userState: null, redirectTo: null,
+  signOut: async () => {}, clearRedirect: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -26,6 +36,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
+  const [userState, setUserState] = useState<UserState | null>(null);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const [redirected, setRedirected] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
@@ -33,60 +46,104 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(s?.user ?? null);
       if (!s?.user) {
         setAppRole(null);
-      }
-      if (s?.user) {
-        setTimeout(() => setUser(s?.user ?? null), 100);
+        setUserState(null);
+        setRedirectTo(null);
+        setLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Buscar papel do usuário (b2b / b2c / admin)
   useEffect(() => {
-    if (!user) { setAppRole(null); return; }
+    if (!user) { 
+      setAppRole(null);
+      setLoading(false);
+      return; 
+    }
+    
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id, role");
       
       if (cancelled) return;
       
-      const roles = (data ?? []).map((r) => r.role as AppRole);
+      const roles = (mems ?? []).map((m) => m.role);
       
       let newRole: AppRole | null = null;
       
-      if (roles.length === 0) {
-        // Sem role explícita → verificar se é owner de alguma marca → B2B
-        const { data: memberships } = await supabase
-          .from("memberships")
-          .select("role")
-          .eq("user_id", user.id);
-        
-        const isB2BUser = memberships && memberships.some(m => m.role === 'owner' || m.role === 'admin');
-        newRole = isB2BUser ? 'b2b' : 'b2c';
+      if (roles.includes("owner") || roles.includes("admin")) {
+        newRole = roles.includes("admin") ? "admin" : "b2b";
       } else {
-        newRole = roles.includes("admin")
-          ? "admin"
-          : roles.includes("b2b")
-            ? "b2b"
-            : "b2c";
+        newRole = "b2c";
       }
       
-      if (!cancelled) {
-        setAppRole(newRole);
-      }
+      setAppRole(newRole);
+      
+      // Set userState directly from memberships
+      const isB2B = roles.includes("owner") || roles.includes("admin");
+      setUserState({
+        isB2B,
+        hasCommunity: isB2B,
+        hasJoinedCommunities: mems && mems.length > 0,
+      });
+      
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+// Buscar estado do usuário e definir redirecionamento
+  useEffect(() => {
+    if (!user || !appRole || redirected) return;
+    
+    // Check for pending invite slug
+    let pendingSlug = localStorage.getItem("pending_invite_slug");
+    if (!pendingSlug) {
+      pendingSlug = sessionStorage.getItem("pending_invite_slug");
+    }
+    
+    if (pendingSlug) {
+      const redirectPath = `/invite/${pendingSlug}`;
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
+      setRedirectTo(redirectPath);
+      setRedirected(true);
+      return;
+    }
+    
+    const justJoined = sessionStorage.getItem("just_joined_community");
+    if (justJoined) {
+      sessionStorage.removeItem("just_joined_community");
+      setRedirected(true);
+      return;
+    }
+    
+    if (userState?.isB2B && !userState.hasCommunity) {
+      setRedirectTo("/create");
+      setRedirected(true);
+    } else if (!userState?.isB2B && !userState?.hasJoinedCommunities) {
+      setRedirectTo("/");
+      setRedirected(true);
+    } else {
+      setRedirected(true);
+    }
+  }, [user, appRole, redirected, userState]);
+
+  const signOut = async () => { 
+    setRedirected(false);
+    setRedirectTo(null);
+    await supabase.auth.signOut(); 
+  };
+
+  const clearRedirect = () => {
+    setRedirectTo(null);
+  };
 
   return (
     <Ctx.Provider
@@ -96,7 +153,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isB2B: appRole === "b2b" || appRole === "admin",
         isB2C: appRole === "b2c",
         isAdmin: appRole === "admin",
+        userState,
+        redirectTo,
         signOut,
+        clearRedirect,
       }}
     >
       {children}

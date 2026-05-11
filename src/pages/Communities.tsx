@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, LogOut, Search, Users, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
+import { getAccessStatus, requestAccess } from "@/lib/communityAccess";
 
 type TenantCard = {
   id: string;
@@ -20,7 +21,7 @@ type TenantCard = {
 
 export default function Communities() {
   const { user, signOut, isB2B } = useAuth();
-  const { tenants, selectTenant } = useTenant();
+  const { tenants, selectTenant, isOwner } = useTenant();
   const nav = useNavigate();
   const [discover, setDiscover] = useState<TenantCard[]>([]);
   const [query, setQuery] = useState("");
@@ -39,19 +40,51 @@ export default function Communities() {
     (t) => !myIds.has(t.id) && t.name.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const enter = (id: string) => {
-    selectTenant(id);
-    nav("/feed");
+  const enter = async (id: string) => {
+    if (!user) { nav("/auth"); return; }
+
+    const tenant = tenants.find(t => t.id === id);
+    if (!tenant) return;
+
+    if (isB2B) {
+      selectTenant(id);
+      nav("/feed");
+      return;
+    }
+
+    const status = await getAccessStatus(tenant.id, user.id);
+
+    if (status === "approved") {
+      selectTenant(id);
+      nav("/feed");
+    } else {
+      selectTenant(id);
+      nav(`/c/${tenant.slug}`);
+    }
   };
 
   const join = async (id: string) => {
     if (!user) { nav("/auth"); return; }
-    await supabase.from("memberships").upsert(
-      { user_id: user.id, tenant_id: id, role: "member" },
-      { onConflict: "user_id,tenant_id" } as any,
-    );
-    selectTenant(id);
-    nav("/feed");
+
+    const tenant = discover.find(t => t.id === id);
+    if (!tenant) return;
+
+    if (isB2B) {
+      selectTenant(id);
+      nav("/feed");
+      return;
+    }
+
+    const status = await getAccessStatus(tenant.id, user.id);
+
+    if (status === "approved") {
+      selectTenant(id);
+      nav("/feed");
+    } else {
+      await requestAccess(tenant.id, user.id, user.user_metadata?.name || "", user.email || "");
+      selectTenant(id);
+      nav(`/c/${tenant.slug}`);
+    }
   };
 
   return (
@@ -82,7 +115,7 @@ export default function Communities() {
             )}
           </div>
 
-          {tenants.length === 0 ? (
+{tenants.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-8 text-center">
               <div className="h-12 w-12 mx-auto rounded-2xl bg-brand-soft grid place-items-center mb-3">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -92,9 +125,13 @@ export default function Communities() {
                   ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."
                   : "Você ainda não participa de nenhuma comunidade. Explore abaixo para entrar."}
               </p>
-              {isB2B && (
+              {isB2B ? (
                 <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
                   <Link to="/onboarding">Criar minha marca</Link>
+                </Button>
+              ) : (
+                <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
+                  <Link to="/feed">Voltar ao feed</Link>
                 </Button>
               )}
             </div>

@@ -1,5 +1,4 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { Sparkles, Users, TrendingUp, ArrowRight } from "lucide-react";
 
 const fadeInUp = {
@@ -7,7 +6,7 @@ const fadeInUp = {
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -33,19 +32,15 @@ const steps = [
 ];
 
 export default function HowItWorksSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-16 md:py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-white via-[#630091]/5 to-white" />
       
       <div className="relative mx-auto max-w-6xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          variants={fadeInUp}
-          className="text-center mb-16"
+          animate="visible"
+          className="text-center mb-12 md:mb-16"
         >
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#d81e62] font-semibold mb-4">
             Como funciona
@@ -55,30 +50,30 @@ export default function HowItWorksSection() {
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
           {steps.map((s, i) => (
             <motion.div
               key={s.number}
               initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * i, duration: 0.4 }}
               className="relative"
             >
-              <div className="p-8 rounded-2xl bg-white border-2 border-[#630091]/10 hover:border-[#630091]/30 transition-all duration-300 shadow-lg hover:shadow-2xl h-full">
-                <div className="font-display text-7xl text-[#630091]/10 font-bold absolute top-4 right-6">
+              <div className="p-6 md:p-8 rounded-2xl bg-white border-2 border-[#630091]/10 hover:border-[#630091]/30 transition-all duration-300 shadow-lg hover:shadow-2xl h-full">
+                <div className="font-display text-5xl md:text-7xl text-[#630091]/10 font-bold absolute top-4 right-6">
                   {s.number}
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center mb-5 shadow-lg">
-                  <s.icon className="h-7 w-7 text-white" />
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-[#630091] to-[#d81e62] flex items-center justify-center mb-5 shadow-lg">
+                  <s.icon className="h-6 w-6 md:h-7 md:w-7 text-white" />
                 </div>
-                <h3 className="font-display text-2xl font-semibold mb-3 text-[#1a1a1a]">{s.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{s.desc}</p>
+                <h3 className="font-display text-xl md:text-2xl font-semibold mb-3 text-[#1a1a1a]">{s.title}</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm md:text-base">{s.desc}</p>
               </div>
               
               {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-[#630091] to-[#d81e62] flex items-center justify-center">
-                    <ArrowRight className="h-3 w-3 text-white" />
+                <div className="absolute top-1/2 -right-3 md:-right-3 transform -translate-y-1/2 z-10 hidden md:flex items-center justify-center">
+                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-[#630091] to-[#d81e62] flex items-center justify-center">
+                    <ArrowRight className="h-2 w-2 md:h-3 md:w-3 text-white" />
                   </div>
                 </div>
               )}

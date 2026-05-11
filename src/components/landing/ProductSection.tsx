@@ -1,13 +1,12 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
-import { Check, Video, Image, MessageSquare, Calendar, Users, BarChart3, Bell, Megaphone, Sparkles, DollarSign, ClipboardCheck, ExternalLink, FileText } from "lucide-react";
+import { motion } from "framer-motion";
+import { Check, Video, Image, MessageSquare, Calendar, Users, BarChart3, Bell, Megaphone, Sparkles, ClipboardCheck, ExternalLink } from "lucide-react";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -27,17 +26,14 @@ const features = [
 const colors = ["from-[#630091] to-[#8b2091]", "from-[#8b2091] to-[#d81e62]", "from-[#d81e62] to-[#630091]"];
 
 export default function ProductSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-white via-[#630091]/3 to-[#d81e62]/3" />
       
       <div className="relative mx-auto max-w-6xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={fadeInUp}
           className="text-center mb-16"
         >
@@ -57,7 +53,7 @@ export default function ProductSection() {
             <motion.div
               key={f.title}
               initial={{ opacity: 0, y: 15 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.04 * i, duration: 0.4 }}
               className="group p-4 rounded-2xl bg-white border border-[#630091]/10 shadow-lg hover:shadow-2xl hover:border-[#d81e62]/30 transition-all duration-300"
               whileHover={{ y: -3 }}

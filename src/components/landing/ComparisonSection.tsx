@@ -1,5 +1,4 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { Check, X } from "lucide-react";
 
 const fadeInUp = {
@@ -7,7 +6,7 @@ const fadeInUp = {
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -22,17 +21,14 @@ const comparison = [
 ];
 
 export default function ComparisonSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-white via-[#d81e62]/5 to-white" />
       
       <div className="relative mx-auto max-w-4xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={fadeInUp}
           className="text-center mb-16"
         >
@@ -54,7 +50,7 @@ export default function ComparisonSection() {
             <motion.div
               key={item.feature}
               initial={{ opacity: 0 }}
-              animate={isInView ? { opacity: 1 } : {}}
+              animate={{ opacity: 1 }}
               transition={{ delay: 0.05 * i }}
               className="grid grid-cols-3 py-4 px-6 border-b border-[#630091]/5 last:border-0"
             >

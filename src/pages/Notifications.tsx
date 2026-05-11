@@ -1,257 +1,211 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
-import TopBar from "@/components/layout/TopBar";
-import BottomNav from "@/components/layout/BottomNav";
+import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Bell, Check, X, User, Mail, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { Bell, BellOff, MessageSquare, AtSign, Radio, FileText, Check, CheckCheck, UserPlus, X, Clock, CheckCircle, XCircle } from "lucide-react";
-import { getPendingMembers, approveMember, rejectMember, PendingMember } from "@/lib/communityMembers";
 
-type Notification = {
+type PendingRequest = {
   id: string;
-  tenant_id: string;
   user_id: string;
-  actor_id: string | null;
+  tenant_id: string;
+  status: string;
+  created_at: string;
+  profiles?: { name: string | null; email: string };
+  tenants?: { name: string };
+};
+
+type NotificationItem = {
+  id: string;
   type: string;
   title: string;
-  body: string | null;
-  priority: "high" | "medium" | "low";
-  read_at: string | null;
-  data: Record<string, unknown>;
-  reference_id: string | null;
+  priority: string;
+  data: any;
   created_at: string;
-  actor_profiles?: { name: string; avatar_url: string | null } | null;
-};
-
-type NotificationSummary = {
-  replies: number;
-  mentions: number;
-  liveStarted: number;
-  newPosts: number;
-};
-
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; bgColor: string; priority: number }> = {
-  reply_message: { icon: MessageSquare, bgColor: "bg-blue-100", priority: 3 },
-  mention: { icon: AtSign, bgColor: "bg-purple-100", priority: 4 },
-  live_started: { icon: Radio, bgColor: "bg-red-100", priority: 2 },
-  new_post: { icon: FileText, bgColor: "bg-green-100", priority: 1 },
+  actor_id: string | null;
 };
 
 export default function Notifications() {
-  const { tenant, isOwner } = useTenant();
   const { user } = useAuth();
+  const { tenants } = useTenant();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<NotificationSummary>({ replies: 0, mentions: 0, liveStarted: 0, newPosts: 0 });
-  const [pendingRequests, setPendingRequests] = useState<PendingMember[]>([]);
-  const [pendingLoading, setPendingLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [activeTab, setActiveTab] = useState<"requests" | "all">("requests");
 
-  const loadNotifications = async () => {
-    if (!tenant || !user) return;
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*, actor_profiles:actor_id(name, avatar_url)")
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .order("priority DESC", { foreignTable: "notifications", ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error("Load notifications error:", error);
+  useEffect(() => {
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    const notificationsData = (data || []) as unknown as Notification[];
-    setNotifications(notificationsData);
-
-    const unread = notificationsData.filter(n => !n.read_at);
-    setSummary({
-      replies: unread.filter(n => n.type === "reply_message").length,
-      mentions: unread.filter(n => n.type === "mention").length,
-      liveStarted: unread.filter(n => n.type === "live_started").length,
-      newPosts: unread.filter(n => n.type === "new_post").length,
-    });
-
-    setLoading(false);
-  };
-
-  const loadPendingRequests = async () => {
-    if (!tenant || !isOwner) return;
-    setPendingLoading(true);
-    
-    const members = await getPendingMembers(tenant.id);
-    setPendingRequests(members);
-    setPendingLoading(false);
-  };
-
-  useEffect(() => {
-    if (tenant && user) loadNotifications();
-  }, [tenant, user]);
-
-  useEffect(() => {
-    if (tenant && isOwner) loadPendingRequests();
-  }, [tenant, isOwner]);
-
-  const handleNotificationClick = async (notification: Notification) => {
-    if (!notification.read_at) {
-      await supabase
+    (async () => {
+      setLoading(true);
+      
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", user.id);
+      
+      const ownerMems = (mems || []).filter(m => m.role === "owner" || m.role === "admin");
+      const hasOwnership = ownerMems.length > 0;
+      setIsOwner(hasOwnership);
+      
+      if (!hasOwnership) {
+        const { data: notifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        setNotifications(notifs || []);
+        setLoading(false);
+        return;
+      }
+      
+      const tenantIds = ownerMems.map(m => m.tenant_id);
+      
+      const { data } = await supabase
+        .from("community_requests")
+        .select("*, profiles(name, email), tenants(name)")
+        .in("tenant_id", tenantIds)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      
+      setRequests(data || []);
+      
+      const { data: notifs } = await supabase
         .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", notification.id);
-    }
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      
+      setNotifications(notifs || []);
+      setLoading(false);
+    })();
+  }, [user, tenants]);
 
-    const refId = notification.reference_id;
-    if (!refId) return;
-
-    switch (notification.type) {
-      case "reply_message":
-      case "mention":
-        navigate(`/conversas/${refId}`);
-        break;
-      case "live_started":
-        navigate(`/content/lives`);
-        break;
-      case "new_post":
-        navigate(`/feed?post=${refId}`);
-        break;
-      default:
-        navigate("/feed");
-    }
+  const handleApprove = async (request: PendingRequest) => {
+    const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
+    if (error) { toast.error("Erro ao aprovar"); return; }
+    
+    await supabase.from("memberships").insert({ tenant_id: request.tenant_id, user_id: request.user_id, role: "member" });
+    toast.success("Membro aprovado!");
+    
+    sessionStorage.setItem("just_joined_community", request.tenant_id);
+    
+    setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
-  const handleApprove = async (memberId: string) => {
-    const success = await approveMember(memberId);
-    if (success) {
-      toast.success("Membro aprovado!");
-      loadPendingRequests();
-    } else {
-      toast.error("Erro ao aprovar membro");
-    }
+  const handleReject = async (requestId: string) => {
+    const { error } = await supabase.from("community_requests").update({ status: "rejected" }).eq("id", requestId);
+    if (error) { toast.error("Erro ao recusar"); return; }
+    toast.success("Solicitação recusada");
+    setRequests(prev => prev.filter(r => r.id !== requestId));
   };
 
-  const handleReject = async (memberId: string) => {
-    const success = await rejectMember(memberId);
-    if (success) {
-      toast.success("Membro recusado");
-      loadPendingRequests();
-    } else {
-      toast.error("Erro ao recusar membro");
-    }
-  };
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background">
-      <TopBar />
-      <div className="flex-1 max-w-xl mx-auto w-full px-4 py-6 pb-28 space-y-4">
-        <h1 className="text-2xl font-display font-bold">Notificações</h1>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
+        <div className="max-w-xl mx-auto flex items-center justify-between px-4 h-14">
+          <h1 className="text-xl font-semibold">Notificações</h1>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>Voltar</Button>
+        </div>
+        {isOwner && (
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`flex-1 py-2 text-sm font-medium ${activeTab === "requests" ? "text-brand border-b-2 border-brand" : "text-muted-foreground"}`}
+            >
+              Solicitações
+              {requests.length > 0 && (
+                <span className="ml-1.5 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{requests.length}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`flex-1 py-2 text-sm font-medium ${activeTab === "all" ? "text-brand border-b-2 border-brand" : "text-muted-foreground"}`}
+            >
+              Todas
+            </button>
+          </div>
+        )}
+      </header>
 
-        {isOwner && pendingRequests.length > 0 && (
-          <section className="bg-amber-50 rounded-2xl border border-amber-200 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-amber-600" />
-              <h2 className="font-semibold text-amber-800">Solicitações de Acesso</h2>
-              <span className="ml-auto bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {pendingRequests.length}
-              </span>
-            </div>
-            
-            <div className="space-y-2">
-              {pendingRequests.map((req) => (
-                <div key={req.id} className="bg-white rounded-xl p-3 flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    {req.user_name ? (
-                      <AvatarImage src={req.user_name} />
-                    ) : (
-                      <AvatarFallback>{(req.user_email || "?").substring(0, 2).toUpperCase()}</AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{req.user_name || "Usuário"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{req.user_email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(req.created_at).toLocaleDateString("pt-BR")}
-                    </p>
+      <div className="max-w-xl mx-auto px-4 py-6">
+        {activeTab === "requests" && isOwner ? (
+          <div className="space-y-4">
+            {requests.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma solicitação pendente</p>
+              </div>
+            ) : requests.map(r => (
+              <div key={r.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-brand/10 flex items-center justify-center">
+                    <User className="h-5 w-5 text-brand" />
                   </div>
-                  <div className="flex gap-1">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
-                      onClick={() => handleApprove(req.id)}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                      onClick={() => handleReject(req.id)}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
+                  <div>
+                    <p className="font-semibold">{r.profiles?.name || "Usuário"}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {r.profiles?.email || "-"}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {notifications.length === 0 && !loading ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <BellOff className="h-12 w-12 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">Nenhuma notificação</p>
+                {r.tenants && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenants.name}</p>}
+                <div className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(r.created_at)}</div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" className="flex-1 gap-2" onClick={() => handleApprove(r)}><Check className="h-4 w-4" />Aprovar</Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleReject(r.id)}><X className="h-4 w-4" />Recusar</Button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="space-y-2">
-            {notifications.map((notification) => {
-              const config = TYPE_CONFIG[notification.type] || { icon: Bell, bgColor: "bg-gray-100", priority: 0 };
-              const Icon = config.icon;
-              
-              return (
-                <button
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`w-full text-left p-3 rounded-xl border ${
-                    notification.read_at 
-                      ? "bg-card border-border" 
-                      : "bg-blue-50/50 border-blue-200"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${config.bgColor}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{notification.title}</p>
-                      {notification.body && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {notification.body}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(notification.created_at).toLocaleString("pt-BR")}
-                      </p>
-                    </div>
-                    {!notification.read_at && (
-                      <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
+          <div className="space-y-3">
+            {notifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma notificação</p>
+              </div>
+            ) : notifications.map(n => (
+              <div key={n.id} className={`bg-card border rounded-2xl p-4 ${n.type === "join_request" ? "border-purple-200" : "border-border"}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${n.type === "join_request" ? "bg-purple-100" : "bg-brand/10"}`}>
+                    {n.type === "join_request" ? (
+                      <Users className="h-4 w-4 text-purple-600" />
+                    ) : (
+                      <Bell className="h-4 w-4 text-brand" />
                     )}
                   </div>
-                </button>
-              );
-            })}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{n.title}</p>
+                    {n.data?.user_name && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="font-medium">{n.data.user_name}</span> ({n.data.user_email})
+                      </p>
+                    )}
+                    {n.data?.tenant_name && (
+                      <p className="text-xs text-purple-600 mt-0.5">{n.data.tenant_name}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {formatDate(n.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
-      <BottomNav />
     </div>
   );
 }

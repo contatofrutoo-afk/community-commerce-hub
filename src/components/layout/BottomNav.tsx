@@ -3,23 +3,51 @@ import { Link, useLocation } from "react-router-dom";
 import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function BottomNav() {
   const { pathname } = useLocation();
-  const { isB2B } = useAuth();
+  const { isB2B, user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [pendingCount, setPendingCount] = useState(0);
 
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },
     ...(isB2B ? [{ to: "/content", icon: Plus, label: "Criar", special: true }] : []),
     { to: "/conversas", icon: MessageSquare, label: "Conversas" },
-    { to: "/notifications", icon: Bell, label: "Notificações" },
+    { to: "/notifications", icon: Bell, label: "Notificações", badge: pendingCount },
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
     ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
   ];
+
+  useEffect(() => {
+    if (!isB2B || !user) return;
+    
+    const loadPendingCount = async () => {
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .in("role", ["owner", "admin"]);
+      
+      if (!mems || mems.length === 0) return;
+      
+      const { count } = await supabase
+        .from("community_requests")
+        .select("*", { count: "exact", head: true })
+        .in("tenant_id", mems.map(m => m.tenant_id))
+        .eq("status", "pending");
+      
+      setPendingCount(count || 0);
+    };
+    
+    loadPendingCount();
+    const interval = setInterval(loadPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, [isB2B, user]);
 
   useEffect(() => {
     if (activeRef.current) {
@@ -70,7 +98,7 @@ export default function BottomNav() {
           )}
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {items.map(({ to, icon: Icon, label, special }) => {
+          {items.map(({ to, icon: Icon, label, special, badge }) => {
             const active = isActive(to);
             return (
               <Link
@@ -96,14 +124,21 @@ export default function BottomNav() {
                     }}
                   />
                 )}
-                <Icon
-                  className={cn(
-                    "h-5 w-5 flex-shrink-0",
-                    special && "h-6 w-6",
-                    active && "text-primary-custom"
+                <div className="relative">
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 flex-shrink-0",
+                      special && "h-6 w-6",
+                      active && "text-primary-custom"
+                    )}
+                    strokeWidth={active ? 2.2 : 1.8}
+                  />
+                  {badge !== undefined && badge > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
                   )}
-                  strokeWidth={active ? 2.2 : 1.8}
-                />
+                </div>
                 <span className={cn(
                   "font-medium truncate w-full text-center text-[10px]",
                   special && "text-xs"

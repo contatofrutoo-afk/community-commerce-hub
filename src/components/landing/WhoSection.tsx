@@ -1,12 +1,11 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -20,17 +19,14 @@ const audiences = [
 ];
 
 export default function WhoSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-[#d81e62]/5 via-white to-[#630091]/5" />
       
       <div className="relative mx-auto max-w-6xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={fadeInUp}
           className="text-center mb-16"
         >
@@ -50,7 +46,7 @@ export default function WhoSection() {
             <motion.div
               key={audience.title}
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.05 * i, duration: 0.4 }}
               className="group p-5 rounded-2xl bg-white text-center border border-[#630091]/10 shadow-md hover:shadow-xl hover:border-[#d81e62]/30 transition-all duration-300"
               whileHover={{ scale: 1.03 }}

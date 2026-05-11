@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMemberStatus, requestJoinCommunity, MemberStatus } from "@/lib/communityMembers";
-import { Building2, Users, MessageCircle, Calendar, ArrowRight, Clock, XCircle, CheckCircle } from "lucide-react";
+import { getAccessStatus, requestAccess, AccessStatus } from "@/lib/communityAccess";
+import { Building2, Users, MessageCircle, Calendar, ArrowRight, ArrowLeft, Clock, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isB2B } = useAuth();
   
   const getSlugFromUrl = () => {
     if (slug) return slug;
@@ -32,7 +32,7 @@ export default function CommunityPage() {
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [memberStatus, setMemberStatus] = useState<MemberStatus>("none");
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("none");
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
@@ -43,50 +43,61 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      const { data, error: err } = await supabase
+      const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
         .eq("slug", communitySlug)
         .maybeSingle();
 
-      if (err) {
-        console.error("Erro ao buscar comunidade:", err);
-        setError("Erro ao carregar comunidade");
-      } else if (!data) {
+      if (err || !tenantData) {
         setError("Comunidade não encontrada");
-      } else {
-        setTenant(data);
+        setLoading(false);
+        return;
       }
+
+      setTenant(tenantData);
+
+      if (isB2B) {
+        setAccessStatus("approved");
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setAccessStatus("none");
+        setLoading(false);
+        return;
+      }
+
+      const status = await getAccessStatus(tenantData.id, user.id);
+      setAccessStatus(status);
+
       setLoading(false);
     })();
-  }, [communitySlug]);
+  }, [communitySlug, isB2B, user]);
 
-  useEffect(() => {
-    if (!tenant || authLoading) return;
+  const handleRequestAccess = async () => {
+    if (!communitySlug || !user || !tenant) {
+      return;
+    }
 
-    (async () => {
-      if (user) {
-        const status = await getMemberStatus(tenant.id);
-        setMemberStatus(status);
-      } else {
-        setMemberStatus("none");
-      }
-    })();
-  }, [tenant, user, authLoading]);
-
-  const handleRequestJoin = async () => {
-    if (!user || !tenant) return;
-    
     setRequesting(true);
-    const result = await requestJoinCommunity(tenant.id);
-    setRequesting(false);
-    
-    if (result) {
-      setMemberStatus("pending");
+
+    const result = await requestAccess(
+      tenant.id,
+      user.id,
+      user.user_metadata?.name || user.email?.split('@')[0] || "",
+      user.email || "",
+    );
+
+    if (result.success) {
+      setAccessStatus("pending");
       toast.success("Solicitação enviada! Aguarde aprovação da marca.");
     } else {
-      toast.error("Erro ao enviar solicitação. Tente novamente.");
+      toast.error(result.error || "Erro ao enviar solicitação");
     }
+
+    setRequesting(false);
   };
 
   if (loading) {
@@ -116,6 +127,23 @@ export default function CommunityPage() {
   }
 
   const renderContent = () => {
+    if (isB2B) {
+      return (
+        <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
+          <div className="flex items-center gap-3 text-green-700">
+            <CheckCircle className="h-8 w-8" />
+            <h2 className="font-semibold text-lg">Bem-vindo!</h2>
+          </div>
+          <p className="text-green-800">
+            Você é membro de <strong>{tenant.name}</strong>!
+          </p>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+            Entrar na Comunidade
+          </Button>
+        </div>
+      );
+    }
+
     if (!user) {
       return (
         <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
@@ -155,32 +183,27 @@ export default function CommunityPage() {
       );
     }
 
-    if (memberStatus === "pending") {
+    if (accessStatus === "pending") {
       return (
         <div className="bg-amber-50 rounded-3xl border border-amber-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-amber-700">
             <Clock className="h-8 w-8" />
-            <h2 className="font-semibold text-lg">Aguardando Aprovação</h2>
+            <h2 className="font-semibold text-lg">Solicitação enviada</h2>
           </div>
           <p className="text-amber-800">
-            Sua solicitação foi enviada para <strong>{tenant.name}</strong>. 
-            Você receberá uma notificação quando seu acesso for aprovado.
+            A marca precisa aprovar seu acesso. Você será notificado assim que for liberado.
           </p>
           <div className="bg-white/50 rounded-xl p-4 text-center">
             <p className="text-sm text-amber-700">
-              Enquanto isso, você pode explorar outras comunidades ou voltar mais tarde.
+              Você pode voltar mais tarde para verificar o status.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => navigate("/")}>
-              Explorar
-            </Button>
-          </div>
+          
         </div>
       );
     }
 
-    if (memberStatus === "rejected") {
+    if (accessStatus === "rejected") {
       return (
         <div className="bg-red-50 rounded-3xl border border-red-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-red-700">
@@ -193,14 +216,12 @@ export default function CommunityPage() {
           <p className="text-sm text-red-600">
             Entre em contato diretamente com a marca para mais informações.
           </p>
-          <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
-            Voltar ao início
-          </Button>
+          
         </div>
       );
     }
 
-    if (memberStatus === "approved") {
+    if (accessStatus === "approved") {
       return (
         <div className="bg-green-50 rounded-3xl border border-green-200 p-6 space-y-4 shadow-soft">
           <div className="flex items-center gap-3 text-green-700">
@@ -226,7 +247,7 @@ export default function CommunityPage() {
         
         <Button 
           className="w-full bg-brand text-primary-foreground hover:opacity-90" 
-          onClick={handleRequestJoin}
+          onClick={handleRequestAccess}
           disabled={requesting}
         >
           {requesting ? "Enviando..." : "Solicitar Acesso"}
@@ -239,6 +260,9 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
+          <Button variant="ghost" onClick={() => navigate("/feed")} className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          </Button>
           <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
             {tenant.logo_url ? (
               <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
@@ -252,10 +276,6 @@ export default function CommunityPage() {
         </div>
 
         {renderContent()}
-
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Powered by Community Commerce Hub
-        </p>
       </div>
     </div>
   );

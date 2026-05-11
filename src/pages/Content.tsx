@@ -39,7 +39,7 @@ export default function Content() {
               Esta área é exclusiva para a marca. Você pode interagir pelo Feed e Conversas.
             </p>
             <Button asChild variant="outline" className="rounded-full">
-              <Link to="/communities">Voltar para comunidades</Link>
+              <Link to="/feed">Voltar para o feed</Link>
             </Button>
           </div>
         )}

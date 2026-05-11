@@ -1,5 +1,4 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { AlertTriangle, Lock, BarChart3, Layers, Link2, Search } from "lucide-react";
 
 const fadeInUp = {
@@ -7,7 +6,7 @@ const fadeInUp = {
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -51,17 +50,14 @@ const problems = [
 ];
 
 export default function ProblemSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-[#630091]/3 via-[#d81e62]/2 to-[#630091]/3" />
       
       <div className="relative mx-auto max-w-6xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={fadeInUp}
           className="text-center mb-16"
         >
@@ -81,7 +77,7 @@ export default function ProblemSection() {
             <motion.div
               key={problem.title}
               initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * i, duration: 0.4 }}
               className="group relative p-6 rounded-2xl bg-white border border-[#630091]/10 shadow-sm hover:shadow-xl transition-all duration-300"
               whileHover={{ y: -4 }}

@@ -13,8 +13,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_uep_ut ON user_engagement_points(user_id, 
 CREATE INDEX IF NOT EXISTS idx_uep_monthly ON user_engagement_points(tenant_id, monthly_points DESC);
 CREATE INDEX IF NOT EXISTS idx_uep_yearly ON user_engagement_points(tenant_id, yearly_points DESC);
 ALTER TABLE user_engagement_points ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "uep_select" ON user_engagement_points FOR SELECT USING (true);
-CREATE POLICY "uep_all" ON user_engagement_points FOR ALL USING (true);
+CREATE POLICY "uep_select" ON user_engagement_points FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
+CREATE POLICY "uep_insert" ON user_engagement_points FOR INSERT WITH CHECK (
+  auth.uid() = user_id
+);
+CREATE POLICY "uep_update" ON user_engagement_points FOR UPDATE USING (
+  public.is_tenant_owner(auth.uid(), tenant_id)
+);
 
 CREATE TABLE IF NOT EXISTS engagement_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -28,9 +35,12 @@ CREATE TABLE IF NOT EXISTS engagement_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_el_utc ON engagement_logs(user_id, tenant_id, created_at);
 ALTER TABLE engagement_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "el_select" ON engagement_logs FOR SELECT USING (true);
-CREATE POLICY "el_insert" ON engagement_logs FOR INSERT WITH CHECK (true);
-CREATE POLICY "el_all" ON engagement_logs FOR ALL USING (true);
+CREATE POLICY "el_select" ON engagement_logs FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
+CREATE POLICY "el_insert" ON engagement_logs FOR INSERT WITH CHECK (
+  auth.uid() = user_id
+);
 
 CREATE TABLE IF NOT EXISTS tenant_rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,8 +56,12 @@ CREATE TABLE IF NOT EXISTS tenant_rewards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE tenant_rewards ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "tr_select" ON tenant_rewards FOR SELECT USING (true);
-CREATE POLICY "tr_manage" ON tenant_rewards FOR ALL USING (true);
+CREATE POLICY "tr_select" ON tenant_rewards FOR SELECT USING (
+  public.is_tenant_member(auth.uid(), tenant_id)
+);
+CREATE POLICY "tr_manage" ON tenant_rewards FOR ALL USING (
+  public.is_tenant_owner(auth.uid(), tenant_id)
+);
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS city TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS state TEXT;
@@ -67,9 +81,23 @@ CREATE OR REPLACE FUNCTION award_engagement_points(
   p_reference_id UUID DEFAULT NULL,
   p_metadata JSONB DEFAULT '{}'
 )
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_max_points INTEGER := 100;
 BEGIN
   IF p_points IS NULL OR p_points <= 0 THEN RETURN; END IF;
+  p_points := LEAST(p_points, v_max_points);
+
+  -- Only allow awarding points to self or if user is tenant owner/admin
+  IF p_user_id != auth.uid() AND NOT public.is_tenant_owner(auth.uid(), p_tenant_id) AND NOT public.has_role(auth.uid(), 'admin') THEN
+    RAISE EXCEPTION 'Not authorized to award points to other users';
+  END IF;
+
+  -- Validate action_type
+  IF p_action_type NOT IN ('view', 'like', 'comment', 'click_cta', 'conversion') THEN
+    RAISE EXCEPTION 'Invalid action_type';
+  END IF;
+
   IF EXISTS (SELECT 1 FROM engagement_logs WHERE user_id = p_user_id AND tenant_id = p_tenant_id AND action_type = p_action_type AND reference_id IS NOT DISTINCT FROM p_reference_id LIMIT 1) THEN RETURN; END IF;
   INSERT INTO engagement_logs (user_id, tenant_id, action_type, points, reference_id, metadata)
   VALUES (p_user_id, p_tenant_id, p_action_type, p_points, p_reference_id, p_metadata) ON CONFLICT DO NOTHING;

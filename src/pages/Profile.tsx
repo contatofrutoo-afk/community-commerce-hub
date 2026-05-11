@@ -8,13 +8,14 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, ArrowLeftRight, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
+import { LogOut, Building2, Upload, Trophy, MapPin, TrendingUp, Copy, ExternalLink, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { getUserStats } from "@/lib/gamification";
 
 export default function Profile() {
   const { user, signOut, isB2B } = useAuth();
-  const { tenant, isOwner, tenants } = useTenant();
+  const { tenant } = useTenant();
+
   const nav = useNavigate();
 
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
@@ -25,13 +26,17 @@ export default function Profile() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [tenantLogo, setTenantLogo] = useState<string | null>(null);
+  const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
+  const tenantFileRef = useRef<HTMLInputElement>(null);
   
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("");
-  
   const [userPoints, setUserPoints] = useState<{total: number; monthly: number; yearly: number} | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -42,17 +47,41 @@ export default function Profile() {
     setAvatar(URL.createObjectURL(f));
   };
 
+  const handleTenantLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
+    setTenantLogoFile(f);
+    setTenantLogo(URL.createObjectURL(f));
+  };
+
   const uploadAvatar = async (): Promise<boolean> => {
     if (!avatarFile || !user) return false;
     try {
       const ext = avatarFile.name.split(".").pop();
       const path = `avatars/${user.id}.${ext}`;
-      const { data, error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
+      const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
       if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
       const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
       const avatarUrl = urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
       setAvatar(avatarUrl);
+      return true;
+    } catch (e: any) { toast.error(e.message); return false; }
+  };
+
+  const uploadTenantLogo = async (): Promise<boolean> => {
+    if (!tenantLogoFile || !tenant) return false;
+    try {
+      const ext = tenantLogoFile.name.split(".").pop();
+      const path = `logos/${tenant.id}.${ext}`;
+      const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      const logoUrl = urlData.publicUrl;
+      await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", tenant.id);
+      setTenantLogo(logoUrl);
       return true;
     } catch (e: any) { toast.error(e.message); return false; }
   };
@@ -79,6 +108,8 @@ export default function Profile() {
       if (stats) setUserPoints({ total: stats.total_points, monthly: stats.monthly_points, yearly: stats.yearly_points });
     })();
   }, [user?.id, tenant?.id]);
+
+  
 
   const save = async () => {
     if (!user) return;
@@ -171,7 +202,7 @@ export default function Profile() {
           </Button>
         </section>
 
-        {isB2B && tenant?.slug && (
+{isB2B && tenant?.slug && (
           <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-purple-600" />
@@ -209,16 +240,6 @@ export default function Profile() {
             </Button>
           </section>
         )}
-
-        <section className="bg-card rounded-2xl border border-border p-5 space-y-2 shadow-soft">
-          <h2 className="font-semibold mb-2">Comunidade</h2>
-          <p className="text-sm text-muted-foreground mb-3">Você está em <strong>{tenant?.name ?? "—"}</strong></p>
-          {isB2C && (
-            <Button variant="outline" className="w-full justify-start rounded-xl" asChild>
-              <Link to="/communities"><ArrowLeftRight className="h-4 w-4 mr-2" />Trocar de comunidade ({tenants.length})</Link>
-            </Button>
-          )}
-        </section>
 
         <Button variant="ghost" onClick={async () => { await signOut(); nav("/"); }} className="w-full text-destructive">
           <LogOut className="h-4 w-4 mr-2" />Sair

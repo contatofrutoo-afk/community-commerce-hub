@@ -1,5 +1,4 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { Check, Users, TrendingUp, MessageCircle, Calendar, BarChart3, Bell, Image } from "lucide-react";
 
 const fadeInUp = {
@@ -7,7 +6,7 @@ const fadeInUp = {
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -23,18 +22,15 @@ const benefits = [
 const colors = ["from-[#630091] to-[#8b2091]", "from-[#8b2091] to-[#d81e62]", "from-[#d81e62] to-[#630091]"];
 
 export default function SolutionSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
   return (
-    <section ref={ref} className="py-32 relative overflow-hidden">
+    <section className="py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-[#630091] via-[#d81e62] to-[#630091]" />
       <div className="absolute inset-0 bg-white/95" />
       
       <div className="relative mx-auto max-w-6xl px-6">
         <motion.div
           initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
+          animate="visible"
           variants={fadeInUp}
           className="text-center mb-16"
         >
@@ -54,7 +50,7 @@ export default function SolutionSection() {
             <motion.div
               key={benefit.title}
               initial={{ opacity: 0, y: 15 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.04 * i, duration: 0.4 }}
               className="group p-5 rounded-2xl bg-white border border-[#630091]/10 shadow-md hover:shadow-2xl transition-all duration-300"
               whileHover={{ y: -2 }}
