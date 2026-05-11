@@ -75,7 +75,13 @@ export default function Notifications() {
   useEffect(() => { 
     loadRequests(); 
     loadNotifications();
-  }, [user, isB2B]);
+  }, [user, isB2B, tenants]);
+
+  useEffect(() => {
+    if (!loading && tenants.length > 0) {
+      loadRequests();
+    }
+  }, [tenants]);
 
   const handleApprove = async (request: PendingRequest) => {
     const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
