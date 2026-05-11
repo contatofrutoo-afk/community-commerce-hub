@@ -97,6 +97,8 @@ export default function Notifications() {
     await supabase.from("memberships").insert({ tenant_id: request.tenant_id, user_id: request.user_id, role: "member" });
     toast.success("Membro aprovado!");
     
+    sessionStorage.setItem("just_joined_community", request.tenant_id);
+    
     setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 

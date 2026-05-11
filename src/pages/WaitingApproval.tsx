@@ -145,16 +145,16 @@ export default function WaitingApproval() {
   }, [slug, user, authLoading, navigate, supabase]);
 
   const handleGoHome = () => {
-    localStorage.removeItem("pending_invite_slug");
-    sessionStorage.removeItem("pending_invite_slug");
-    
     const tenantId = tenantIdRef.current || tenant?.id;
+    
     if (tenantId) {
+      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.removeItem("pending_invite_slug");
       sessionStorage.setItem("just_joined_community", tenantId);
       localStorage.setItem("weaze:active_tenant", tenantId);
     }
     
-    navigate("/feed");
+    navigate("/feed", { replace: true });
   };
 
   if (loading) {
