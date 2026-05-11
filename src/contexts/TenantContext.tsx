@@ -62,13 +62,17 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setTenants(list);
     
     const savedId = localStorage.getItem("weaze:active_tenant");
-    const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
+    const justJoinedId = sessionStorage.getItem("just_joined_community");
+    let targetId = justJoinedId && list.find(t => t.id === justJoinedId) ? justJoinedId : null;
+    if (!targetId) {
+      targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
+    }
     const targetRole = targetId ? roles[targetId] : null;
     if (targetId && targetRole) {
       setTenant(list.find(t => t.id === targetId)!);
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
-      if (savedId) localStorage.setItem("weaze:active_tenant", targetId);
+      localStorage.setItem("weaze:active_tenant", targetId);
     } else {
       setTenant(null);
       setIsOwner(false);

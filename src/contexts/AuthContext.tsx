@@ -91,6 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const state = await getUserState(user.id);
       if (cancelled) return;
       setUserState(state);
+      
       const pendingSlug = localStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
         const slugToRedirect = pendingSlug;
@@ -99,10 +100,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRedirected(true);
         return;
       }
+      
+      const justJoined = sessionStorage.getItem("just_joined_community");
+      if (justJoined) {
+        sessionStorage.removeItem("just_joined_community");
+        setRedirected(true);
+        return;
+      }
+      
       if (state.isB2B && !state.hasCommunity) {
         setRedirectTo("/create");
         setRedirected(true);
-      } else if (!state.isB2B && state.hasJoinedCommunities) {
+      } else if (!state.isB2B && !state.hasJoinedCommunities) {
+        setRedirectTo("/");
+        setRedirected(true);
+      } else {
         setRedirected(true);
       }
     })();

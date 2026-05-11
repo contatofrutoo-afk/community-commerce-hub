@@ -77,6 +77,10 @@ export default function WaitingApproval() {
 
   const handleGoHome = () => {
     localStorage.removeItem("pending_invite_slug");
+    sessionStorage.setItem("just_joined_community", tenant.id);
+    if (tenant) {
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+    }
     navigate("/feed");
   };
 
