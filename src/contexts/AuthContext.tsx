@@ -92,11 +92,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (cancelled) return;
       setUserState(state);
       
-      const pendingSlug = localStorage.getItem("pending_invite_slug");
+      // Check both localStorage and sessionStorage for pending invite
+      let pendingSlug = localStorage.getItem("pending_invite_slug");
+      if (!pendingSlug) {
+        pendingSlug = sessionStorage.getItem("pending_invite_slug");
+      }
+      
       if (pendingSlug) {
-        const slugToRedirect = pendingSlug;
         localStorage.removeItem("pending_invite_slug");
-        setRedirectTo(`/waiting?slug=${slugToRedirect}`);
+        sessionStorage.removeItem("pending_invite_slug");
+        setRedirectTo(`/waiting?slug=${pendingSlug}`);
         setRedirected(true);
         return;
       }

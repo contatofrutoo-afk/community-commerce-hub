@@ -62,7 +62,7 @@ export default function Auth() {
       
       const pendingSlug = localStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
-        localStorage.removeItem("pending_invite_slug");
+        sessionStorage.setItem("pending_invite_slug", pendingSlug);
         nav(`/waiting?slug=${pendingSlug}`);
         return;
       }
@@ -89,7 +89,7 @@ export default function Auth() {
     
     const pendingSlug = localStorage.getItem("pending_invite_slug");
     if (pendingSlug) {
-      localStorage.removeItem("pending_invite_slug");
+      sessionStorage.setItem("pending_invite_slug", pendingSlug);
       nav(`/waiting?slug=${pendingSlug}`);
       return;
     }

@@ -55,16 +55,17 @@ export default function InviteLanding() {
         campaign: campaign || null,
       });
       
-      // Se não está logado, salvar slug para recuperação após login
+      // If not logged in, save slug to both localStorage and sessionStorage
       if (!user) {
         localStorage.setItem("pending_invite_slug", slug);
+        sessionStorage.setItem("pending_invite_slug", slug);
       }
       
       setLoading(false);
     })();
   }, [slug, ref, campaign, user]);
 
-  // Se usuário autenticado, entrar automaticamente
+  // If user is authenticated, enter automatically
   useEffect(() => {
     if (user && tenant && !authLoading && !processing) {
       handleEnter();
@@ -76,12 +77,14 @@ export default function InviteLanding() {
     setProcessing(true);
     
     localStorage.setItem("pending_invite_slug", tenant.slug);
+    sessionStorage.setItem("pending_invite_slug", tenant.slug);
     navigate(`/waiting?slug=${tenant.slug}`);
   };
 
   const handleAuth = (isSignUp: boolean) => {
     if (slug) {
       localStorage.setItem("pending_invite_slug", slug);
+      sessionStorage.setItem("pending_invite_slug", slug);
     }
     const authParams = new URLSearchParams();
     if (ref) authParams.set("ref", ref);
