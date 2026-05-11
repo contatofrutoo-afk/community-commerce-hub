@@ -76,7 +76,6 @@ export default function InviteLanding() {
     setProcessing(true);
     
     localStorage.setItem("pending_invite_slug", tenant.slug);
-    localStorage.removeItem("pending_invite_slug");
     navigate(`/waiting?slug=${tenant.slug}`);
   };
 

@@ -44,6 +44,7 @@ export default function WaitingApproval() {
       
       if (request) {
         setStatus(request.status as "pending" | "approved" | "rejected");
+        localStorage.removeItem("pending_invite_slug");
       }
       
       if (!request) {
@@ -56,6 +57,7 @@ export default function WaitingApproval() {
         
         if (memberCheck) {
           setStatus("approved");
+          localStorage.removeItem("pending_invite_slug");
         } else {
           const { data: newRequest, error } = await supabase
             .from("community_requests")
