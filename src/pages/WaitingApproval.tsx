@@ -121,15 +121,17 @@ export default function WaitingApproval() {
         localStorage.removeItem("pending_invite_slug");
         sessionStorage.removeItem("pending_invite_slug");
       } else {
-        await supabase
+        const { error: upsertError } = await supabase
           .from("community_requests")
           .upsert({ 
             tenant_id: tenantData.id, 
             user_id: user.id, 
             status: "pending" 
-          }, {
-            onConflict: "tenant_id,user_id"
           });
+        
+        if (upsertError) {
+          console.error("Error creating request:", upsertError);
+        }
         setStatus("pending");
       }
       
