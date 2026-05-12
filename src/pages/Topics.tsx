@@ -157,12 +157,37 @@ export default function Topics() {
   const openTopic = async (topic: Topic) => {
     setSelectedTopic(topic);
     setLoadingMessages(true);
-    const { data: msgs } = await supabase
+    
+    // Buscar mensagens primeiro
+    const { data: msgs, error } = await supabase
       .from("topic_messages")
-      .select("*, profiles(name, avatar_url)")
+      .select("*")
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: true });
-    setMessages((msgs || []) as TopicMessage[]);
+    
+    if (error || !msgs) {
+      setMessages([]);
+      setLoadingMessages(false);
+      return;
+    }
+    
+    // Buscar profiles dos usuários que escreveram mensagens
+    const userIds = [...new Set(msgs.map(m => m.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, name, avatar_url")
+      .in("user_id", userIds);
+    
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+    
+    // Associar profiles às mensagens
+    const msgsWithProfiles = msgs.map(m => ({
+      ...m,
+      profiles: profileMap[m.user_id] || null
+    }));
+    
+    setMessages(msgsWithProfiles as TopicMessage[]);
     setLoadingMessages(false);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   };
@@ -187,7 +212,7 @@ export default function Topics() {
         content: contentToSend,
         parent_id: replyToMsg?.id || null,
       })
-      .select("*, profiles(name, avatar_url)")
+      .select("*")
       .single();
 
     if (error) {
@@ -198,13 +223,23 @@ export default function Topics() {
     }
 
     if (data) {
+      // Associar profile do usuário à mensagem
+      const userProfile = (user as any).user_metadata;
+      const msgWithProfile = {
+        ...data,
+        profiles: {
+          name: userProfile?.name || "Você",
+          avatar_url: userProfile?.avatar_url || null
+        }
+      };
+      
       // Atualizar counters do topic localmente
       setTopics(topics.map(t => 
         t.id === selectedTopic.id 
           ? { ...t, replies_count: (t.replies_count || 0) + 1, last_activity_at: new Date().toISOString() }
           : t
       ));
-      setMessages([...messages, data as TopicMessage]);
+      setMessages([...messages, msgWithProfile as TopicMessage]);
       setNewReply(""); // Limpar input APENAS após sucesso
       setReplyToMsg(null);
       await awardPoints(user.id, selectedTopic.tenant_id, "reply");
