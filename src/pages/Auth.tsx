@@ -29,13 +29,14 @@ export default function Auth() {
 
   // Track if user has tried to authenticate
   const [hasAuthAttempt, setHasAuthAttempt] = useState(false);
+  // Track if auth was just completed successfully
+  const [authJustCompleted, setAuthJustCompleted] = useState(false);
 
   useEffect(() => {
     // Don't redirect on initial mount - only redirect if user already logged in BEFORE visiting this page
     if (authLoading) return;
     
     // If user was already logged in before visiting /auth, redirect
-    // But don't redirect if we're in the middle of an auth attempt
     if (user && !hasAuthAttempt) {
       const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
       if (pendingSlug) {
@@ -43,8 +44,20 @@ export default function Auth() {
       } else {
         nav("/feed", { replace: true });
       }
+      return;
     }
-  }, [user, authLoading, nav, hasAuthAttempt]);
+    
+    // If auth just completed (login/signup was clicked and succeeded), redirect to invite
+    if (user && authJustCompleted) {
+      setAuthJustCompleted(false);
+      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+      if (pendingSlug) {
+        nav(`/invite/${pendingSlug}`, { replace: true });
+      } else {
+        nav("/feed", { replace: true });
+      }
+    }
+  }, [user, authLoading, nav, hasAuthAttempt, authJustCompleted]);
 
   useEffect(() => {
     const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
@@ -73,7 +86,7 @@ export default function Auth() {
       },
     });
     
-    if (error) { setLoading(false); toast.error(error.message); return; }
+    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
     
     if (authData.user) {
       await supabase.from("profiles").upsert({
@@ -83,6 +96,7 @@ export default function Auth() {
       });
     }
     
+    setAuthJustCompleted(true); // Mark that auth just completed
     setLoading(false);
     toast.success("Conta criada! Bem-vindo!");
   };
@@ -103,10 +117,11 @@ export default function Auth() {
       password: parsed.data.password 
     });
     
-    if (error) { setLoading(false); toast.error(error.message); return; }
+    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
     
-    toast.success("Bem-vindo");
+    setAuthJustCompleted(true); // Mark that auth just completed
     setLoading(false);
+    toast.success("Bem-vindo");
   };
 
   return (
