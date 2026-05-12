@@ -19,11 +19,12 @@ type Topic = {
   related_post_id: string | null;
   title: string;
   created_by: string | null;
-  replies_count: number;
+  replies_count: number | null;
   last_activity_at: string;
   is_pinned: boolean;
   is_locked: boolean;
   created_at: string;
+  messages_count?: number;
   profiles?: { name: string; avatar_url: string | null } | null;
   first_message?: { content: string } | null;
 };
@@ -103,13 +104,17 @@ export default function Topics() {
             .eq("topic_id", topic.id)
             .order("created_at", { ascending: true })
             .limit(1)
-            .single();
+            .maybeSingle();
+          const { count: msgCount } = await supabase
+            .from("topic_messages")
+            .select("*", { count: "exact", head: true })
+            .eq("topic_id", topic.id);
           const { data: profile } = await supabase
             .from("profiles")
             .select("name, avatar_url")
             .eq("user_id", topic.created_by)
             .maybeSingle();
-          return { ...topic, first_message: firstMsg, profiles: profile };
+          return { ...topic, first_message: firstMsg, profiles: profile, messages_count: msgCount || 0 };
         })
       );
       setTopics(topicsWithFirstMsg);
@@ -157,12 +162,37 @@ export default function Topics() {
   const openTopic = async (topic: Topic) => {
     setSelectedTopic(topic);
     setLoadingMessages(true);
-    const { data: msgs } = await supabase
+    
+    // Buscar mensagens com campos específicos
+    const { data: msgs, error } = await supabase
       .from("topic_messages")
-      .select("*, profiles(name, avatar_url)")
+      .select("id, topic_id, user_id, content, parent_id, created_at")
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: true });
-    setMessages((msgs || []) as TopicMessage[]);
+    
+    if (error || !msgs) {
+      setMessages([]);
+      setLoadingMessages(false);
+      return;
+    }
+    
+    // Buscar profiles dos usuários que escreveram mensagens
+    const userIds = [...new Set(msgs.map(m => m.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, name, avatar_url")
+      .in("user_id", userIds);
+    
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+    
+    // Associar profiles às mensagens
+    const msgsWithProfiles = msgs.map(m => ({
+      ...m,
+      profiles: profileMap[m.user_id] || null
+    }));
+    
+    setMessages(msgsWithProfiles as TopicMessage[]);
     setLoadingMessages(false);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   };
@@ -170,30 +200,55 @@ export default function Topics() {
   const closeTopic = () => {
     setSelectedTopic(null);
     setMessages([]);
+    loadTopics();
     navigate("/conversas");
   };
 
   const sendReply = async () => {
     if (!selectedTopic || !user || !newReply.trim()) return;
     setSendingReply(true);
-    const { data, error } = await supabase
+    
+    const contentToSend = newReply.trim();
+    const insertPayload = {
+      topic_id: selectedTopic.id,
+      user_id: user.id,
+      content: contentToSend,
+      parent_id: replyToMsg?.id || null,
+    };
+    
+    const { data: inserted, error: insertError } = await supabase
       .from("topic_messages")
-      .insert({
-        topic_id: selectedTopic.id,
-        user_id: user.id,
-        content: newReply.trim(),
-        parent_id: replyToMsg?.id || null,
-      })
-      .select("*, profiles(name, avatar_url)")
+      .insert(insertPayload)
+      .select("id, topic_id, user_id, content, parent_id, created_at")
       .single();
-
-    if (!error && data) {
-      setMessages([...messages, data as TopicMessage]);
-      setNewReply("");
-      setReplyToMsg(null);
-      await awardPoints(user.id, selectedTopic.tenant_id, "reply");
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    
+    if (insertError) {
+      console.error("Error sending reply:", insertError);
+      toast.error(`Erro ao enviar: ${insertError.message}`);
+      setSendingReply(false);
+      return;
     }
+    
+    const userProfile = (user as any).user_metadata;
+    const realMsg: TopicMessage = {
+      ...inserted,
+      profiles: {
+        name: userProfile?.name || "Você",
+        avatar_url: userProfile?.avatar_url || null
+      }
+    };
+    
+    setTopics(prev => prev.map(t => 
+      t.id === selectedTopic.id 
+        ? { ...t, messages_count: (t.messages_count || 0) + 1, last_activity_at: new Date().toISOString() }
+        : t
+    ));
+    setMessages([...messages, realMsg]);
+    setNewReply("");
+    setReplyToMsg(null);
+    await awardPoints(user.id, selectedTopic.tenant_id, "reply");
+    toast.success("Resposta enviada!");
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     setSendingReply(false);
   };
 
@@ -212,10 +267,18 @@ export default function Topics() {
     const { error } = await supabase
       .from("topic_messages")
       .update({ content: editContent.trim() })
-      .eq("id", editingMsgId);
-    if (!error) {
-      setMessages(messages.map(m => m.id === editingMsgId ? { ...m, content: editContent.trim() } : m));
+      .eq("id", editingMsgId)
+      .eq("user_id", user?.id);
+    
+    if (error) {
+      console.error("Error editing message:", error);
+      toast.error(`Erro ao editar: ${error.message}`);
+      cancelEditMessage();
+      return;
     }
+    
+    setMessages(messages.map(m => m.id === editingMsgId ? { ...m, content: editContent.trim() } : m));
+    toast.success("Mensagem editada!");
     cancelEditMessage();
   };
 
@@ -225,10 +288,21 @@ export default function Topics() {
 
   const executeDeleteMessage = async () => {
     if (!deleteConfirmMsg) return;
-    const { error } = await supabase.from("topic_messages").delete().eq("id", deleteConfirmMsg.id);
-    if (!error) {
-      setMessages(messages.filter(m => m.id !== deleteConfirmMsg.id));
+    const { error } = await supabase
+      .from("topic_messages")
+      .delete()
+      .eq("id", deleteConfirmMsg.id)
+      .eq("user_id", user?.id);
+    
+    if (error) {
+      console.error("Error deleting message:", error);
+      toast.error(`Erro ao excluir: ${error.message}`);
+      setDeleteConfirmMsg(null);
+      return;
     }
+    
+    setMessages(messages.filter(m => m.id !== deleteConfirmMsg.id));
+    toast.success("Mensagem excluída!");
     setDeleteConfirmMsg(null);
   };
 
@@ -242,28 +316,45 @@ export default function Topics() {
 
   const loadMentionUsers = async () => {
     if (!selectedTopic || !user) return;
+    
+    // Buscar user_ids das mensagens
     const { data: msgs } = await supabase
       .from("topic_messages")
-      .select("user_id, profiles(name, avatar_url)")
+      .select("user_id")
       .eq("topic_id", selectedTopic.id);
-    if (msgs) {
-      const seen = new Set<string>();
-      const uniqueUsers: {id: string; name: string; avatar_url?: string}[] = [];
-      msgs.forEach(msg => {
-        if (!seen.has(msg.user_id)) {
-          seen.add(msg.user_id);
-          uniqueUsers.push({ id: msg.user_id, name: msg.profiles?.name || "User", avatar_url: msg.profiles?.avatar_url });
-        }
-      });
-      if (selectedTopic?.created_by && !seen.has(selectedTopic.created_by)) {
-        const { data: profile } = await supabase.from("profiles").select("id, name, avatar_url").eq("user_id", selectedTopic.created_by).single();
-        if (profile) uniqueUsers.push({ id: profile.id, name: profile.name, avatar_url: profile.avatar_url });
+    
+    if (!msgs) return;
+    
+    const userIds = [...new Set(msgs.map(m => m.user_id))];
+    
+    // Buscar profiles separadamente
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url")
+      .in("user_id", userIds);
+    
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach(p => { profileMap[p.id] = p; });
+    
+    const uniqueUsers: {id: string; name: string; avatar_url?: string}[] = [];
+    const seen = new Set<string>();
+    
+    msgs.forEach(msg => {
+      if (!seen.has(msg.user_id)) {
+        seen.add(msg.user_id);
+        const profile = profileMap[msg.user_id];
+        uniqueUsers.push({ id: msg.user_id, name: profile?.name || "User", avatar_url: profile?.avatar_url });
       }
-      if (user && !seen.has(user.id)) {
-        uniqueUsers.push({ id: user.id, name: (user as any).user_metadata?.name || "Você", avatar_url: (user as any).user_metadata?.avatar_url });
-      }
-      setMentionUsers(uniqueUsers);
+    });
+    
+    if (selectedTopic?.created_by && !seen.has(selectedTopic.created_by)) {
+      const { data: profile } = await supabase.from("profiles").select("id, name, avatar_url").eq("user_id", selectedTopic.created_by).single();
+      if (profile) uniqueUsers.push({ id: profile.id, name: profile.name, avatar_url: profile.avatar_url });
     }
+    if (user && !seen.has(user.id)) {
+      uniqueUsers.push({ id: user.id, name: (user as any).user_metadata?.name || "Você", avatar_url: (user as any).user_metadata?.avatar_url });
+    }
+    setMentionUsers(uniqueUsers);
   };
 
   const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -343,7 +434,7 @@ export default function Topics() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">{topic.replies_count || 0} respostas</p>
+                    <p className="text-xs text-gray-500">{topic.messages_count || 0} respostas</p>
                     <p className="text-xs text-green-600 font-medium">
                       {topic.last_activity_at && new Date(topic.last_activity_at).getTime() > Date.now() - 60000 ? "● Ativo agora" : `Última: ${formatTime(topic.last_activity_at)}`}
                     </p>
@@ -388,55 +479,62 @@ export default function Topics() {
                 <p>Seja o primeiro a participar!</p>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id} className="flex gap-3">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={msg.profiles?.avatar_url || ""} />
-                    <AvatarFallback className="text-xs bg-gray-200 text-gray-600">{msg.profiles?.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-800">{msg.profiles?.name || "Usuário"}</span>
-                      <span className="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
-                      {msg.user_id !== user?.id && (
-                        <button onClick={() => replyToMessage(msg)} className="text-xs text-purple-600 hover:text-purple-800 ml-2">Responder</button>
-                      )}
-                    </div>
-                    {editingMsgId === msg.id ? (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                        <div className="flex items-center gap-1 mb-2 text-xs text-purple-600">
-                          <Pencil className="h-3 w-3" />
-                          <span>Editando mensagem</span>
-                        </div>
-                        <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none" rows={2} autoFocus onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEditMessage(); } if (e.key === "Escape") cancelEditMessage(); }} />
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-400">Enter para salvar, Esc para cancelar</span>
-                          <div className="flex gap-2">
-                            <button onClick={cancelEditMessage} className="text-xs bg-gray-200 text-gray-600 hover:bg-gray-300 px-3 py-1.5 rounded-md transition-colors">Cancelar</button>
-                            <button onClick={saveEditMessage} disabled={!editContent.trim()} className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md transition-colors disabled:opacity-50">Salvar</button>
+              messages.map((msg) => {
+                const isReply = msg.parent_id !== null;
+                const parentMsg = isReply ? messages.find(m => m.id === msg.parent_id) : null;
+                return (
+                  <div key={msg.id} className={`flex gap-3 ${isReply ? 'ml-6 border-l-2 border-purple-200 pl-3' : ''}`}>
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarImage src={msg.profiles?.avatar_url || ""} />
+                      <AvatarFallback className="text-xs bg-gray-200 text-gray-600">{msg.profiles?.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-800">{msg.profiles?.name || "Usuário"}</span>
+                        <span className="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
+                        {isReply && parentMsg && (
+                          <span className="text-xs text-purple-500">↳ Respondendo @{parentMsg.profiles?.name || "usuário"}</span>
+                        )}
+                        {msg.user_id !== user?.id && !isReply && (
+                          <button onClick={() => replyToMessage(msg)} className="text-xs text-purple-600 hover:text-purple-800 ml-2">Responder</button>
+                        )}
+                      </div>
+                      {editingMsgId === msg.id ? (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                          <div className="flex items-center gap-1 mb-2 text-xs text-purple-600">
+                            <Pencil className="h-3 w-3" />
+                            <span>Editando mensagem</span>
+                          </div>
+                          <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none" rows={2} autoFocus onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEditMessage(); } if (e.key === "Escape") cancelEditMessage(); }} />
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs text-gray-400">Enter para salvar, Esc para cancelar</span>
+                            <div className="flex gap-2">
+                              <button onClick={cancelEditMessage} className="text-xs bg-gray-200 text-gray-600 hover:bg-gray-300 px-3 py-1.5 rounded-md transition-colors">Cancelar</button>
+                              <button onClick={saveEditMessage} disabled={!editContent.trim()} className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md transition-colors disabled:opacity-50">Salvar</button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-100 rounded-lg p-3">
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.content}</p>
-                      </div>
-                    )}
-                    {msg.user_id === user?.id && (
-                      <div className="flex gap-2 mt-1">
-                        <button onClick={() => startEditMessage(msg)} className="text-xs text-gray-400 hover:text-purple-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
-                          <Pencil className="h-3 w-3" />
-                          <span>Editar</span>
-                        </button>
-                        <button onClick={() => confirmDeleteMessage(msg)} className="text-xs text-gray-400 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 transition-colors">
-                          <Trash2 className="h-3 w-3" />
-                          <span>Excluir</span>
-                        </button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="bg-gray-100 rounded-lg p-3">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      )}
+                      {msg.user_id === user?.id && (
+                        <div className="flex gap-2 mt-1">
+                          <button onClick={() => startEditMessage(msg)} className="text-xs text-gray-400 hover:text-purple-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
+                            <Pencil className="h-3 w-3" />
+                            <span>Editar</span>
+                          </button>
+                          <button onClick={() => confirmDeleteMessage(msg)} className="text-xs text-gray-400 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                            <Trash2 className="h-3 w-3" />
+                            <span>Excluir</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -472,7 +570,7 @@ export default function Topics() {
                   <input type="text" value={newReply} onChange={handleReplyChange} placeholder="Escreva sua resposta... (@ para mencionar)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !showMentionList) { e.preventDefault(); sendReply(); } if (e.key === "Escape") setShowMentionList(false); }} />
                   <AtSign className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
-                <button onClick={sendReply} disabled={sendingReply || !newReply.trim()} className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-lg disabled:opacity-50">
+<button onClick={sendReply} disabled={sendingReply || !newReply.trim()} className="bg-purple-700 hover:bg-purple-800 text-white p-2 rounded-lg disabled:opacity-50">
                   <Send className="h-5 w-5" />
                 </button>
               </div>

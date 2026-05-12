@@ -12,6 +12,30 @@ import AppEntrance from "@/components/AppEntrance";
 
 const queryClient = new QueryClient();
 
+const UpdateBanner = () => {
+  const [showBanner, setShowBanner] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => setShowBanner(true);
+    window.addEventListener('sw-update-ready', handleUpdate);
+    return () => window.removeEventListener('sw-update-ready', handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (showBanner) {
+      window.location.reload();
+    }
+  }, [showBanner]);
+
+  if (!showBanner) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-purple-700 text-white text-sm text-center py-2 px-4 cursor-pointer" onClick={() => window.location.reload()}>
+      Nova versão disponível — clique para atualizar
+    </div>
+  );
+};
+
 const Loading = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="flex flex-col items-center gap-3">
@@ -52,15 +76,22 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading, redirectTo } = useAuth();
+  const { user, loading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
+  const [redirectHandled, setRedirectHandled] = useState(false);
   
+  // Handle redirect from auth context - this takes priority
   useEffect(() => {
-    if (redirectTo) {
-      navigate(redirectTo, { replace: true });
-    }
-  }, [redirectTo, navigate]);
+    // This effect is specifically for handling redirects from AuthContext
+    // It runs when the app first mounts and auth state is resolved
+    if (redirectHandled) return;
+    
+    // Let the AuthContext handle redirects - we just show loading
+    if (loading || tenantLoading) return;
+    
+    setRedirectHandled(true);
+  }, [loading, tenantLoading, redirectHandled]);
   
   // Wait for both auth and tenant to load before checking
   if (loading || tenantLoading) return <Loading />;
@@ -112,6 +143,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <UpdateBanner />
         <BrowserRouter>
           <Suspense fallback={<Loading />}>
             <AuthProvider>
@@ -150,7 +182,7 @@ const App = () => (
                     <Route path="/waiting" element={<WaitingApproval />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
-                    <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>

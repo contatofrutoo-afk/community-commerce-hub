@@ -49,7 +49,7 @@ export default function Messages() {
       try {
         if (isOwner) {
           const { data, error } = await supabase.from("message_threads")
-            .select("*, profiles:user_id(name,avatar_url)")
+            .select("id, user_id, tenant_id, last_message_at, created_at")
             .eq("tenant_id", tenant.id)
             .order("last_message_at", { ascending: false });
           
@@ -165,9 +165,14 @@ export default function Messages() {
     if (!threadId || !user || !text.trim()) return;
     const content = text.trim().slice(0, 2000);
     setText("");
+<<<<<<< HEAD
     setSending(true);
     try {
-      const { error } = await supabase.from("messages").insert({ thread_id: threadId, sender_id: user.id, content });
+      const insertPayload: any = { thread_id: threadId, sender_id: user.id, content };
+      if (isOwner) insertPayload.sender_type = "b2b";
+      else insertPayload.sender_type = "b2c";
+      
+      const { error } = await supabase.from("messages").insert(insertPayload);
       if (error) {
         console.error("Error sending message:", error);
         toast.error("Erro ao enviar mensagem");

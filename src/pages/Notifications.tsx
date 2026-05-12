@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, X, User, Mail, Users, Clock } from "lucide-react";
+import { Bell, Check, X, User, Mail, Users, Clock, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 type PendingRequest = {
@@ -13,8 +13,9 @@ type PendingRequest = {
   tenant_id: string;
   status: string;
   created_at: string;
-  profiles?: { name: string | null; email: string };
-  tenants?: { name: string };
+  profile_name?: string | null;
+  profile_email?: string;
+  tenant_name?: string;
 };
 
 type NotificationItem = {
@@ -69,14 +70,39 @@ export default function Notifications() {
       
       const tenantIds = ownerMems.map(m => m.tenant_id);
       
-      const { data } = await supabase
+      const { data: reqs, error: reqError } = await supabase
         .from("community_requests")
-        .select("*, profiles(name, email), tenants(name)")
+        .select("id, user_id, tenant_id, status, created_at")
         .in("tenant_id", tenantIds)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
       
-      setRequests(data || []);
+      if (reqError) {
+        setRequests([]);
+      } else if (reqs && reqs.length > 0) {
+        const reqUserIds = reqs.map(r => r.user_id);
+        const reqTenantIds = reqs.map(r => r.tenant_id);
+        
+        const [{ data: profiles }, { data: tenants }] = await Promise.all([
+          supabase.from("profiles").select("user_id, name, email").in("user_id", reqUserIds),
+          supabase.from("tenants").select("id, name").in("id", reqTenantIds),
+        ]);
+        
+        const profileMap: Record<string, any> = {};
+        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+        const tenantMap: Record<string, any> = {};
+        (tenants || []).forEach((t: any) => { tenantMap[t.id] = t; });
+        
+        const enriched = reqs.map(r => ({
+          ...r,
+          profile_name: profileMap[r.user_id]?.name || null,
+          profile_email: profileMap[r.user_id]?.email || "",
+          tenant_name: tenantMap[r.tenant_id]?.name || "",
+        }));
+        setRequests(enriched);
+      } else {
+        setRequests([]);
+      }
       
       const { data: notifs } = await supabase
         .from("notifications")
@@ -156,11 +182,11 @@ export default function Notifications() {
                     <User className="h-5 w-5 text-brand" />
                   </div>
                   <div>
-                    <p className="font-semibold">{r.profiles?.name || "Usuário"}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {r.profiles?.email || "-"}</p>
+                    <p className="font-semibold">{r.profile_name || "Usuário"}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {r.profile_email || "-"}</p>
                   </div>
                 </div>
-                {r.tenants && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenants.name}</p>}
+                {r.tenant_name && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenant_name}</p>}
                 <div className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(r.created_at)}</div>
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" className="flex-1 gap-2" onClick={() => handleApprove(r)}><Check className="h-4 w-4" />Aprovar</Button>
@@ -176,24 +202,39 @@ export default function Notifications() {
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma notificação</p>
               </div>
-            ) : notifications.map(n => (
-              <div key={n.id} className={`bg-card border rounded-2xl p-4 ${n.type === "join_request" ? "border-purple-200" : "border-border"}`}>
+            ) : notifications.map(n => {
+              const isJoinRequest = n.type === "join_request";
+              const isTopicReply = n.type === "topic_reply";
+              return (
+              <div
+                key={n.id}
+                onClick={() => isTopicReply && n.data?.topic_id && navigate(`/conversas/${n.data.topic_id}`)}
+                className={`bg-card border rounded-2xl p-4 ${isJoinRequest ? "border-purple-200" : isTopicReply ? "border-blue-200 hover:bg-blue-50 cursor-pointer" : "border-border"}`}
+              >
                 <div className="flex items-start gap-3">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${n.type === "join_request" ? "bg-purple-100" : "bg-brand/10"}`}>
-                    {n.type === "join_request" ? (
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isJoinRequest ? "bg-purple-100" : isTopicReply ? "bg-blue-100" : "bg-brand/10"}`}>
+                    {isJoinRequest ? (
                       <Users className="h-4 w-4 text-purple-600" />
+                    ) : isTopicReply ? (
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
                     ) : (
                       <Bell className="h-4 w-4 text-brand" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{n.title}</p>
-                    {n.data?.user_name && (
+                    {isTopicReply && n.data?.topic_title && (
+                      <p className="text-sm text-blue-700 font-medium mt-0.5">{n.data.topic_title}</p>
+                    )}
+                    {isTopicReply && n.data?.message_preview && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">"{n.data.message_preview}"</p>
+                    )}
+                    {n.data?.user_name && !isTopicReply && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        <span className="font-medium">{n.data.user_name}</span> ({n.data.user_email})
+                        <span className="font-medium">{n.data.user_name}</span> {n.data.user_email ? `(${n.data.user_email})` : ""}
                       </p>
                     )}
-                    {n.data?.tenant_name && (
+                    {n.data?.tenant_name && !isTopicReply && (
                       <p className="text-xs text-purple-600 mt-0.5">{n.data.tenant_name}</p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -202,7 +243,8 @@ export default function Notifications() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

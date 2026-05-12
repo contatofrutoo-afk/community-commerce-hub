@@ -27,22 +27,37 @@ export default function Auth() {
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
   const [login, setLogin] = useState({ email: "", password: "" });
 
+  // Track if user has tried to authenticate
+  const [hasAuthAttempt, setHasAuthAttempt] = useState(false);
+  // Track if auth was just completed successfully
+  const [authJustCompleted, setAuthJustCompleted] = useState(false);
+
   useEffect(() => {
+    // Don't redirect on initial mount - only redirect if user already logged in BEFORE visiting this page
     if (authLoading) return;
     
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-    
-    if (pendingSlug && user) {
-      // Redirect back to invite page to create membership automatically
-      nav(`/invite/${pendingSlug}`, { replace: true });
+    // If user was already logged in before visiting /auth, redirect
+    if (user && !hasAuthAttempt) {
+      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+      if (pendingSlug) {
+        nav(`/invite/${pendingSlug}`, { replace: true });
+      } else {
+        nav("/feed", { replace: true });
+      }
       return;
     }
     
-    if (user && !pendingSlug) {
-      nav("/feed", { replace: true });
-      return;
+    // If auth just completed (login/signup was clicked and succeeded), redirect to invite
+    if (user && authJustCompleted) {
+      setAuthJustCompleted(false);
+      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+      if (pendingSlug) {
+        nav(`/invite/${pendingSlug}`, { replace: true });
+      } else {
+        nav("/feed", { replace: true });
+      }
     }
-  }, [user, authLoading, nav]);
+  }, [user, authLoading, nav, hasAuthAttempt, authJustCompleted]);
 
   useEffect(() => {
     const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
@@ -57,6 +72,7 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAuthAttempt(true); // Mark that user is trying to authenticate
     const parsed = signupSchema.safeParse(signup);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
@@ -70,7 +86,7 @@ export default function Auth() {
       },
     });
     
-    if (error) { setLoading(false); toast.error(error.message); return; }
+    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
     
     if (authData.user) {
       await supabase.from("profiles").upsert({
@@ -78,26 +94,16 @@ export default function Auth() {
         name: parsed.data.name,
         email: parsed.data.email,
       });
-      
-      // Check for pending invite
-      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-      if (pendingSlug) {
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
-        nav(`/invite/${pendingSlug}`, { replace: true });
-        return;
-      }
-      
-      setLoading(false);
-      toast.success("Conta criada! Bem-vindo!");
-      
-      // New user without community -> go to profile to create
-      nav("/profile", { replace: true });
     }
+    
+    setAuthJustCompleted(true); // Mark that auth just completed
+    setLoading(false);
+    toast.success("Conta criada! Bem-vindo!");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAuthAttempt(true); // Mark that user is trying to authenticate
     const loginSchema = z.object({
       email: z.string().trim().email("Email inválido"),
       password: z.string().min(1, "Senha obrigatória"),
@@ -111,41 +117,11 @@ export default function Auth() {
       password: parsed.data.password 
     });
     
+    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
+    
+    setAuthJustCompleted(true); // Mark that auth just completed
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
     toast.success("Bem-vindo");
-    
-    // Check for pending invite
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-    if (pendingSlug) {
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
-      nav(`/invite/${pendingSlug}`, { replace: true });
-      return;
-    }
-    
-    // Get user memberships
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    const { data: mems } = await supabase
-      .from("memberships")
-      .select("tenant_id, role")
-      .eq("user_id", authUser?.id);
-    
-    const roles = (mems ?? []).map((m) => m.role);
-    const isOwner = roles.includes("owner") || roles.includes("admin");
-    
-    // If B2B without community, go to profile to create
-    if (isOwner && (!mems || mems.length === 0)) {
-      nav("/profile", { replace: true });
-      return;
-    }
-    
-    // If has memberships, go to feed with active tenant
-    if (mems && mems.length > 0) {
-      localStorage.setItem("weaze:active_tenant", mems[0].tenant_id);
-    }
-    
-    nav("/feed", { replace: true });
   };
 
   return (

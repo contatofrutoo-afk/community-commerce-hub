@@ -59,4 +59,28 @@ if ('caches' in window) {
 
 registerServiceWorker();
 
+// Notify app when SW updates are ready
+let swRegistration: ServiceWorkerRegistration | null = null;
+function triggerUpdate(registration: ServiceWorkerRegistration) {
+  swRegistration = registration;
+  window.dispatchEvent(new CustomEvent('sw-update-ready'));
+}
+
+if ('serviceWorker' in navigator && !isInIframe && !isPreviewHost) {
+  navigator.serviceWorker.ready.then(registration => {
+    if (registration.active) {
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              triggerUpdate(registration);
+            }
+          });
+        }
+      });
+    }
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);

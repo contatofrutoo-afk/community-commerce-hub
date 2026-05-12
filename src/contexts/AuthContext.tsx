@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      setRedirected(false); // Reset redirect state on auth change
       if (!s?.user) {
         setAppRole(null);
         setUserState(null);
@@ -69,7 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     (async () => {
       const { data: mems } = await supabase
         .from("memberships")
-        .select("tenant_id, role");
+        .select("tenant_id, role")
+        .eq("user_id", user.id);
       
       if (cancelled) return;
       
@@ -102,16 +104,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user || !appRole || redirected) return;
     
-    // Check for pending invite slug
+    // Check for pending invite slug first - invite flow takes priority
     let pendingSlug = localStorage.getItem("pending_invite_slug");
     if (!pendingSlug) {
       pendingSlug = sessionStorage.getItem("pending_invite_slug");
     }
     
+    // If user just completed auth and has a pending invite, redirect to invite page
     if (pendingSlug) {
       const redirectPath = `/invite/${pendingSlug}`;
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
       setRedirectTo(redirectPath);
       setRedirected(true);
       return;
@@ -124,20 +125,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    if (userState?.isB2B && !userState.hasCommunity) {
-      setRedirectTo("/create");
-      setRedirected(true);
-    } else if (!userState?.isB2B && !userState?.hasJoinedCommunities) {
-      setRedirectTo("/");
-      setRedirected(true);
-    } else {
-      setRedirected(true);
-    }
-  }, [user, appRole, redirected, userState]);
+    setRedirected(true);
+  }, [user, appRole, redirected]);
 
   const signOut = async () => { 
     setRedirected(false);
     setRedirectTo(null);
+    setAppRole(null);
+    setUserState(null);
     await supabase.auth.signOut(); 
   };
 
