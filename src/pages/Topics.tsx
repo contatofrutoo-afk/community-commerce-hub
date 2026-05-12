@@ -204,16 +204,15 @@ export default function Topics() {
     
     const contentToSend = newReply.trim();
     
-const { data: msgData, error: insertError } = await supabase
+    // Insert only, no select to avoid relationship errors
+    const { error: insertError } = await supabase
       .from("topic_messages")
       .insert({
         topic_id: selectedTopic.id,
         user_id: user.id,
         content: contentToSend,
         parent_id: replyToMsg?.id || null,
-      })
-      .select("id, topic_id, user_id, content, parent_id, created_at")
-      .single();
+      });
     
     if (insertError) {
       console.error("Error sending reply:", insertError);
@@ -222,30 +221,33 @@ const { data: msgData, error: insertError } = await supabase
       return;
     }
     
-if (msgData) {
-      // Associar profile do usuário à mensagem
-      const userProfile = (user as any).user_metadata;
-      const msgWithProfile = {
-        ...msgData,
-        profiles: {
-          name: userProfile?.name || "Você",
-          avatar_url: userProfile?.avatar_url || null
-        }
-      };
-      
-      // Atualizar counters do topic localmente
-      setTopics(topics.map(t => 
-        t.id === selectedTopic.id 
-          ? { ...t, replies_count: (t.replies_count || 0) + 1, last_activity_at: new Date().toISOString() }
-          : t
-      ));
-      setMessages([...messages, msgWithProfile as TopicMessage]);
-      setNewReply(""); // Limpar input APENAS após sucesso
-      setReplyToMsg(null);
-      await awardPoints(user.id, selectedTopic.tenant_id, "reply");
-      toast.success("Resposta enviada!");
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    }
+    // Create message locally with user profile
+    const userProfile = (user as any).user_metadata;
+    const localMsg: TopicMessage = {
+      id: `temp-${Date.now()}`,
+      topic_id: selectedTopic.id,
+      user_id: user.id,
+      content: contentToSend,
+      parent_id: replyToMsg?.id || null,
+      created_at: new Date().toISOString(),
+      profiles: {
+        name: userProfile?.name || "Você",
+        avatar_url: userProfile?.avatar_url || null
+      }
+    };
+    
+    // Atualizar counters do topic localmente
+    setTopics(topics.map(t => 
+      t.id === selectedTopic.id 
+        ? { ...t, replies_count: (t.replies_count || 0) + 1, last_activity_at: new Date().toISOString() }
+        : t
+    ));
+    setMessages([...messages, localMsg]);
+    setNewReply("");
+    setReplyToMsg(null);
+    await awardPoints(user.id, selectedTopic.tenant_id, "reply");
+    toast.success("Resposta enviada!");
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     setSendingReply(false);
   };
 
