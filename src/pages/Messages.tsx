@@ -44,7 +44,7 @@ export default function Messages() {
     const loadData = async () => {
       if (isOwner) {
         const { data } = await supabase.from("message_threads")
-          .select("*, profiles:user_id(name,avatar_url)")
+          .select("id, user_id, tenant_id, last_message_at, created_at")
           .eq("tenant_id", tenant.id)
           .order("last_message_at", { ascending: false });
         
@@ -119,7 +119,28 @@ export default function Messages() {
     if (!threadId || !user || !text.trim()) return;
     const content = text.trim().slice(0, 2000);
     setText("");
-    await supabase.from("messages").insert({ thread_id: threadId, sender_id: user.id, content });
+    
+    const insertPayload: any = { thread_id: threadId, sender_id: user.id, content };
+    if (isOwner) insertPayload.sender_type = "b2b";
+    else insertPayload.sender_type = "b2c";
+    
+    const { data: inserted, error: insertError } = await supabase
+      .from("messages")
+      .insert(insertPayload)
+      .select("id, thread_id, sender_id, sender_type, content, created_at")
+      .single();
+    
+    if (insertError) {
+      toast.error(`Erro ao enviar: ${insertError.message}`);
+      setText(content);
+      return;
+    }
+    
+    const profile = await fetchProfile(user.id);
+    if (inserted) {
+      setMessages(prev => [...prev, { ...inserted, author_name: profile?.name ?? null, author_avatar: profile?.avatar ?? null }]);
+    }
+    
     await supabase.from("message_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
   };
 
