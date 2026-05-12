@@ -71,72 +71,50 @@ export default function InviteLanding() {
     if (!user || !tenant || authLoading || processing) return;
     
     (async () => {
-      const { data: membership } = await supabase
+      // Check if already a member
+      const { data: existingMembership } = await supabase
         .from("memberships")
-        .select("role")
-        .eq("user_id", user.id)
+        .select("id")
         .eq("tenant_id", tenant.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       
-      if (membership) {
+      if (existingMembership) {
         localStorage.setItem("weaze:active_tenant", tenant.id);
         sessionStorage.setItem("just_joined_community", tenant.id);
         localStorage.removeItem("pending_invite_slug");
         sessionStorage.removeItem("pending_invite_slug");
         navigate("/feed");
-      } else {
-        handleEnter();
+        return;
       }
-    })();
-  }, [user, tenant, authLoading, processing]);
-
-  const handleEnter = async () => {
-    if (!tenant || !user) return;
-    setProcessing(true);
-    
-    // Check if already a member
-    const { data: existingMembership } = await supabase
-      .from("memberships")
-      .select("id")
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    if (existingMembership) {
-      // Already a member, just go to feed
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      sessionStorage.setItem("just_joined_community", tenant.id);
+      
+      // Create membership automatically
+      setProcessing(true);
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          tenant_id: tenant.id,
+          user_id: user.id,
+          role: "member"
+        });
+      
+      if (membershipError) {
+        console.error("Error creating membership:", membershipError);
+        toast.error("Erro ao entrar na comunidade");
+        setProcessing(false);
+        return;
+      }
+      
+      // Success - go to feed
       localStorage.removeItem("pending_invite_slug");
       sessionStorage.removeItem("pending_invite_slug");
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+      sessionStorage.setItem("just_joined_community", tenant.id);
+      
+      toast.success(`Bem-vindo à ${tenant.name}!`);
       navigate("/feed", { replace: true });
-      return;
-    }
-    
-    // Create membership automatically
-    const { error: membershipError } = await supabase
-      .from("memberships")
-      .insert({
-        tenant_id: tenant.id,
-        user_id: user.id,
-        role: "member"
-      });
-    
-    if (membershipError) {
-      console.error("Error creating membership:", membershipError);
-      toast.error("Erro ao entrar na comunidade");
-      setProcessing(false);
-      return;
-    }
-    
-    // Success - go to feed
-    localStorage.removeItem("pending_invite_slug");
-    sessionStorage.removeItem("pending_invite_slug");
-    localStorage.setItem("weaze:active_tenant", tenant.id);
-    sessionStorage.setItem("just_joined_community", tenant.id);
-    
-    toast.success(`Bem-vindo à ${tenant.name}!`);
-    navigate("/feed", { replace: true });
-  };
+    })();
+  }, [user, tenant, authLoading, processing]);
 
   const handleAuth = (isSignUp: boolean) => {
     if (slug) {
@@ -225,7 +203,7 @@ export default function InviteLanding() {
         <div className="space-y-3">
           {user ? (
             <button
-              onClick={handleEnter}
+              onClick={() => navigate("/feed")}
               disabled={processing}
               className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white hover:opacity-90 shadow-lg px-8 py-4 rounded-full font-semibold text-lg transition-all disabled:opacity-50"
             >

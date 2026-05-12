@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      setRedirected(false); // Reset redirect state on auth change
       if (!s?.user) {
         setAppRole(null);
         setUserState(null);
