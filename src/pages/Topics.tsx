@@ -103,7 +103,7 @@ export default function Topics() {
             .eq("topic_id", topic.id)
             .order("created_at", { ascending: true })
             .limit(1)
-            .single();
+            .maybeSingle();
           const { data: profile } = await supabase
             .from("profiles")
             .select("name, avatar_url")
@@ -158,10 +158,10 @@ export default function Topics() {
     setSelectedTopic(topic);
     setLoadingMessages(true);
     
-    // Buscar mensagens primeiro
+    // Buscar mensagens com campos específicos
     const { data: msgs, error } = await supabase
       .from("topic_messages")
-      .select("*")
+      .select("id, topic_id, user_id, content, parent_id, created_at")
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: true });
     
@@ -204,7 +204,7 @@ export default function Topics() {
     
     const contentToSend = newReply.trim();
     
-    const { data, error } = await supabase
+const { data: msgData, error: insertError } = await supabase
       .from("topic_messages")
       .insert({
         topic_id: selectedTopic.id,
@@ -212,21 +212,21 @@ export default function Topics() {
         content: contentToSend,
         parent_id: replyToMsg?.id || null,
       })
-      .select("*")
+      .select("id, topic_id, user_id, content, parent_id, created_at")
       .single();
-
-    if (error) {
-      console.error("Error sending reply:", error);
-      toast.error(`Erro ao enviar: ${error.message}`);
+    
+    if (insertError) {
+      console.error("Error sending reply:", insertError);
+      toast.error(`Erro ao enviar: ${insertError.message}`);
       setSendingReply(false);
       return;
     }
-
-    if (data) {
+    
+if (msgData) {
       // Associar profile do usuário à mensagem
       const userProfile = (user as any).user_metadata;
       const msgWithProfile = {
-        ...data,
+        ...msgData,
         profiles: {
           name: userProfile?.name || "Você",
           avatar_url: userProfile?.avatar_url || null
