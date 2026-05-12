@@ -195,6 +195,7 @@ export default function Topics() {
   const closeTopic = () => {
     setSelectedTopic(null);
     setMessages([]);
+    loadTopics();
     navigate("/conversas");
   };
 
@@ -232,7 +233,7 @@ export default function Topics() {
       }
     };
     
-    setTopics(topics.map(t => 
+    setTopics(prev => prev.map(t => 
       t.id === selectedTopic.id 
         ? { ...t, replies_count: (t.replies_count || 0) + 1, last_activity_at: new Date().toISOString() }
         : t
