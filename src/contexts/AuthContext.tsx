@@ -125,15 +125,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    if (userState?.isB2B && !userState.hasCommunity) {
-      setRedirectTo("/create");
-      setRedirected(true);
-    } else if (!userState?.isB2B && !userState?.hasJoinedCommunities) {
-      setRedirectTo("/");
-      setRedirected(true);
-    } else {
-      setRedirected(true);
+    // Only B2B users without a community go to /create
+    if (appRole === "b2b" || appRole === "admin") {
+      if (!userState?.hasJoinedCommunities) {
+        setRedirectTo("/profile");
+        setRedirected(true);
+        return;
+      }
     }
+    
+    // Only B2C users without memberships go to landing
+    if (appRole === "b2c") {
+      if (!userState?.hasJoinedCommunities) {
+        setRedirectTo("/");
+        setRedirected(true);
+        return;
+      }
+    }
+    
+    setRedirected(true);
   }, [user, appRole, redirected, userState]);
 
   const signOut = async () => { 

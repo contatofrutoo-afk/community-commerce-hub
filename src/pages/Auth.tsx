@@ -78,25 +78,10 @@ export default function Auth() {
         name: parsed.data.name,
         email: parsed.data.email,
       });
-      
-      // Wait for onAuthStateChange to fire
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check for pending invite
-      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-      if (pendingSlug) {
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
-        nav(`/invite/${pendingSlug}`, { replace: true });
-        return;
-      }
-      
-      setLoading(false);
-      toast.success("Conta criada! Bem-vindo!");
-      
-      // New user without community -> go to profile to create
-      nav("/profile", { replace: true });
     }
+    
+    setLoading(false);
+    toast.success("Conta criada! Bem-vindo!");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -116,48 +101,8 @@ export default function Auth() {
     
     if (error) { setLoading(false); toast.error(error.message); return; }
     
-    // Wait for onAuthStateChange to fire and update context
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    setLoading(false);
     toast.success("Bem-vindo");
-    
-    // Check for pending invite
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-    if (pendingSlug) {
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
-      nav(`/invite/${pendingSlug}`, { replace: true });
-      return;
-    }
-    
-    // Get user from current session (NOT from getUser which may be cached)
-    const { data: { user: authUser } } = await supabase.auth.getSession();
-    if (!authUser) {
-      nav("/auth", { replace: true });
-      return;
-    }
-    
-    const { data: mems } = await supabase
-      .from("memberships")
-      .select("tenant_id, role")
-      .eq("user_id", authUser.id);
-    
-    const roles = (mems ?? []).map((m) => m.role);
-    const isB2B = roles.includes("owner") || roles.includes("admin");
-    
-    // If B2B without community, go to profile to create
-    if (isB2B && (!mems || mems.length === 0)) {
-      nav("/profile", { replace: true });
-      return;
-    }
-    
-    // If has memberships, go to feed with active tenant
-    if (mems && mems.length > 0) {
-      localStorage.setItem("weaze:active_tenant", mems[0].tenant_id);
-    }
-    
-    nav("/feed", { replace: true });
+    setLoading(false);
   };
 
   return (

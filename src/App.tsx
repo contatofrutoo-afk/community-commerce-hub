@@ -150,7 +150,7 @@ const App = () => (
                     <Route path="/waiting" element={<WaitingApproval />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
-                    <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>
