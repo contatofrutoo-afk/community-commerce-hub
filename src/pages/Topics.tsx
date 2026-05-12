@@ -176,6 +176,7 @@ export default function Topics() {
   const sendReply = async () => {
     if (!selectedTopic || !user || !newReply.trim()) return;
     setSendingReply(true);
+    
     const { data, error } = await supabase
       .from("topic_messages")
       .insert({
@@ -187,11 +188,19 @@ export default function Topics() {
       .select("*, profiles(name, avatar_url)")
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error("Error sending reply:", error);
+      toast.error(`Erro ao enviar: ${error.message}`);
+      setSendingReply(false);
+      return;
+    }
+
+    if (data) {
       setMessages([...messages, data as TopicMessage]);
       setNewReply("");
       setReplyToMsg(null);
       await awardPoints(user.id, selectedTopic.tenant_id, "reply");
+      toast.success("Resposta enviada!");
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
     setSendingReply(false);
@@ -212,10 +221,18 @@ export default function Topics() {
     const { error } = await supabase
       .from("topic_messages")
       .update({ content: editContent.trim() })
-      .eq("id", editingMsgId);
-    if (!error) {
-      setMessages(messages.map(m => m.id === editingMsgId ? { ...m, content: editContent.trim() } : m));
+      .eq("id", editingMsgId)
+      .eq("user_id", user?.id);
+    
+    if (error) {
+      console.error("Error editing message:", error);
+      toast.error(`Erro ao editar: ${error.message}`);
+      cancelEditMessage();
+      return;
     }
+    
+    setMessages(messages.map(m => m.id === editingMsgId ? { ...m, content: editContent.trim() } : m));
+    toast.success("Mensagem editada!");
     cancelEditMessage();
   };
 
@@ -225,10 +242,21 @@ export default function Topics() {
 
   const executeDeleteMessage = async () => {
     if (!deleteConfirmMsg) return;
-    const { error } = await supabase.from("topic_messages").delete().eq("id", deleteConfirmMsg.id);
-    if (!error) {
-      setMessages(messages.filter(m => m.id !== deleteConfirmMsg.id));
+    const { error } = await supabase
+      .from("topic_messages")
+      .delete()
+      .eq("id", deleteConfirmMsg.id)
+      .eq("user_id", user?.id);
+    
+    if (error) {
+      console.error("Error deleting message:", error);
+      toast.error(`Erro ao excluir: ${error.message}`);
+      setDeleteConfirmMsg(null);
+      return;
     }
+    
+    setMessages(messages.filter(m => m.id !== deleteConfirmMsg.id));
+    toast.success("Mensagem excluída!");
     setDeleteConfirmMsg(null);
   };
 
