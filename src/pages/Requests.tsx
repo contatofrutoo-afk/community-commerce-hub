@@ -13,8 +13,9 @@ type AccessRequest = {
   tenant_id: string;
   status: string;
   created_at: string;
-  profiles?: { name: string | null; email: string };
-  tenants?: { name: string };
+  profile_name?: string | null;
+  profile_email?: string;
+  tenant_name?: string;
 };
 
 export default function Requests() {
@@ -37,14 +38,38 @@ export default function Requests() {
 
     const tenantIds = mems.map(m => m.tenant_id);
 
-    const { data } = await supabase
+    const { data: reqs, error } = await supabase
       .from("community_requests")
-      .select("*, profiles(name, email), tenants(name)")
+      .select("id, user_id, tenant_id, status, created_at")
       .in("tenant_id", tenantIds)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    setRequests(data || []);
+    if (error) { setRequests([]); setLoading(false); return; }
+    
+    if (!reqs || reqs.length === 0) { setRequests([]); setLoading(false); return; }
+    
+    const reqUserIds = reqs.map(r => r.user_id);
+    const reqTenantIds = reqs.map(r => r.tenant_id);
+    
+    const [{ data: profiles }, { data: tenants }] = await Promise.all([
+      supabase.from("profiles").select("user_id, name, email").in("user_id", reqUserIds),
+      supabase.from("tenants").select("id, name").in("id", reqTenantIds),
+    ]);
+    
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+    const tenantMap: Record<string, any> = {};
+    (tenants || []).forEach((t: any) => { tenantMap[t.id] = t; });
+    
+    const enriched = reqs.map(r => ({
+      ...r,
+      profile_name: profileMap[r.user_id]?.name || null,
+      profile_email: profileMap[r.user_id]?.email || "",
+      tenant_name: tenantMap[r.tenant_id]?.name || "",
+    }));
+    
+    setRequests(enriched);
     setLoading(false);
   };
 
@@ -93,11 +118,11 @@ export default function Requests() {
                     <User className="h-5 w-5 text-brand" />
                   </div>
                   <div>
-                    <p className="font-semibold">{r.profiles?.name || "Usuário"}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {r.profiles?.email || "-"}</p>
+                    <p className="font-semibold">{r.profile_name || "Usuário"}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {r.profile_email || "-"}</p>
                   </div>
                 </div>
-                {r.tenants && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenants.name}</p>}
+                {r.tenant_name && <p className="text-sm text-purple-600 font-medium">Comunidade: {r.tenant_name}</p>}
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{formatDate(r.created_at)}</div>
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" className="flex-1 gap-2" onClick={() => handleApprove(r)}><Check className="h-4 w-4" />Aprovar</Button>
