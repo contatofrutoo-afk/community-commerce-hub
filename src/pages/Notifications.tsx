@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, X, User, Mail, Users, Clock } from "lucide-react";
+import { Bell, Check, X, User, Mail, Users, Clock, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 type PendingRequest = {
@@ -202,24 +202,39 @@ export default function Notifications() {
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma notificação</p>
               </div>
-            ) : notifications.map(n => (
-              <div key={n.id} className={`bg-card border rounded-2xl p-4 ${n.type === "join_request" ? "border-purple-200" : "border-border"}`}>
+            ) : notifications.map(n => {
+              const isJoinRequest = n.type === "join_request";
+              const isTopicReply = n.type === "topic_reply";
+              return (
+              <div
+                key={n.id}
+                onClick={() => isTopicReply && n.data?.topic_id && navigate(`/conversas/${n.data.topic_id}`)}
+                className={`bg-card border rounded-2xl p-4 ${isJoinRequest ? "border-purple-200" : isTopicReply ? "border-blue-200 hover:bg-blue-50 cursor-pointer" : "border-border"}`}
+              >
                 <div className="flex items-start gap-3">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${n.type === "join_request" ? "bg-purple-100" : "bg-brand/10"}`}>
-                    {n.type === "join_request" ? (
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isJoinRequest ? "bg-purple-100" : isTopicReply ? "bg-blue-100" : "bg-brand/10"}`}>
+                    {isJoinRequest ? (
                       <Users className="h-4 w-4 text-purple-600" />
+                    ) : isTopicReply ? (
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
                     ) : (
                       <Bell className="h-4 w-4 text-brand" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{n.title}</p>
-                    {n.data?.user_name && (
+                    {isTopicReply && n.data?.topic_title && (
+                      <p className="text-sm text-blue-700 font-medium mt-0.5">{n.data.topic_title}</p>
+                    )}
+                    {isTopicReply && n.data?.message_preview && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">"{n.data.message_preview}"</p>
+                    )}
+                    {n.data?.user_name && !isTopicReply && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        <span className="font-medium">{n.data.user_name}</span> ({n.data.user_email})
+                        <span className="font-medium">{n.data.user_name}</span> {n.data.user_email ? `(${n.data.user_email})` : ""}
                       </p>
                     )}
-                    {n.data?.tenant_name && (
+                    {n.data?.tenant_name && !isTopicReply && (
                       <p className="text-xs text-purple-600 mt-0.5">{n.data.tenant_name}</p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -228,7 +243,8 @@ export default function Notifications() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
