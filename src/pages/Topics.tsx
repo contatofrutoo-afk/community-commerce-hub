@@ -313,28 +313,45 @@ export default function Topics() {
 
   const loadMentionUsers = async () => {
     if (!selectedTopic || !user) return;
+    
+    // Buscar user_ids das mensagens
     const { data: msgs } = await supabase
       .from("topic_messages")
-      .select("user_id, profiles(name, avatar_url)")
+      .select("user_id")
       .eq("topic_id", selectedTopic.id);
-    if (msgs) {
-      const seen = new Set<string>();
-      const uniqueUsers: {id: string; name: string; avatar_url?: string}[] = [];
-      msgs.forEach(msg => {
-        if (!seen.has(msg.user_id)) {
-          seen.add(msg.user_id);
-          uniqueUsers.push({ id: msg.user_id, name: msg.profiles?.name || "User", avatar_url: msg.profiles?.avatar_url });
-        }
-      });
-      if (selectedTopic?.created_by && !seen.has(selectedTopic.created_by)) {
-        const { data: profile } = await supabase.from("profiles").select("id, name, avatar_url").eq("user_id", selectedTopic.created_by).single();
-        if (profile) uniqueUsers.push({ id: profile.id, name: profile.name, avatar_url: profile.avatar_url });
+    
+    if (!msgs) return;
+    
+    const userIds = [...new Set(msgs.map(m => m.user_id))];
+    
+    // Buscar profiles separadamente
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url")
+      .in("user_id", userIds);
+    
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach(p => { profileMap[p.id] = p; });
+    
+    const uniqueUsers: {id: string; name: string; avatar_url?: string}[] = [];
+    const seen = new Set<string>();
+    
+    msgs.forEach(msg => {
+      if (!seen.has(msg.user_id)) {
+        seen.add(msg.user_id);
+        const profile = profileMap[msg.user_id];
+        uniqueUsers.push({ id: msg.user_id, name: profile?.name || "User", avatar_url: profile?.avatar_url });
       }
-      if (user && !seen.has(user.id)) {
-        uniqueUsers.push({ id: user.id, name: (user as any).user_metadata?.name || "Você", avatar_url: (user as any).user_metadata?.avatar_url });
-      }
-      setMentionUsers(uniqueUsers);
+    });
+    
+    if (selectedTopic?.created_by && !seen.has(selectedTopic.created_by)) {
+      const { data: profile } = await supabase.from("profiles").select("id, name, avatar_url").eq("user_id", selectedTopic.created_by).single();
+      if (profile) uniqueUsers.push({ id: profile.id, name: profile.name, avatar_url: profile.avatar_url });
     }
+    if (user && !seen.has(user.id)) {
+      uniqueUsers.push({ id: user.id, name: (user as any).user_metadata?.name || "Você", avatar_url: (user as any).user_metadata?.avatar_url });
+    }
+    setMentionUsers(uniqueUsers);
   };
 
   const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
