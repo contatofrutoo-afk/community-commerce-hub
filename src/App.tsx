@@ -12,6 +12,30 @@ import AppEntrance from "@/components/AppEntrance";
 
 const queryClient = new QueryClient();
 
+const UpdateBanner = () => {
+  const [showBanner, setShowBanner] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => setShowBanner(true);
+    window.addEventListener('sw-update-ready', handleUpdate);
+    return () => window.removeEventListener('sw-update-ready', handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (showBanner) {
+      window.location.reload();
+    }
+  }, [showBanner]);
+
+  if (!showBanner) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-purple-700 text-white text-sm text-center py-2 px-4 cursor-pointer" onClick={() => window.location.reload()}>
+      Nova versão disponível — clique para atualizar
+    </div>
+  );
+};
+
 const Loading = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="flex flex-col items-center gap-3">
@@ -119,6 +143,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <UpdateBanner />
         <BrowserRouter>
           <Suspense fallback={<Loading />}>
             <AuthProvider>
