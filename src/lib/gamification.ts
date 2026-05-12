@@ -30,16 +30,16 @@ export async function getUserStats(userId: string, tenantId: string): Promise<Us
     return { total_points: r.total_points ?? 0, monthly_points: r.monthly_points ?? 0, yearly_points: r.yearly_points ?? 0, monthly_rank: r.monthly_rank ?? 0, yearly_rank: r.yearly_rank ?? 0 };
   } catch (e) { console.error("getUserStats:", e); return null; }
 }
-export async function getMonthlyRanking(tenantId: string, limit = 10): Promise<RankingEntry[]> {
+export async function getMonthlyRanking(tenantId: string, limit = 10, excludeUserId?: string | null): Promise<RankingEntry[]> {
   try {
-    const { data, error } = await supabase.rpc("get_monthly_ranking", { p_tenant_id: tenantId, p_limit: limit });
+    const { data, error } = await supabase.rpc("get_monthly_ranking", { p_tenant_id: tenantId, p_limit: limit, p_exclude_user_id: excludeUserId ?? null });
     if (error || !data) return [];
     return (data as any[]).map((r) => ({ rank: r.rank ?? 0, user_id: r.user_id ?? "", name: r.name ?? "Usuário", avatar_url: r.avatar_url ?? null, city: r.city ?? null, state: r.state ?? null, points: r.monthly_points ?? 0 }));
   } catch (e) { console.error("getMonthlyRanking:", e); return []; }
 }
-export async function getYearlyRanking(tenantId: string, limit = 10): Promise<RankingEntry[]> {
+export async function getYearlyRanking(tenantId: string, limit = 10, excludeUserId?: string | null): Promise<RankingEntry[]> {
   try {
-    const { data, error } = await supabase.rpc("get_yearly_ranking", { p_tenant_id: tenantId, p_limit: limit });
+    const { data, error } = await supabase.rpc("get_yearly_ranking", { p_tenant_id: tenantId, p_limit: limit, p_exclude_user_id: excludeUserId ?? null });
     if (error || !data) return [];
     return (data as any[]).map((r) => ({ rank: r.rank ?? 0, user_id: r.user_id ?? "", name: r.name ?? "Usuário", avatar_url: r.avatar_url ?? null, city: r.city ?? null, state: r.state ?? null, points: r.yearly_points ?? 0 }));
   } catch (e) { console.error("getYearlyRanking:", e); return []; }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Trophy, Star, Gift } from "lucide-react";
 import type { RankingEntry, TenantReward } from "@/lib/gamification";
@@ -55,6 +55,7 @@ function Skeleton() {
 
 export default function RankingSection({ period = "monthly" }: { period?: "monthly" | "yearly" }) {
   const { tenant } = useTenant();
+  const { user } = useAuth();
   const [monthly, setMonthly] = useState<RankingEntry[]>([]);
   const [yearly, setYearly] = useState<RankingEntry[]>([]);
   const [rewards, setRewards] = useState<TenantReward[]>([]);
@@ -75,9 +76,10 @@ export default function RankingSection({ period = "monthly" }: { period?: "month
     
     (async () => {
       try {
+        const excludeId = user?.id ?? null;
         const [{ data: m, error: mErr }, { data: y, error: yErr }, { data: rw, error: rwErr }] = await Promise.all([
-          supabase.rpc("get_monthly_ranking", { p_tenant_id: tenant.id, p_limit: 10 }),
-          supabase.rpc("get_yearly_ranking", { p_tenant_id: tenant.id, p_limit: 10 }),
+          supabase.rpc("get_monthly_ranking", { p_tenant_id: tenant.id, p_limit: 10, p_exclude_user_id: excludeId }),
+          supabase.rpc("get_yearly_ranking", { p_tenant_id: tenant.id, p_limit: 10, p_exclude_user_id: excludeId }),
           supabase.from("tenant_rewards").select("*").eq("tenant_id", tenant.id).eq("is_active", true).order("min_position"),
         ]);
         
@@ -97,7 +99,7 @@ export default function RankingSection({ period = "monthly" }: { period?: "month
         setLoading(false); 
       }
     })();
-  }, [tenant?.id]);
+  }, [tenant?.id, user?.id]);
 
   const entries = period === "monthly" ? monthly : yearly;
   const label = period === "monthly" ? "do Mês" : "do Ano";
@@ -117,7 +119,7 @@ export default function RankingSection({ period = "monthly" }: { period?: "month
         <div className="text-center py-8 text-muted-foreground">
           <Star className="h-8 w-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Ninguém no ranking ainda</p>
-          <p className="text-xs">Interaja para ganhar pontos!</p>
+          <p className="text-xs">Incentive membros a participarem!</p>
         </div>
       ) : (
         <div className="space-y-1">{entries.map(e => <RankRow key={e.user_id} e={e} highlight={e.rank === 1} />)}</div>
