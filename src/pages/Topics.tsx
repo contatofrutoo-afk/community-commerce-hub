@@ -177,12 +177,14 @@ export default function Topics() {
     if (!selectedTopic || !user || !newReply.trim()) return;
     setSendingReply(true);
     
+    const contentToSend = newReply.trim();
+    
     const { data, error } = await supabase
       .from("topic_messages")
       .insert({
         topic_id: selectedTopic.id,
         user_id: user.id,
-        content: newReply.trim(),
+        content: contentToSend,
         parent_id: replyToMsg?.id || null,
       })
       .select("*, profiles(name, avatar_url)")
@@ -196,8 +198,14 @@ export default function Topics() {
     }
 
     if (data) {
+      // Atualizar counters do topic localmente
+      setTopics(topics.map(t => 
+        t.id === selectedTopic.id 
+          ? { ...t, replies_count: (t.replies_count || 0) + 1, last_activity_at: new Date().toISOString() }
+          : t
+      ));
       setMessages([...messages, data as TopicMessage]);
-      setNewReply("");
+      setNewReply(""); // Limpar input APENAS após sucesso
       setReplyToMsg(null);
       await awardPoints(user.id, selectedTopic.tenant_id, "reply");
       toast.success("Resposta enviada!");
@@ -416,8 +424,11 @@ export default function Topics() {
                 <p>Seja o primeiro a participar!</p>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id} className="flex gap-3">
+              messages.map((msg) => {
+                const isReply = msg.parent_id !== null;
+                const parentMsg = isReply ? messages.find(m => m.id === msg.parent_id) : null;
+                return (
+                <div key={msg.id} className={`flex gap-3 ${isReply ? 'ml-6 border-l-2 border-purple-200 pl-3' : ''}`}>
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={msg.profiles?.avatar_url || ""} />
                     <AvatarFallback className="text-xs bg-gray-200 text-gray-600">{msg.profiles?.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
@@ -426,7 +437,10 @@ export default function Topics() {
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="text-sm font-medium text-gray-800">{msg.profiles?.name || "Usuário"}</span>
                       <span className="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
-                      {msg.user_id !== user?.id && (
+                      {isReply && parentMsg && (
+                        <span className="text-xs text-purple-500">↳ Respondendo @{parentMsg.profiles?.name || "usuário"}</span>
+                      )}
+                      {msg.user_id !== user?.id && !isReply && (
                         <button onClick={() => replyToMessage(msg)} className="text-xs text-purple-600 hover:text-purple-800 ml-2">Responder</button>
                       )}
                     </div>
@@ -461,9 +475,9 @@ export default function Topics() {
                           <span>Excluir</span>
                         </button>
                       </div>
-                    )}
-                  </div>
-                </div>
+)}
+              </div>
+            </div>
               ))
             )}
             <div ref={messagesEndRef} />
