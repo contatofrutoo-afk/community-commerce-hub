@@ -52,15 +52,22 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading, redirectTo } = useAuth();
+  const { user, loading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
+  const [redirectHandled, setRedirectHandled] = useState(false);
   
+  // Handle redirect from auth context - this takes priority
   useEffect(() => {
-    if (redirectTo) {
-      navigate(redirectTo, { replace: true });
-    }
-  }, [redirectTo, navigate]);
+    // This effect is specifically for handling redirects from AuthContext
+    // It runs when the app first mounts and auth state is resolved
+    if (redirectHandled) return;
+    
+    // Let the AuthContext handle redirects - we just show loading
+    if (loading || tenantLoading) return;
+    
+    setRedirectHandled(true);
+  }, [loading, tenantLoading, redirectHandled]);
   
   // Wait for both auth and tenant to load before checking
   if (loading || tenantLoading) return <Loading />;

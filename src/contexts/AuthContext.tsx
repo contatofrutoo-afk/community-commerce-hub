@@ -104,16 +104,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user || !appRole || redirected) return;
     
-    // Check for pending invite slug
+    // Check for pending invite slug first - invite flow takes priority
     let pendingSlug = localStorage.getItem("pending_invite_slug");
     if (!pendingSlug) {
       pendingSlug = sessionStorage.getItem("pending_invite_slug");
     }
     
+    // If user just completed auth and has a pending invite, redirect to invite page
     if (pendingSlug) {
       const redirectPath = `/invite/${pendingSlug}`;
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
       setRedirectTo(redirectPath);
       setRedirected(true);
       return;
@@ -126,26 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    // Only B2B users without a community go to /create
-    if (appRole === "b2b" || appRole === "admin") {
-      if (!userState?.hasJoinedCommunities) {
-        setRedirectTo("/profile");
-        setRedirected(true);
-        return;
-      }
-    }
-    
-    // Only B2C users without memberships go to landing
-    if (appRole === "b2c") {
-      if (!userState?.hasJoinedCommunities) {
-        setRedirectTo("/");
-        setRedirected(true);
-        return;
-      }
-    }
-    
     setRedirected(true);
-  }, [user, appRole, redirected, userState]);
+  }, [user, appRole, redirected]);
 
   const signOut = async () => { 
     setRedirected(false);
