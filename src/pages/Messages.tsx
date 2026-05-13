@@ -16,11 +16,11 @@ export default function Messages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load threads
   useEffect(() => {
     if (!tenant || !user) return;
 
@@ -57,13 +57,14 @@ export default function Messages() {
     load();
   }, [tenant?.id, user?.id, isOwner]);
 
-  // Load messages
   useEffect(() => {
     if (!threadId) return;
 
     async function loadMessages() {
+      setLoadingMessages(true);
       const { data } = await supabase.from("messages").select("*").eq("thread_id", threadId).order("created_at", { ascending: true });
       setMessages(data || []);
+      setLoadingMessages(false);
     }
     loadMessages();
 
@@ -77,7 +78,6 @@ export default function Messages() {
     return () => { channel.unsubscribe(); supabase.removeChannel(channel); };
   }, [threadId]);
 
-  // Scroll
   useEffect(() => {
     if (scrollRef.current) {
       setTimeout(() => { 
@@ -88,7 +88,6 @@ export default function Messages() {
     }
   }, [messages.length, threadId]);
 
-  // Send
   async function handleSend() {
     if (!threadId || !user || !inputText.trim() || sending) return;
     const content = inputText.trim();
@@ -101,7 +100,18 @@ export default function Messages() {
   }
 
   const chatName = threadId ? (isOwner ? threads.find(t => t.id === threadId)?.author_name || "Usuário" : tenant?.name || "Marca") : "";
-  const formatTime = (d: string) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  
+  const formatDateTime = (d: string | null) => {
+    if (!d) return "";
+    return new Date(d).toLocaleString("pt-BR", { 
+      day: "2-digit", 
+      month: "2-digit", 
+      year: "numeric", 
+      hour: "2-digit", 
+      minute: "2-digit", 
+      second: "2-digit" 
+    });
+  };
 
   if (loading) return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -128,10 +138,8 @@ export default function Messages() {
       <TopBar />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, position: "relative" }}>
         
-        {/* Chat Window */}
         {threadId ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", minHeight: 0 }}>
-            {/* Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #e0e0e0", background: "#fff", flexShrink: 0 }}>
               <button onClick={() => setThreadId(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 <ArrowLeft size={20} color="#666" />
@@ -142,22 +150,28 @@ export default function Messages() {
               <span style={{ fontWeight: 500, color: "#333" }}>{chatName}</span>
             </div>
 
-            {/* Messages */}
             <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, paddingBottom: 20, background: "#f5f5f5" }}>
-              {messages.map(m => {
-                const isMine = m.sender_id === user?.id;
-                return (
-                  <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
-                    <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, background: isMine ? "#25D366" : "#fff", color: isMine ? "#fff" : "#333" }}>
-                      <p style={{ fontSize: 14, wordBreak: "break-word" }}>{m.content}</p>
-                      <p style={{ fontSize: 10, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatTime(m.created_at)}</p>
+              {loadingMessages ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : messages.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#888", padding: 20 }}>Sem mensagens ainda</p>
+              ) : (
+                messages.map(m => {
+                  const isMine = m.sender_id === user?.id;
+                  return (
+                    <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
+                      <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, background: isMine ? "#25D366" : "#fff", color: isMine ? "#fff" : "#333" }}>
+                        <p style={{ fontSize: 14, wordBreak: "break-word" }}>{m.content}</p>
+                        <p style={{ fontSize: 10, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
-            {/* Input - FIXO EM BAIXO */}
             <div style={{ padding: "12px 16px", background: "#fff", borderTop: "1px solid #e0e0e0", flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input
@@ -180,7 +194,6 @@ export default function Messages() {
             </div>
           </div>
         ) : (
-          /* Chat List */
           <div style={{ flex: 1, overflowY: "auto" }}>
             <h2 style={{ padding: 16, fontSize: 20, fontWeight: "bold" }}>Mensagens</h2>
             {threads.length === 0 ? (
@@ -192,8 +205,8 @@ export default function Messages() {
                     <span style={{ fontWeight: 500, color: "#333" }}>{t.author_name?.[0]?.toUpperCase() || "?"}</span>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 500, color: "#333" }}>{t.author_name}</p>
-                    <p style={{ fontSize: 12, color: "#888" }}>{t.last_message_at ? formatTime(t.last_message_at) : ""}</p>
+                    <p style={{ fontWeight: 500, color: "#333", fontSize: 16 }}>{t.author_name}</p>
+                    <p style={{ fontSize: 12, color: "#666" }}>{formatDateTime(t.last_message_at)}</p>
                   </div>
                 </button>
               ))
