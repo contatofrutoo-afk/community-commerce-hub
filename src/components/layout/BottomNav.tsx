@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ export default function BottomNav() {
     { to: "/notifications", icon: Bell, label: "Notificações", badge: pendingCount },
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
     ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
+    ...(isB2B ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
   ];
 
