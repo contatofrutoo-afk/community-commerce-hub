@@ -30,6 +30,7 @@ export default function Messages() {
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [creatingThread, setCreatingThread] = useState(false);
   const profileCache = useRef<Map<string, { name: string; avatar: string }>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +100,7 @@ export default function Messages() {
               setThreadId(newThread.id);
             }
           }
+          setLoadingThreads(false);
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -110,6 +112,45 @@ export default function Messages() {
 
     loadData();
   }, [tenant?.id, user?.id, isOwner]);
+
+  const createThread = async () => {
+    if (!tenant || !user || creatingThread) return;
+    setCreatingThread(true);
+    try {
+      const { data: existingThread } = await supabase.from("message_threads")
+        .select("id")
+        .eq("tenant_id", tenant.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (existingThread) {
+        setThreadId(existingThread.id);
+        toast.success("Conversa encontrada!");
+        return;
+      }
+
+      const { data: newThread, error } = await supabase.from("message_threads")
+        .insert({ tenant_id: tenant.id, user_id: user.id })
+        .select("id")
+        .single();
+      
+      if (error) {
+        console.error("Error creating thread:", error);
+        toast.error("Erro ao criar conversa");
+        return;
+      }
+      
+      if (newThread) {
+        setThreadId(newThread.id);
+        toast.success("Conversa iniciada!");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast.error("Erro inesperado");
+    } finally {
+      setCreatingThread(false);
+    }
+  };
 
   useEffect(() => {
     if (!threadId) return;
@@ -164,26 +205,26 @@ export default function Messages() {
   const send = async () => {
     if (!threadId || !user || !text.trim()) return;
     const content = text.trim().slice(0, 2000);
+    const currentText = text;
     setText("");
-<<<<<<< HEAD
     setSending(true);
     try {
-      const insertPayload: any = { thread_id: threadId, sender_id: user.id, content };
-      if (isOwner) insertPayload.sender_type = "b2b";
-      else insertPayload.sender_type = "b2c";
-      
-      const { error } = await supabase.from("messages").insert(insertPayload);
+      const { error } = await supabase.from("messages").insert({ 
+        thread_id: threadId, 
+        sender_id: user.id, 
+        content 
+      });
       if (error) {
         console.error("Error sending message:", error);
         toast.error("Erro ao enviar mensagem");
-        setText(content);
+        setText(currentText);
         return;
       }
       await supabase.from("message_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
     } catch (err) {
       console.error("Unexpected error sending message:", err);
       toast.error("Erro inesperado ao enviar mensagem");
-      setText(content);
+      setText(currentText);
     } finally {
       setSending(false);
     }
@@ -258,7 +299,13 @@ export default function Messages() {
           </div>
         )}
         {!isOwner && !loadingThreads && !threadId && (
-          <p className="text-muted-foreground text-sm text-center py-4">Aguarde, iniciando conversa...</p>
+          <div className="flex flex-col items-center gap-3 py-8">
+            <p className="text-muted-foreground text-sm text-center">Nenhuma conversa encontrada.</p>
+            <Button onClick={createThread} disabled={creatingThread} variant="outline">
+              {creatingThread ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Iniciar conversa
+            </Button>
+          </div>
         )}
       </div>
       {threadId && (
