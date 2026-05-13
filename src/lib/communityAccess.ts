@@ -180,13 +180,22 @@ export const toggleMemberActive = async (
     return { success: false, error: "Não é possível alterar este membro" };
   }
 
-  const { error } = await supabase
-    .from("memberships")
-    .update({ is_active: isActive })
-    .eq("user_id", memberUserId)
-    .eq("tenant_id", tenantId);
+  try {
+    const { error } = await supabase
+      .from("memberships")
+      .update({ is_active: isActive })
+      .eq("user_id", memberUserId)
+      .eq("tenant_id", tenantId);
 
-  if (error) return { success: false, error: error.message };
+    if (error) {
+      if (error.message.includes("is_active")) {
+        return { success: false, error: "Coluna is_active ainda não existe no banco" };
+      }
+      return { success: false, error: error.message };
+    }
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 
   return { success: true };
 };
@@ -206,20 +215,28 @@ export const getTenantMembers = async (
     return { data: [], error: "Não autorizado" };
   }
 
-  const { data, error } = await supabase
+  const { data: memberships, error } = await supabase
     .from("memberships")
-    .select(`
-      user_id,
-      role,
-      is_active,
-      created_at,
-      profiles (name, email, avatar_url, city, state)
-    `)
+    .select("user_id, role, is_active, created_at")
     .eq("tenant_id", tenantId)
-    .neq("role", "owner")
-    .order("created_at", { ascending: false });
+    .neq("role", "owner");
 
   if (error) return { data: [], error: error.message };
+  if (!memberships || memberships.length === 0) return { data: [], error: undefined };
 
-  return { data: data || [] };
+  const userIds = memberships.map(m => m.user_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, name, email, avatar_url, city, state")
+    .in("user_id", userIds);
+
+  const profileMap: Record<string, any> = {};
+  (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+
+  const result = memberships.map(m => ({
+    ...m,
+    profiles: profileMap[m.user_id] || null
+  }));
+
+  return { data: result, error: undefined };
 };
