@@ -20,6 +20,7 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!tenant || !user) return;
@@ -79,12 +80,8 @@ export default function Messages() {
   }, [threadId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      setTimeout(() => { 
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 50);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages.length, threadId]);
 
@@ -93,9 +90,29 @@ export default function Messages() {
     const content = inputText.trim();
     setInputText("");
     setSending(true);
+    
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempId,
+      thread_id: threadId,
+      sender_id: user.id,
+      content: content,
+      created_at: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, tempMessage]);
+    
     try {
-      await supabase.from("messages").insert({ thread_id: threadId, sender_id: user.id, content });
-    } catch (err) { console.error(err); setInputText(content); }
+      const { data, error } = await supabase.from("messages").insert({ thread_id: threadId, sender_id: user.id, content }).select().single();
+      if (error) throw error;
+      if (data) {
+        setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+      }
+    } catch (err) { 
+      console.error(err); 
+      setInputText(content);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
     finally { setSending(false); }
   }
 
@@ -158,17 +175,20 @@ export default function Messages() {
               ) : messages.length === 0 ? (
                 <p style={{ textAlign: "center", color: "#888", padding: 20 }}>Sem mensagens ainda</p>
               ) : (
-                messages.map(m => {
-                  const isMine = m.sender_id === user?.id;
-                  return (
-                    <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
-                      <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, background: isMine ? "#25D366" : "#fff", color: isMine ? "#fff" : "#333" }}>
-                        <p style={{ fontSize: 14, wordBreak: "break-word" }}>{m.content}</p>
-                        <p style={{ fontSize: 10, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
+                <>
+                  {messages.map(m => {
+                    const isMine = m.sender_id === user?.id;
+                    return (
+                      <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
+                        <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, background: isMine ? "#25D366" : "#fff", color: isMine ? "#fff" : "#333" }}>
+                          <p style={{ fontSize: 14, wordBreak: "break-word" }}>{m.content}</p>
+                          <p style={{ fontSize: 10, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
               )}
             </div>
 
