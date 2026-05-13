@@ -6,16 +6,23 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 type Msg = {
   id: string;
   thread_id: string;
   sender_id: string;
-  sender_type?: "b2b" | "b2c";
   content: string;
   created_at: string;
+  author_name?: string | null;
+  author_avatar?: string | null;
+};
+
+type Thread = {
+  id: string;
+  user_id: string;
+  last_message_at: string | null;
   author_name?: string | null;
   author_avatar?: string | null;
 };
@@ -26,7 +33,7 @@ export default function Messages() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
-  const [threads, setThreads] = useState<any[]>([]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -40,6 +47,16 @@ export default function Messages() {
     const profile = { name: data?.name ?? null, avatar: data?.avatar_url ?? null };
     if (profile.name) profileCache.current.set(userId, profile);
     return profile;
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const day = 24 * 60 * 60 * 1000;
+    if (diff < day) return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (diff < 2 * day) return "ontem";
+    return date.toLocaleDateString("pt-BR", { day: "numeric", month: "numeric" });
   };
 
   useEffect(() => {
@@ -100,7 +117,6 @@ export default function Messages() {
               setThreadId(newThread.id);
             }
           }
-          setLoadingThreads(false);
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -230,101 +246,139 @@ export default function Messages() {
     }
   };
 
+  const getCurrentChatName = () => {
+    if (!threadId) return null;
+    const currentThread = threads.find(t => t.id === threadId);
+    if (isOwner) return currentThread?.author_name || "Usuário";
+    return tenant?.name || "Marca";
+  };
+
+  const getCurrentChatAvatar = () => {
+    if (!threadId) return null;
+    const currentThread = threads.find(t => t.id === threadId);
+    if (isOwner) return currentThread?.author_avatar;
+    return tenant?.logo_url;
+  };
+
   return (
     <div className="h-[100dvh] flex flex-col bg-background">
       <TopBar />
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 max-w-xl mx-auto w-full pb-24 space-y-3">
-        <h1 className="font-display text-3xl mb-4">Mensagens</h1>
-        {loadingThreads && (
-          <div className="flex items-center justify-center py-8">
+      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full overflow-hidden">
+        {loadingThreads ? (
+          <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        )}
-        {isOwner && !threadId && !loadingThreads && (
-          <div className="space-y-2">
-            {threads.length === 0 && <p className="text-muted-foreground text-sm">Sem conversas ainda.</p>}
-            {threads.map((t: any) => (
-              <button key={t.id} onClick={() => setThreadId(t.id)} className="w-full text-left bg-gray-100 hover:bg-gray-200 p-3 rounded-xl shadow-soft">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
-                    {t.author_avatar ? (
-                      <img src={t.author_avatar} alt={t.author_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-secondary grid place-items-center text-xs font-medium">
-                        {t.author_name?.[0]?.toUpperCase() || "?"}
-                      </div>
-                    )}
+        ) : threadId ? (
+          <>
+            <div className="flex items-center gap-3 px-4 py-3 border-b bg-background sticky top-0">
+              <Button variant="ghost" size="icon" onClick={() => setThreadId(null)} className="shrink-0">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="h-9 w-9 rounded-full overflow-hidden bg-muted shrink-0">
+                {getCurrentChatAvatar() ? (
+                  <img src={getCurrentChatAvatar()!} alt={getCurrentChatName()!} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                    {getCurrentChatName()?.[0]?.toUpperCase() || "?"}
                   </div>
-                  <div>
-                    <p className="font-medium">{t.author_name || "Usuário"}</p>
-                    <p className="text-xs text-muted-foreground">{t.last_message_at ? new Date(t.last_message_at).toLocaleString("pt-BR") : ""}</p>
-                  </div>
+                )}
+              </div>
+              <div>
+                <p className="font-medium text-sm">{getCurrentChatName()}</p>
+                <p className="text-xs text-muted-foreground">WhatsApp-style</p>
+              </div>
+            </div>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+              {loadingMessages ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
-        {threadId && (
-          <div className="space-y-3">
-            {isOwner && <Button variant="ghost" size="sm" onClick={() => setThreadId(null)}>← Conversas</Button>}
-            {loadingMessages && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : messages.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm py-8">Nenhuma mensagem ainda.</p>
+              ) : (
+                messages.map((m) => {
+                  const isMine = m.sender_id === user?.id;
+                  const time = formatTime(m.created_at);
+                  return (
+                    <div key={m.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                        isMine 
+                          ? "bg-[#25D366] text-white" 
+                          : "bg-[#E5E5EA] text-gray-900"
+                      }`}>
+                        <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                        <p className={`text-[10px] mt-1 ${isMine ? "text-white/70" : "text-gray-500"}`}>
+                          {time}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="px-4 py-3 bg-background border-t">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Mensagem..." 
+                  value={text} 
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !sending && !e.shiftKey) { e.preventDefault(); send(); } }} 
+                  maxLength={2000}
+                  disabled={sending}
+                  className="bg-[#F5F5F5] border-0 rounded-full px-4"
+                />
+                <Button size="icon" onClick={send} disabled={sending || !text.trim()} className="rounded-full bg-[#25D366] hover:bg-[#20BD5A]">
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 text-white" />}
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : isOwner ? (
+          <div className="flex-1 overflow-y-auto">
+            <h1 className="font-display text-2xl px-4 pt-4 pb-2">Conversas</h1>
+            {threads.length === 0 ? (
+              <p className="text-muted-foreground text-sm px-4 py-8 text-center">Nenhuma conversa ainda.</p>
+            ) : (
+              <div className="divide-y">
+                {threads.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setThreadId(t.id)}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 text-left transition-colors"
+                  >
+                    <div className="h-12 w-12 rounded-full overflow-hidden bg-muted shrink-0">
+                      {t.author_avatar ? (
+                        <img src={t.author_avatar} alt={t.author_name || "U"} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm font-medium">
+                          {t.author_name?.[0]?.toUpperCase() || "?"}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{t.author_name || "Usuário"}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {t.last_message_at ? formatTime(t.last_message_at) : ""}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
-            {!loadingMessages && messages.map((m) => {
-              const isMine = m.sender_id === user?.id;
-              const isFromBrand = isOwner && m.sender_id === user?.id;
-              const avatar = isFromBrand ? tenant?.logo_url : m.author_avatar;
-              const name = isFromBrand ? tenant?.name : m.author_name;
-              const authorInitial = name?.[0]?.toUpperCase() || "?";
-              return (
-                <div key={m.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : ""}`}>
-                  <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
-                    {avatar ? (
-                      <img src={avatar} alt={name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-secondary grid place-items-center text-xs font-medium">
-                        {authorInitial}
-                      </div>
-                    )}
-                  </div>
-                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? "bg-gray-200 text-gray-900" : "bg-gray-100"}`}>
-                    <p className="text-xs opacity-70 mb-0.5">{name || "Anônimo"}</p>
-                    <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                  </div>
-                </div>
-              );
-            })}
           </div>
-        )}
-        {!isOwner && !loadingThreads && !threadId && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <p className="text-muted-foreground text-sm text-center">Nenhuma conversa encontrada.</p>
-            <Button onClick={createThread} disabled={creatingThread} variant="outline">
-              {creatingThread ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Iniciar conversa
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+            <div className="text-center">
+              <p className="font-medium">{tenant?.name}</p>
+              <p className="text-sm text-muted-foreground">Inicie uma conversa privada</p>
+            </div>
+            <Button onClick={createThread} disabled={creatingThread} className="bg-[#25D366] hover:bg-[#20BD5A]">
+              {creatingThread ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2 text-white" />}
+              <span className="text-white">Iniciar conversa</span>
             </Button>
           </div>
         )}
       </div>
-      {threadId && (
-        <div className="fixed bottom-16 inset-x-0 px-4 py-3 bg-background/95 backdrop-blur border-t border-border">
-          <div className="max-w-xl mx-auto flex gap-2">
-            <Input 
-              placeholder="Escreva uma mensagem…" 
-              value={text} 
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !sending) send(); }} 
-              maxLength={2000}
-              disabled={sending}
-            />
-            <Button size="icon" onClick={send} disabled={sending || !text.trim()}>
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      )}
       <BottomNav />
     </div>
   );
