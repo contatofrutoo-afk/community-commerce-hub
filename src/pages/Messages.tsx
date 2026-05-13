@@ -167,7 +167,7 @@ export default function Messages() {
               <span style={{ fontWeight: 500, color: "#333" }}>{chatName}</span>
             </div>
 
-            <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, paddingBottom: 20, background: "#f5f5f5" }}>
+            <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, paddingBottom: 20, background: "#f5f5f5", maxHeight: "calc(100vh - 200px)" }}>
               {loadingMessages ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -192,7 +192,19 @@ export default function Messages() {
               )}
             </div>
 
-            <div style={{ padding: "12px 16px", background: "#fff", borderTop: "1px solid #e0e0e0", flexShrink: 0, minHeight: 60, display: "flex", alignItems: "center" }}>
+            <div style={{ 
+              padding: "12px 16px", 
+              background: "#fff", 
+              borderTop: "1px solid #e0e0e0", 
+              flexShrink: 0, 
+              minHeight: 60, 
+              display: "flex", 
+              alignItems: "center",
+              position: "sticky",
+              bottom: 0,
+              zIndex: 100,
+              width: "100%"
+            }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                 <input
                   type="text"
