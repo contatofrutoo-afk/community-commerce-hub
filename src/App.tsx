@@ -133,17 +133,27 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const [isBlocked, setIsBlocked] = useState(false);
   
   useEffect(() => {
-    if (authLoading || tenantLoading || !user || !tenant) {
-      setAccessChecked(false);
+    if (authLoading || tenantLoading || !user || !tenant) return;
+    
+    const timeout = setTimeout(() => {
+      setAccessChecked(true);
       setIsBlocked(false);
-      return;
-    }
+    }, 5000);
     
     (async () => {
-      const status = await getAccessStatus(tenant.id, user.id);
-      setIsBlocked(status === "blocked");
-      setAccessChecked(true);
+      try {
+        const status = await getAccessStatus(tenant.id, user.id);
+        clearTimeout(timeout);
+        setIsBlocked(status === "blocked");
+        setAccessChecked(true);
+      } catch (err) {
+        clearTimeout(timeout);
+        setIsBlocked(false);
+        setAccessChecked(true);
+      }
     })();
+    
+    return () => clearTimeout(timeout);
   }, [user, tenant, authLoading, tenantLoading]);
   
   if (authLoading || tenantLoading) return <Loading />;
