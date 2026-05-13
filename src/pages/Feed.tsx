@@ -23,6 +23,7 @@ export default function Feed() {
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const initialized = useRef(false);
@@ -106,7 +107,8 @@ export default function Feed() {
     if (initialized.current || !tenant) return;
     initialized.current = true;
     setPosts([]); setDone(false); setActiveIdx(0);
-    loadPosts(0);
+    setInitialLoadDone(false);
+    loadPosts(0).then(() => setInitialLoadDone(true));
   }, [tenant?.id]); // Only run once when tenant changes
 
   // Refresh on query param
@@ -147,7 +149,7 @@ export default function Feed() {
     return () => io.disconnect();
   }, [posts.length]);
 
-  if (tLoading) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+  if (tLoading && !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   // B2B sem tenant → criar marca
   if (!tenant && isB2B) {
