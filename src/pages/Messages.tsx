@@ -157,7 +157,7 @@ export default function Messages() {
         
         {threadId ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", minHeight: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #e0e0e0", background: "#fff", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #e8e8e8", background: "#fff", flexShrink: 0 }}>
               <button onClick={() => setThreadId(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 <ArrowLeft size={20} color="#666" />
               </button>
@@ -180,9 +180,18 @@ export default function Messages() {
                     const isMine = m.sender_id === user?.id;
                     return (
                       <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
-                        <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: 16, background: isMine ? "#25D366" : "#fff", color: isMine ? "#fff" : "#333" }}>
-                          <p style={{ fontSize: 14, wordBreak: "break-word" }}>{m.content}</p>
-                          <p style={{ fontSize: 10, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
+                        <div style={{ 
+                          maxWidth: "75%", 
+                          padding: "12px 16px", 
+                          borderRadius: 20, 
+                          background: isMine ? "#630091" : "#f5f5f5", 
+                          color: isMine ? "#fff" : "#333",
+                          borderBottomRightRadius: isMine ? "4px" : "20px",
+                          borderBottomLeftRadius: isMine ? "20px" : "4px",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                        }}>
+                          <p style={{ fontSize: 14, wordBreak: "break-word", lineHeight: 1.4 }}>{m.content}</p>
+                          <p style={{ fontSize: 10, marginTop: 6, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
                         </div>
                       </div>
                     );
@@ -213,14 +222,14 @@ export default function Messages() {
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder="Digite uma mensagem..."
                   disabled={sending}
-                  style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "1px solid #ddd", fontSize: 14, outline: "none", height: 40 }}
+                  style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "1px solid #e0e0e0", fontSize: 14, outline: "none", height: 40, background: "#fafafa" }}
                 />
                 <button
                   onClick={handleSend}
                   disabled={!inputText.trim() || sending}
-                  style={{ width: 40, height: 40, borderRadius: "50%", background: inputText.trim() && !sending ? "#25D366" : "#ccc", border: "none", cursor: inputText.trim() && !sending ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  style={{ width: 40, height: 40, borderRadius: "50%", background: inputText.trim() && !sending ? "#d81e62" : "#ccc", border: "none", cursor: inputText.trim() && !sending ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: inputText.trim() && !sending ? "0 2px 8px rgba(216, 30, 98, 0.3)" : "none" }}
                 >
-                  <Send size={18} color="#fff" />
+                  <Send size={18} color="#fff" style={{ marginLeft: 2 }} />
                 </button>
               </div>
             </div>
