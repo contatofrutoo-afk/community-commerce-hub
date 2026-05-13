@@ -124,8 +124,28 @@ export default function Messages() {
   }
 
   const currentThread = threadId ? threads.find(t => t.id === threadId) : null;
-  const chatName = threadId ? (isOwner ? currentThread?.author_name || "Usuário" : tenant?.name || "Marca") : "";
-  const chatAvatar = isOwner ? currentThread?.author_avatar : null;
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!threadId || !tenant) return;
+    (async () => {
+      const { data: thread } = await supabase.from("message_threads").select("user_id").eq("id", threadId).maybeSingle();
+      if (thread?.user_id) {
+        setTargetUserId(thread.user_id);
+        const { data: profile } = await supabase.from("profiles").select("name, avatar_url").eq("user_id", thread.user_id).maybeSingle();
+        if (profile) {
+          setThreads(prev => {
+            const exists = prev.some(t => t.id === threadId);
+            if (exists) return prev;
+            return [...prev, { id: threadId, user_id: thread.user_id, last_message_at: null, author_name: profile.name, author_avatar: profile.avatar_url }];
+          });
+        }
+      }
+    })();
+  }, [threadId, tenant]);
+  
+  const chatName = threadId ? (isOwner ? currentThread?.author_name || (targetUserId ? "Usuário" : "Carregando...") : tenant?.name || "Marca") : "";
+  const chatAvatar = isOwner ? (currentThread?.author_avatar || null) : null;
   
   const formatDateTime = (d: string | null) => {
     if (!d) return "";
