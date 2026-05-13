@@ -316,21 +316,30 @@ export default function Messages() {
                 })
               )}
             </div>
-            <div className="px-4 py-3 bg-background border-t">
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Mensagem..." 
-                  value={text} 
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !sending && !e.shiftKey) { e.preventDefault(); send(); } }} 
-                  maxLength={2000}
-                  disabled={sending}
-                  className="bg-[#F5F5F5] border-0 rounded-full px-4"
-                />
-                <Button size="icon" onClick={send} disabled={sending || !text.trim()} className="rounded-full bg-[#25D366] hover:bg-[#20BD5A]">
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 text-white" />}
-                </Button>
-              </div>
+            <div className="px-4 py-3 bg-background border-t flex items-center gap-2">
+              <input 
+                type="text"
+                placeholder="Digite uma mensagem..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !sending && !e.shiftKey) { e.preventDefault(); send(); } }}
+                maxLength={2000}
+                disabled={sending}
+                className="flex-1 bg-[#F0F0F0] rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#25D366]"
+              />
+              <button 
+                onClick={send}
+                disabled={sending || !text.trim()}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${sending || !text.trim() ? "bg-gray-300" : "bg-[#25D366]"}`}
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                ) : (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
+              </button>
             </div>
           </>
         ) : isOwner ? (
