@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Suspense, lazy, useState, useEffect } from "react";
-import { XCircle } from "lucide-react";
+
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { getAccessStatus } from "@/lib/communityAccess";
@@ -127,40 +127,12 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   
-  if (loading || tenantLoading) return <Loading />;
+  if (authLoading || tenantLoading) return <Loading />;
   
   if (!user || !tenant) return children;
-  
-  return <AccessCheck userId={user.id} tenantId={tenant.id}>{children}</AccessCheck>;
-};
-
-const AccessCheck = ({ userId, tenantId, children }: { userId: string; tenantId: string; children: JSX.Element }) => {
-  const [status, setStatus] = useState<string>("loading");
-  
-  useEffect(() => {
-    (async () => {
-      const accessStatus = await getAccessStatus(tenantId, userId);
-      setStatus(accessStatus);
-    })();
-  }, [userId, tenantId]);
-  
-  if (status === "loading") return <Loading />;
-  if (status === "blocked") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-            <XCircle className="h-8 w-8 text-red-500" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Conta Desativada</h1>
-          <p className="text-gray-500">Sua conta foi desativada pelo administrador da comunidade. Entre em contato para mais informações.</p>
-        </div>
-      </div>
-    );
-  }
   
   return children;
 };
