@@ -208,10 +208,10 @@ const App = () => (
                     <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/invite/:slug" element={<InviteLanding />} />
                     <Route path="/waiting" element={<WaitingApproval />} />
-                    <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
-                    <Route path="/requests" element={<Protected><Requests /></Protected>} />
+                    <Route path="/notifications" element={<Protected><NeedsTenant><NeedsAccess><Notifications /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/requests" element={<Protected><NeedsTenant><NeedsAccess><Requests /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/members" element={<Protected><NeedsTenant><NeedsAccess><Members /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
+                    <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>
