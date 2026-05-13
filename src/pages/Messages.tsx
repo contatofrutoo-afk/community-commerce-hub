@@ -6,7 +6,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2, ArrowLeft, Send } from "lucide-react";
 
-type Thread = { id: string; user_id: string; last_message_at: string | null; author_name?: string };
+type Thread = { id: string; user_id: string; last_message_at: string | null; author_name?: string; author_avatar?: string };
 type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string };
 
 export default function Messages() {
@@ -36,14 +36,18 @@ export default function Messages() {
 
           const rows = data || [];
           const userIds = rows.map(t => t.user_id);
-          const profiles: Record<string, string> = {};
+          const profiles: Record<string, { name: string; avatar_url?: string }> = {};
           
           if (userIds.length > 0) {
-            const { data: profs } = await supabase.from("profiles").select("user_id, name").in("user_id", userIds);
-            (profs || []).forEach(p => profiles[p.user_id] = p.name);
+            const { data: profs } = await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", userIds);
+            (profs || []).forEach(p => profiles[p.user_id] = { name: p.name, avatar_url: p.avatar_url });
           }
           
-          setThreads(rows.map(t => ({ ...t, author_name: profiles[t.user_id] || "Usuário" })));
+          setThreads(rows.map(t => ({ 
+            ...t, 
+            author_name: profiles[t.user_id]?.name || "Usuário",
+            author_avatar: profiles[t.user_id]?.avatar_url || undefined
+          })));
         } else {
           const { data: t } = await supabase.from("message_threads").select("id").eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
           if (t) setThreadId(t.id);
@@ -116,7 +120,9 @@ export default function Messages() {
     finally { setSending(false); }
   }
 
-  const chatName = threadId ? (isOwner ? threads.find(t => t.id === threadId)?.author_name || "Usuário" : tenant?.name || "Marca") : "";
+  const currentThread = threadId ? threads.find(t => t.id === threadId) : null;
+  const chatName = threadId ? (isOwner ? currentThread?.author_name || "Usuário" : tenant?.name || "Marca") : "";
+  const chatAvatar = isOwner ? currentThread?.author_avatar : null;
   
   const formatDateTime = (d: string | null) => {
     if (!d) return "";
@@ -161,8 +167,12 @@ export default function Messages() {
               <button onClick={() => setThreadId(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 <ArrowLeft size={20} color="#666" />
               </button>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e0e0e0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontWeight: 500, color: "#333" }}>{chatName[0]?.toUpperCase()}</span>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {chatAvatar ? (
+                  <img src={chatAvatar} alt={chatName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontWeight: 500, color: "#630091" }}>{chatName[0]?.toUpperCase()}</span>
+                )}
               </div>
               <span style={{ fontWeight: 500, color: "#333" }}>{chatName}</span>
             </div>
@@ -242,8 +252,12 @@ export default function Messages() {
             ) : (
               threads.map(t => (
                 <button key={t.id} onClick={() => setThreadId(t.id)} style={{ width: "100%", padding: 16, display: "flex", alignItems: "center", gap: 12, border: "none", borderBottom: "1px solid #eee", background: "#fff", cursor: "pointer", textAlign: "left" }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#e0e0e0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontWeight: 500, color: "#333" }}>{t.author_name?.[0]?.toUpperCase() || "?"}</span>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", overflow: "hidden", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {t.author_avatar ? (
+                      <img src={t.author_avatar} alt={t.author_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontWeight: 500, color: "#630091", fontSize: 18 }}>{t.author_name?.[0]?.toUpperCase() || "?"}</span>
+                    )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 500, color: "#333", fontSize: 16 }}>{t.author_name}</p>
