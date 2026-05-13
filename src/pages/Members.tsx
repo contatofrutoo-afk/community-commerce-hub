@@ -6,7 +6,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageCircle, User, MapPin } from "lucide-react";
+import { Loader2, MessageCircle, User, MapPin, Check, X, Users } from "lucide-react";
 import { toast } from "sonner";
 import { toggleMemberActive, getTenantMembers } from "@/lib/communityAccess";
 
@@ -95,10 +95,10 @@ export default function Members() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col">
+      <div className="h-screen flex flex-col bg-gray-50">
         <TopBar />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#630091]" />
         </div>
         <BottomNav />
       </div>
@@ -106,15 +106,29 @@ export default function Members() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gradient-to-b from-gray-50 to-gray-100">
       <TopBar />
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">Membros</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#630091] to-[#d81e62] flex items-center justify-center">
+            <Users className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Membros</h1>
+            <p className="text-xs text-gray-500">{members.length} membro{members.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
         
         {members.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">Nenhum membro encontrado</p>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
+              <Users className="h-8 w-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">Nenhum membro encontrado</p>
+            <p className="text-gray-400 text-sm mt-1">Os membros aparecerão aqui</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {members.map((member) => {
               const profile = member.profiles;
               const initial = profile?.name?.[0]?.toUpperCase() || "?";
@@ -122,20 +136,24 @@ export default function Members() {
               return (
                 <div 
                   key={member.user_id} 
-                  className={`bg-white rounded-xl p-4 border ${member.is_active ? "border-gray-200" : "border-red-200 bg-red-50"}`}
+                  className={`bg-white rounded-2xl p-4 border shadow-sm transition-all ${
+                    member.is_active 
+                      ? "border-gray-100 hover:shadow-md" 
+                      : "border-orange-200 bg-orange-50/50"
+                  }`}
                 >
                   <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 mb-3">
+                    <div className={`w-16 h-16 rounded-full overflow-hidden mb-3 ${member.is_active ? 'bg-gray-100' : 'bg-orange-100'}`}>
                       {profile?.avatar_url ? (
                         <img src={profile.avatar_url} alt={profile.name || ""} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <div className={`w-full h-full flex items-center justify-center ${member.is_active ? 'text-gray-400' : 'text-orange-400'}`}>
                           <User className="h-8 w-8" />
                         </div>
                       )}
                     </div>
                     
-                    <p className="font-medium text-gray-900 text-center truncate w-full">
+                    <p className="font-semibold text-gray-900 text-center truncate w-full text-sm">
                       {profile?.name || "Usuário"}
                     </p>
                     
@@ -150,29 +168,34 @@ export default function Members() {
                       <button
                         onClick={() => handleToggleActive(member)}
                         disabled={toggling === member.user_id}
-                        className={`w-full py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                        className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
                           member.is_active 
-                            ? "bg-green-100 text-green-700 hover:bg-green-200" 
-                            : "bg-red-100 text-red-700 hover:bg-red-200"
+                            ? "bg-green-50 text-green-600 hover:bg-green-100 border border-green-200" 
+                            : "bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200"
                         } ${toggling === member.user_id ? "opacity-50" : ""}`}
                       >
                         {toggling === member.user_id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : member.is_active ? (
-                          "✓ Ativo"
+                          <>
+                            <Check className="h-4 w-4" />
+                            Ativo
+                          </>
                         ) : (
-                          "✕ Inativo"
+                          <>
+                            <X className="h-4 w-4" />
+                            Inativo
+                          </>
                         )}
                       </button>
                     </div>
                     
                     <Button
                       onClick={() => handleSendMessage(member)}
-                      variant="outline"
                       size="sm"
-                      className="w-full mt-2 border-[#630091] text-[#630091] hover:bg-[#630091] hover:text-white"
+                      className="w-full mt-2 bg-gradient-to-r from-[#630091] to-[#d81e62] text-white hover:opacity-90 rounded-xl"
                     >
-                      <MessageCircle className="h-4 w-4 mr-1" />
+                      <MessageCircle className="h-4 w-4 mr-1.5" />
                       Mensagem
                     </Button>
                   </div>
