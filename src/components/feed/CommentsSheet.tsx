@@ -250,9 +250,9 @@ export default function CommentsSheet({
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={!user || sending}
-              className="shrink-0 text-gray-400 hover:text-[#630091]"
+              className="shrink-0 text-gray-500 hover:text-[#630091] hover:bg-gray-100"
             >
-              <ImagePlus className="h-5 w-5" />
+              <ImagePlus className="h-5 w-5 text-gray-600" />
             </Button>
             <Input
               value={text}
