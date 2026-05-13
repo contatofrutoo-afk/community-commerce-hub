@@ -160,13 +160,13 @@ export default function Messages() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <TopBar />
+      {!threadId && <TopBar />}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, position: "relative", height: "100%" }}>
         
         {threadId ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", minHeight: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #e8e8e8", background: "#fff", flexShrink: 0 }}>
-              <button onClick={() => navigate("/feed")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <button onClick={() => setThreadId(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 <ArrowLeft size={20} color="#666" />
               </button>
               <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
