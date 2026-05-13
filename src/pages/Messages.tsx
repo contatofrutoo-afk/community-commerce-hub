@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 type Msg = {
   id: string;
@@ -34,74 +35,91 @@ export default function Messages() {
   const [creating, setCreating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
+
   useEffect(() => {
     if (!tenant || !user) return;
 
     async function load() {
+      setLoading(true);
       try {
         if (isOwner) {
-          const { data } = await supabase.from("message_threads")
+          const { data } = await supabase
+            .from("message_threads")
             .select("id, user_id, last_message_at")
             .eq("tenant_id", tenant.id)
             .order("last_message_at", { ascending: false });
-          
+
           const rows = data || [];
-          const userIds = [...new Set(rows.map((t: any) => t.user_id))];
-          let profiles: Record<string, any> = {};
+          const userIds = [...new Set(rows.map((t) => t.user_id))];
+          const profiles: Record<string, string> = {};
           if (userIds.length > 0) {
-            const { data: profs } = await supabase.from("profiles").select("user_id, name").in("user_id", userIds);
-            (profs || []).forEach((p: any) => profiles[p.user_id] = p.name);
+            const { data: profs } = await supabase
+              .from("profiles")
+              .select("user_id, name")
+              .in("user_id", userIds);
+            (profs || []).forEach((p) => { profiles[p.user_id] = p.name; });
           }
-          
-          const threadsData = rows.map((t: any) => ({
+          setThreads(rows.map((t) => ({
             ...t,
             author_name: profiles[t.user_id] || "Usuário"
-          }));
-          setThreads(threadsData);
+          })));
         } else {
-          const { data: t } = await supabase.from("message_threads").select("id")
-            .eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
+          const { data: t } = await supabase
+            .from("message_threads")
+            .select("id")
+            .eq("tenant_id", tenant.id)
+            .eq("user_id", user.id)
+            .maybeSingle();
           
           if (t) {
             setThreadId(t.id);
           } else {
-            const { data: newT } = await supabase.from("message_threads")
+            const { data: newT } = await supabase
+              .from("message_threads")
               .insert({ tenant_id: tenant.id, user_id: user.id })
-              .select("id").single();
+              .select("id")
+              .single();
             if (newT) setThreadId(newT.id);
           }
         }
       } catch (err) {
         console.error(err);
+        toast.error("Erro");
       } finally {
         setLoading(false);
       }
     }
-
     load();
   }, [tenant?.id, user?.id, isOwner]);
 
   useEffect(() => {
     if (!threadId) return;
 
-    async function loadMsgs() {
-      const { data } = await supabase.from("messages")
+    async function load() {
+      const { data } = await supabase
+        .from("messages")
         .select("*")
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
       setMessages(data || []);
     }
+    load();
 
-    loadMsgs();
-
-    const channel = supabase.channel("msg-" + threadId)
-      .on("postgres_changes", { event: "INSERT", table: "messages", filter: `thread_id=eq.${threadId}` },
-        (payload) => {
-          setMessages(prev => [...prev, payload.new as Msg]);
-        })
+    const ch = supabase.channel("msg-" + threadId)
+      .on("postgres_changes", { 
+        event: "INSERT", 
+        table: "messages", 
+        filter: `thread_id=eq.${threadId}` 
+      }, (payload) => {
+        setMessages((prev) => [...prev, payload.new as Msg]);
+      })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(ch); };
   }, [threadId]);
 
   useEffect(() => {
@@ -112,46 +130,54 @@ export default function Messages() {
 
   async function sendMessage() {
     if (!threadId || !text.trim() || sending) return;
-    setSending(true);
     const content = text.trim();
+    const currentText = text;
     setText("");
+    setSending(true);
     try {
-      await supabase.from("messages").insert({ thread_id: threadId, sender_id: user!.id, content });
+      await supabase.from("messages").insert({
+        thread_id: threadId,
+        sender_id: user!.id,
+        content
+      });
     } catch (err) {
       console.error(err);
-      setText(content);
+      setText(currentText);
     } finally {
       setSending(false);
     }
   }
 
-  async function createThread() {
+  function createThread() {
     if (!tenant || !user || creating) return;
     setCreating(true);
-    try {
-      const { data: t } = await supabase.from("message_threads").select("id").eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle();
-      if (t) setThreadId(t.id);
-      else {
-        const { data: nt } = await supabase.from("message_threads").insert({ tenant_id: tenant.id, user_id: user.id }).select("id").single();
-        if (nt) setThreadId(nt.id);
-      }
-    } catch (err) { console.error(err); }
-    finally { setCreating(false); }
-  }
-
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    supabase.from("message_threads")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setThreadId(data.id);
+        else {
+          supabase.from("message_threads")
+            .insert({ tenant_id: tenant.id, user_id: user.id })
+            .select("id")
+            .single()
+            .then(({ data }) => { if (data) setThreadId(data.id); });
+        }
+      })
+      .finally(() => setCreating(false));
   }
 
   function getName() {
     if (!threadId) return "";
-    const t = threads.find(x => x.id === threadId);
+    const t = threads.find((x) => x.id === threadId);
     return isOwner ? (t?.author_name || "Usuário") : (tenant?.name || "Marca");
   }
 
   function getAvatar() {
     if (!threadId) return null;
-    const t = threads.find(x => x.id === threadId);
+    const t = threads.find((x) => x.id === threadId);
     return isOwner ? t?.author_avatar : tenant?.logo_url;
   }
 
@@ -160,7 +186,7 @@ export default function Messages() {
       <div className="h-screen flex flex-col">
         <TopBar />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="animate-spin h-8 w-8 text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
         <BottomNav />
       </div>
@@ -168,87 +194,96 @@ export default function Messages() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col">
+    <div className="h-screen flex flex-col">
       <TopBar />
-      
-      {threadId ? (
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center gap-3 p-3 border-b bg-white">
-            <button onClick={() => setThreadId(null)}>
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
-            </button>
-            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-              {getAvatar() ? (
-                <img src={getAvatar()!} className="w-full h-full object-cover rounded-full" />
-              ) : (
-                <span className="text-gray-600 font-medium">{getName()[0]}</span>
-              )}
+      <div className="flex-1 overflow-hidden">
+        {threadId ? (
+          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderBottom: "1px solid #e5e5e5", background: "white" }}>
+              <button onClick={() => setThreadId(null)}>
+                <ArrowLeft size={20} color="#666" />
+              </button>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e5e5e5", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {getAvatar() ? (
+                  <img src={getAvatar()!} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ color: "#666", fontWeight: 500 }}>{getName()[0]}</span>
+                )}
+              </div>
+              <span style={{ fontWeight: 500 }}>{getName()}</span>
             </div>
-            <span className="font-medium">{getName()}</span>
-          </div>
 
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-100" ref={scrollRef}>
-            {messages.map((m) => {
-              const mine = m.sender_id === user?.id;
-              return (
-                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
-                  <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${mine ? "bg-green-500 text-white" : "bg-white text-gray-900"}`}>
-                    <p className="text-sm">{m.content}</p>
-                    <p className={`text-xs mt-1 ${mine ? "text-green-100" : "text-gray-400"}`}>{formatDate(m.created_at)}</p>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px", background: "#f5f5f5" }}>
+              {messages.map((m) => {
+                const mine = m.sender_id === user?.id;
+                return (
+                  <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: "8px" }}>
+                    <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: "16px", background: mine ? "#25D366" : "white", color: mine ? "white" : "black" }}>
+                      <p style={{ fontSize: "14px", wordBreak: "break-word" }}>{m.content}</p>
+                      <p style={{ fontSize: "10px", marginTop: "4px", color: mine ? "rgba(255,255,255,0.7)" : "#999" }}>{formatTime(m.created_at)}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          <div className="p-3 bg-white border-t">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
-                placeholder="Digite sua mensagem..."
-                className="flex-1 border rounded-full px-4 py-2 text-sm"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!text.trim() || sending}
-                className="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50"
-              >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar"}
-              </button>
+            <div style={{ padding: "12px", background: "white", borderTop: "1px solid #e5e5e5" }}>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
+                  placeholder="Mensagem..."
+                  style={{ flex: 1, padding: "10px 16px", borderRadius: "24px", border: "1px solid #ddd", fontSize: "14px", outline: "none" }}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!text.trim() || sending}
+                  style={{ padding: "10px 20px", borderRadius: "24px", background: text.trim() ? "#25D366" : "#ccc", color: "white", border: "none", cursor: text.trim() ? "pointer" : "default", fontWeight: 500 }}
+                >
+                  {sending ? "..." : "Enviar"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : isOwner ? (
-        <div className="flex-1 overflow-y-auto">
-          <h2 className="p-4 text-xl font-bold">Mensagens</h2>
-          {threads.length === 0 ? (
-            <p className="p-4 text-gray-500">Nenhuma conversa</p>
-          ) : (
-            threads.map((t) => (
-              <button key={t.id} onClick={() => setThreadId(t.id)} className="w-full p-4 flex items-center gap-3 border-b">
-                <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                  {t.author_name?.[0]?.toUpperCase() || "?"}
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">{t.author_name}</p>
-                  <p className="text-sm text-gray-500">{t.last_message_at ? formatDate(t.last_message_at) : ""}</p>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <p className="text-lg font-medium mb-4">{tenant?.name}</p>
-          <button onClick={createThread} disabled={creating} className="bg-green-500 text-white px-6 py-3 rounded-full">
-            {creating ? "Criando..." : "Iniciar conversa"}
-          </button>
-        </div>
-      )}
-
+        ) : isOwner ? (
+          <div style={{ overflowY: "auto", height: "100%" }}>
+            <h2 style={{ padding: "16px", fontSize: "20px", fontWeight: "bold" }}>Mensagens</h2>
+            {threads.length === 0 ? (
+              <p style={{ padding: "16px", color: "#666" }}>Nenhuma conversa</p>
+            ) : (
+              threads.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setThreadId(t.id)}
+                  style={{ width: "100%", padding: "16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: "1px solid #eee", background: "white", cursor: "pointer" }}
+                >
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#e5e5e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {t.author_name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <p style={{ fontWeight: 500 }}>{t.author_name}</p>
+                    <p style={{ fontSize: "12px", color: "#666" }}>{t.last_message_at ? formatTime(t.last_message_at) : ""}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "20px" }}>
+            <p style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "8px" }}>{tenant?.name}</p>
+            <p style={{ color: "#666", marginBottom: "20px" }}>Inicie uma conversa</p>
+            <button
+              onClick={createThread}
+              disabled={creating}
+              style={{ padding: "12px 24px", borderRadius: "24px", background: "#25D366", color: "white", border: "none", fontWeight: 500, cursor: "pointer" }}
+            >
+              {creating ? "Criando..." : "Iniciar conversa"}
+            </button>
+          </div>
+        )}
+      </div>
       <BottomNav />
     </div>
   );
