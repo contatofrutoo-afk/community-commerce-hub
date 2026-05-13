@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { track } from "@/lib/tracking";
-import { Send, Trash2 } from "lucide-react";
+import { Send, Trash2, ImagePlus, X } from "lucide-react";
 
 type Comment = {
   id: string;
   post_id: string;
   content: string;
+  image_url?: string | null;
   created_at: string;
   user_id: string;
   author_name?: string | null;
@@ -32,9 +33,13 @@ export default function CommentsSheet({
   const { isOwner } = useTenant();
   const [list, setList] = useState<Comment[]>([]);
   const [text, setText] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const profileCache = useRef<Map<string, { name: string; avatar: string }>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProfile = async (userId: string): Promise<{ name: string; avatar: string } | null> => {
     if (profileCache.current.has(userId)) return profileCache.current.get(userId)!;
@@ -42,6 +47,36 @@ export default function CommentsSheet({
     const profile = { name: data?.name ?? null, avatar: data?.avatar_url ?? null };
     if (profile.name) profileCache.current.set(userId, profile);
     return profile;
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImage(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!image) return null;
+    setUploading(true);
+    try {
+      const ext = image.name.split(".").pop() ?? "jpg";
+      const path = `comments/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("public").upload(path, image, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (e: any) { toast.error("Erro ao上传 imagem"); return null; }
+    finally { setUploading(false); }
   };
 
   useEffect(() => {
@@ -59,9 +94,10 @@ export default function CommentsSheet({
           id: d.id,
           post_id: d.post_id,
           content: d.metadata?.content ?? "",
+          image_url: d.metadata?.image_url ?? null,
           created_at: d.created_at,
           user_id: d.user_id,
-        })).filter((c: Comment) => c.content);
+        })).filter((c: Comment) => c.content || c.image_url);
         
         const uniqueUserIds = Array.from(new Set(items.map((c: Comment) => c.user_id)));
         if (uniqueUserIds.length > 0) {
@@ -98,13 +134,20 @@ export default function CommentsSheet({
   };
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && !image) return;
     if (!user) {
       toast.error("Entre para comentar");
       return;
     }
     setSending(true);
     const content = text.trim().slice(0, 500);
+    
+    let imageUrl: string | null = null;
+    if (image) {
+      imageUrl = await uploadImage();
+      if (!imageUrl) { setSending(false); return; }
+    }
+    
     const { data, error } = await supabase
       .from("interactions")
       .insert({
@@ -112,7 +155,7 @@ export default function CommentsSheet({
         post_id: postId,
         user_id: user.id,
         action_type: "comment",
-        metadata: { content },
+        metadata: { content, image_url: imageUrl },
       })
       .select("id, created_at")
       .single();
@@ -126,12 +169,14 @@ export default function CommentsSheet({
       id: data.id, 
       post_id: postId,
       content, 
+      image_url: imageUrl,
       created_at: data.created_at, 
       user_id: user.id,
       author_name: profile?.name ?? null,
       author_avatar: profile?.avatar ?? null,
     }, ...l]);
     setText("");
+    removeImage();
     onCountChange?.(1);
     track({ tenantId, postId, action: "comment", metadata: { length: content.length } });
   };
@@ -169,7 +214,14 @@ export default function CommentsSheet({
                       {new Date(c.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                     </p>
                   </div>
-                  <p className="text-sm leading-snug break-words">{c.content}</p>
+                  {(c.content || c.image_url) && (
+                    <>
+                      {c.content && <p className="text-sm leading-snug break-words">{c.content}</p>}
+                      {c.image_url && (
+                        <img src={c.image_url} alt="Imagem do comentário" className="mt-2 max-w-full rounded-lg border border-gray-100 max-h-48 object-cover" />
+                      )}
+                    </>
+                  )}
                 </div>
                 {canDelete && (
                   <button onClick={() => remove(c.id, c.user_id)} className="shrink-0 p-1 text-muted-foreground hover:text-red-500">
@@ -182,7 +234,26 @@ export default function CommentsSheet({
         </div>
 
         <div className="border-t border-gray-100 p-4">
+          {imagePreview && (
+            <div className="mb-3 relative inline-block">
+              <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg border border-gray-200" />
+              <button onClick={removeImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageSelect} className="hidden" />
           <div className="flex gap-3 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!user || sending}
+              className="shrink-0 text-gray-400 hover:text-[#630091]"
+            >
+              <ImagePlus className="h-5 w-5" />
+            </Button>
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -194,7 +265,7 @@ export default function CommentsSheet({
             />
             <Button 
               onClick={send} 
-              disabled={!user || sending || !text.trim()} 
+              disabled={!user || sending || (!text.trim() && !image)} 
               size="icon"
               className="h-11 w-11 shrink-0 bg-gradient-to-r from-[#630091] to-[#d81e62] text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
             >
