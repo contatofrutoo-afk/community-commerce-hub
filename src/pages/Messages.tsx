@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Send } from "lucide-react";
+import { Loader2, ArrowLeft, Send, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type Msg = {
@@ -40,15 +40,8 @@ export default function Messages() {
   const profileCache = useRef<Map<string, { name: string; avatar: string }>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const fetchProfile = async (userId: string): Promise<{ name: string; avatar: string } | null> => {
-    if (profileCache.current.has(userId)) return profileCache.current.get(userId)!;
-    const { data } = await supabase.from("profiles").select("name,avatar_url").eq("user_id", userId).maybeSingle();
-    const profile = { name: data?.name ?? null, avatar: data?.avatar_url ?? null };
-    if (profile.name) profileCache.current.set(userId, profile);
-    return profile;
-  };
-
   const formatTime = (dateStr: string) => {
+    if (!dateStr) return "";
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -131,7 +124,6 @@ export default function Messages() {
         }));
       } catch (err) {
         console.error("Error loading messages:", err);
-        toast.error("Erro ao carregar mensagens");
       } finally {
         setLoadingMessages(false);
       }
@@ -143,16 +135,18 @@ export default function Messages() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` },
         async (payload) => {
           const row = payload.new as Msg;
-          const profile = await fetchProfile(row.sender_id);
-          setMessages(prev => [...prev, { ...row, author_name: profile?.name ?? null, author_avatar: profile?.avatar ?? null }]);
+          const { data } = await supabase.from("profiles").select("name,avatar_url").eq("user_id", row.sender_id).maybeSingle();
+          setMessages(prev => [...prev, { ...row, author_name: data?.name ?? null, author_avatar: data?.avatar_url ?? null }]);
         })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [threadId]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, threadId]);
+    if (scrollRef.current && messages.length > 0) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const send = async () => {
     if (!threadId || !user || !text.trim()) return;
@@ -165,8 +159,7 @@ export default function Messages() {
       if (error) throw error;
       await supabase.from("message_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
     } catch (err) {
-      console.error("Error sending message:", err);
-      toast.error("Erro ao enviar mensagem");
+      console.error("Error sending:", err);
       setText(currentText);
     } finally {
       setSending(false);
@@ -186,31 +179,29 @@ export default function Messages() {
       if (error) throw error;
       if (newThread) setThreadId(newThread.id);
     } catch (err) {
-      console.error("Error creating thread:", err);
-      toast.error("Erro ao criar conversa");
+      console.error("Error:", err);
+      toast.error("Erro");
     } finally {
       setCreatingThread(false);
     }
   };
 
-  const getCurrentChatName = () => {
-    const currentThread = threads.find(t => t.id === threadId);
-    if (isOwner) return currentThread?.author_name || "Usuário";
-    return tenant?.name || "Marca";
+  const getChatName = () => {
+    const t = threads.find(x => x.id === threadId);
+    return isOwner ? (t?.author_name || "Usuário") : (tenant?.name || "Marca");
   };
 
-  const getCurrentChatAvatar = () => {
-    const currentThread = threads.find(t => t.id === threadId);
-    if (isOwner) return currentThread?.author_avatar;
-    return tenant?.logo_url;
+  const getChatAvatar = () => {
+    const t = threads.find(x => x.id === threadId);
+    return isOwner ? t?.author_avatar : tenant?.logo_url;
   };
 
   if (loadingThreads) {
     return (
-      <div className="h-[100dvh] flex flex-col bg-background">
+      <div className="h-[100dvh] flex flex-col bg-white">
         <TopBar />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
         <BottomNav />
       </div>
@@ -218,84 +209,88 @@ export default function Messages() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background">
+    <div className="h-[100dvh] flex flex-col bg-white">
       <TopBar />
-      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {threadId ? (
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center gap-3 px-4 py-3 border-b">
-              <Button variant="ghost" size="icon" onClick={() => setThreadId(null)}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="h-10 w-10 rounded-full overflow-hidden bg-muted">
-                {getCurrentChatAvatar() ? (
-                  <img src={getCurrentChatAvatar()!} className="w-full h-full object-cover" />
+          <div className="flex-1 flex flex-col h-full">
+            <div className="flex items-center gap-3 px-4 py-3 border-b bg-white shrink-0">
+              <button onClick={() => setThreadId(null)} className="p-1">
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </button>
+              <div className="h-10 w-10 rounded-full bg-green-100 overflow-hidden">
+                {getChatAvatar() ? (
+                  <img src={getChatAvatar()!} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">{getCurrentChatName()?.[0]?.toUpperCase()}</div>
+                  <div className="w-full h-full flex items-center justify-center text-green-600 font-medium">
+                    {getChatName()[0]?.toUpperCase()}
+                  </div>
                 )}
               </div>
-              <div>
-                <p className="font-medium">{getCurrentChatName()}</p>
-              </div>
+              <span className="font-medium text-gray-900">{getChatName()}</span>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-              {loadingMessages ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
-              ) : messages.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Nenhuma mensagem ainda</p>
-              ) : (
-                messages.map((m) => {
-                  const isMine = m.sender_id === user?.id;
-                  return (
-                    <div key={m.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMine ? "bg-green-500 text-white" : "bg-gray-200 text-gray-900"}`}>
-                        <p className="text-sm">{m.content}</p>
-                        <p className={`text-[10px] mt-1 ${isMine ? "text-green-100" : "text-gray-500"}`}>{formatTime(m.created_at)}</p>
-                      </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50" ref={scrollRef}>
+              {messages.map((m) => {
+                const isMine = m.sender_id === user?.id;
+                return (
+                  <div key={m.id} className={`flex mb-3 ${isMine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${isMine ? "bg-green-500 text-white" : "bg-gray-200 text-gray-900"}`}>
+                      <p className="text-sm break-words">{m.content}</p>
+                      <p className={`text-[10px] mt-1 ${isMine ? "text-green-100" : "text-gray-500"}`}>{formatTime(m.created_at)}</p>
                     </div>
-                  );
-                })
-              )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="p-3 border-t bg-white">
+
+            <div className="p-3 bg-white border-t shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-                  placeholder="Digite uma mensagem..."
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  placeholder="Mensagem"
                   className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  disabled={sending}
                 />
                 <button
                   onClick={send}
-                  disabled={sending || !text.trim()}
+                  disabled={!text.trim() || sending}
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${text.trim() ? "bg-green-500" : "bg-gray-300"}`}
                 >
-                  <Send className={`h-5 w-5 ${text.trim() ? "text-white" : "text-gray-500"}`} />
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  ) : (
+                    <Send className={`h-4 w-4 ${text.trim() ? "text-white" : "text-gray-500"}`} />
+                  )}
                 </button>
               </div>
             </div>
           </div>
         ) : isOwner ? (
           <div className="flex-1 overflow-y-auto">
-            <h1 className="text-2xl font-bold px-4 py-4">Conversas</h1>
+            <div className="p-4">
+              <h1 className="text-xl font-bold text-gray-900">Mensagens</h1>
+            </div>
             {threads.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">Nenhuma conversa</p>
+              <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                <MessageCircle className="h-12 w-12 mb-3" />
+                <p>Nenhuma conversa ainda</p>
+              </div>
             ) : (
               <div>
                 {threads.map((t) => (
                   <button key={t.id} onClick={() => setThreadId(t.id)} className="w-full p-4 flex items-center gap-3 border-b hover:bg-gray-50">
-                    <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
                       {t.author_avatar ? (
-                        <img src={t.author_avatar} className="w-full h-full object-cover rounded-full" />
+                        <img src={t.author_avatar} className="w-full h-full object-cover" />
                       ) : (
-                        t.author_name?.[0]?.toUpperCase() || "?"
+                        <span className="text-green-600 font-medium">{t.author_name?.[0]?.toUpperCase() || "?"}</span>
                       )}
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="font-medium">{t.author_name || "Usuário"}</p>
+                      <p className="font-medium text-gray-900">{t.author_name || "Usuário"}</p>
                       <p className="text-sm text-gray-500">{t.last_message_at ? formatTime(t.last_message_at) : ""}</p>
                     </div>
                   </button>
@@ -304,15 +299,19 @@ export default function Messages() {
             )}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <div className="text-center">
-              <p className="text-xl font-bold">{tenant?.name}</p>
-              <p className="text-muted-foreground">Sem conversas ainda</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">{tenant?.name}</h2>
+              <p className="text-gray-500 mt-1">Envie uma mensagem para a marca</p>
             </div>
-            <Button onClick={createThread} disabled={creatingThread} className="bg-green-500 hover:bg-green-600">
-              {creatingThread ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Iniciar conversa
-            </Button>
+            <button
+              onClick={createThread}
+              disabled={creatingThread}
+              className="bg-green-500 text-white px-6 py-3 rounded-full font-medium flex items-center gap-2 hover:bg-green-600 disabled:opacity-50"
+            >
+              {creatingThread ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-5 w-5" />}
+              {creatingThread ? "Criando..." : "Iniciar conversa"}
+            </button>
           </div>
         )}
       </div>
