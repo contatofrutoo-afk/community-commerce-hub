@@ -153,7 +153,7 @@ export default function Messages() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <TopBar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, position: "relative", height: "100%" }}>
         
         {threadId ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", minHeight: 0 }}>
@@ -192,8 +192,8 @@ export default function Messages() {
               )}
             </div>
 
-            <div style={{ padding: "12px 16px", background: "#fff", borderTop: "1px solid #e0e0e0", flexShrink: 0 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ padding: "12px 16px", background: "#fff", borderTop: "1px solid #e0e0e0", flexShrink: 0, minHeight: 60, display: "flex", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                 <input
                   type="text"
                   value={inputText}
@@ -201,7 +201,7 @@ export default function Messages() {
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder="Digite uma mensagem..."
                   disabled={sending}
-                  style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "1px solid #ddd", fontSize: 14, outline: "none" }}
+                  style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "1px solid #ddd", fontSize: 14, outline: "none", height: 40 }}
                 />
                 <button
                   onClick={handleSend}
