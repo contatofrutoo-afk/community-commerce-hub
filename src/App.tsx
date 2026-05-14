@@ -3,8 +3,8 @@ import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-route
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Suspense, lazy, useState, useEffect, useRef } from "react";
-
+import { Suspense, lazy, useState, useEffect } from "react";
+import { XCircle } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { getAccessStatus } from "@/lib/communityAccess";
@@ -127,36 +127,33 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
-  const accessCheckedRef = useRef(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+  
+  if (loading || tenantLoading) return <Loading />;
+  
+  if (!user || !tenant) return children;
+  
+  return <AccessCheck userId={user.id} tenantId={tenant.id}>{children}</AccessCheck>;
+};
+
+const AccessCheck = ({ userId, tenantId, children }: { userId: string; tenantId: string; children: JSX.Element }) => {
+  const [status, setStatus] = useState<string>("loading");
   
   useEffect(() => {
-    if (authLoading || tenantLoading || !user || !tenant || accessCheckedRef.current) return;
-    
-    accessCheckedRef.current = true;
-    
     (async () => {
-      try {
-        const status = await getAccessStatus(tenant.id, user.id);
-        setIsBlocked(status === "blocked");
-      } catch (err) {
-        setIsBlocked(false);
-      }
+      const accessStatus = await getAccessStatus(tenantId, userId);
+      setStatus(accessStatus);
     })();
-  }, [user, tenant, authLoading, tenantLoading]);
+  }, [userId, tenantId]);
   
-  if (authLoading || tenantLoading) return <Loading />;
-  
-  if (isBlocked) {
+  if (status === "loading") return <Loading />;
+  if (status === "blocked") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+            <XCircle className="h-8 w-8 text-red-500" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">Conta Desativada</h1>
           <p className="text-gray-500">Sua conta foi desativada pelo administrador da comunidade. Entre em contato para mais informações.</p>
@@ -164,8 +161,6 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
       </div>
     );
   }
-  
-  if (!user || !tenant) return children;
   
   return children;
 };
@@ -213,10 +208,10 @@ const App = () => (
                     <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/invite/:slug" element={<InviteLanding />} />
                     <Route path="/waiting" element={<WaitingApproval />} />
-                    <Route path="/notifications" element={<Protected><NeedsTenant><NeedsAccess><Notifications /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/requests" element={<Protected><NeedsTenant><NeedsAccess><Requests /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
+                    <Route path="/requests" element={<Protected><Requests /></Protected>} />
                     <Route path="/members" element={<Protected><NeedsTenant><NeedsAccess><Members /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/profile" element={<Protected><NeedsTenant><Profile /></NeedsTenant></Protected>} />
+                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
                   </Routes>

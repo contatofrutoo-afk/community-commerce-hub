@@ -31,7 +31,6 @@ export default function Members() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
-  const [sendingMessage, setSendingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !isB2B || !tenant) {
@@ -69,55 +68,28 @@ export default function Members() {
   };
 
   const handleSendMessage = async (member: Member) => {
-    if (!user || !tenant || sendingMessage) return;
+    if (!user || !tenant) return;
     
-    setSendingMessage(member.user_id);
-    
-    try {
-      const { data: existingThread } = await supabase
+    const { data: existingThread } = await supabase
+      .from("message_threads")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("user_id", member.user_id)
+      .maybeSingle();
+
+    let threadId = existingThread?.id;
+
+    if (!threadId) {
+      const { data: newThread } = await supabase
         .from("message_threads")
+        .insert({ tenant_id: tenant.id, user_id: member.user_id })
         .select("id")
-        .eq("tenant_id", tenant.id)
-        .eq("user_id", member.user_id)
-        .maybeSingle();
+        .single();
+      threadId = newThread?.id;
+    }
 
-      let threadId = existingThread?.id;
-
-      if (!threadId) {
-        const { data: newThread, error: createError } = await supabase
-          .from("message_threads")
-          .insert({ tenant_id: tenant.id, user_id: member.user_id })
-          .select("id")
-          .single();
-        
-        if (createError) {
-          if (createError.code === "23505") {
-            const { data: retryThread } = await supabase
-              .from("message_threads")
-              .select("id")
-              .eq("tenant_id", tenant.id)
-              .eq("user_id", member.user_id)
-              .maybeSingle();
-            threadId = retryThread?.id;
-          } else {
-            toast.error("Erro ao criar conversa");
-            setSendingMessage(null);
-            return;
-          }
-        } else {
-          threadId = newThread?.id;
-        }
-      }
-
-      if (threadId) {
-        navigate(`/messages?thread=${threadId}`);
-      } else {
-        toast.error("Erro ao iniciar conversa");
-      }
-    } catch (err) {
-      toast.error("Erro ao enviar mensagem");
-    } finally {
-      setSendingMessage(null);
+    if (threadId) {
+      navigate(`/messages?thread=${threadId}`);
     }
   };
 
@@ -159,6 +131,7 @@ export default function Members() {
           <div className="grid grid-cols-2 gap-3">
             {members.map((member) => {
               const profile = member.profiles;
+              const initial = profile?.name?.[0]?.toUpperCase() || "?";
               
               return (
                 <div 
@@ -220,14 +193,9 @@ export default function Members() {
                     <Button
                       onClick={() => handleSendMessage(member)}
                       size="sm"
-                      disabled={sendingMessage === member.user_id}
-                      className="w-full mt-2 bg-[#630091] text-white hover:bg-[#52007a] rounded-xl disabled:opacity-50"
+                      className="w-full mt-2 bg-[#630091] text-white hover:bg-[#52007a] rounded-xl"
                     >
-                      {sendingMessage === member.user_id ? (
-                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                      ) : (
-                        <MessageCircle className="h-4 w-4 mr-1.5" />
-                      )}
+                      <MessageCircle className="h-4 w-4 mr-1.5" />
                       Mensagem
                     </Button>
                   </div>
