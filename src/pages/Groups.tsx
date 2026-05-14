@@ -119,7 +119,9 @@ export default function Groups() {
   const createGroup = async () => {
     if (!user || !tenant || !newGroupName.trim()) return;
     setSaving(true);
-    const { data, error } = await supabase
+    
+    // Create group
+    const { data: groupData, error: groupError } = await supabase
       .from("groups")
       .insert({
         tenant_id: tenant.id,
@@ -129,13 +131,25 @@ export default function Groups() {
       })
       .select()
       .single();
+    
+    // If group created, add creator as member
+    if (groupData) {
+      await supabase.from("group_members").insert({
+        group_id: groupData.id,
+        user_id: user.id,
+        added_by: user.id,
+      });
+    }
+    
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
+    
+    if (groupError) {
+      toast.error(groupError.message);
       return;
     }
-    if (data) {
-      setGroups([data, ...groups]);
+    
+    if (groupData) {
+      setGroups([groupData, ...groups]);
       setShowModal(false);
       setNewGroupName("");
       setNewGroupType("private");
