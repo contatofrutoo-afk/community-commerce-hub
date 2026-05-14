@@ -3,24 +3,31 @@ import { Link, useLocation } from "react-router-dom";
 import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function BottomNav() {
   const { pathname } = useLocation();
-  const { isB2B, user } = useAuth();
+  const { isB2B, user, appRole } = useAuth();
+  const { isOwner, canManage } = useTenant();
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [pendingCount, setPendingCount] = useState(0);
 
+  // Mostrar itens de admin se for B2B, admin ou owner/canManage
+  const showAdminItems = isB2B || appRole === "admin" || isOwner || canManage;
+  
+  console.log("BottomNav: isB2B:", isB2B, "appRole:", appRole, "isOwner:", isOwner, "canManage:", canManage, "showAdminItems:", showAdminItems);
+
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },
-    ...(isB2B ? [{ to: "/content", icon: Plus, label: "Criar", special: true }] : []),
+    ...(showAdminItems ? [{ to: "/content", icon: Plus, label: "Criar", special: true }] : []),
     { to: "/conversas", icon: MessageSquare, label: "Conversas" },
     { to: "/notifications", icon: Bell, label: "Notificações", badge: pendingCount },
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
-    ...(isB2B ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
-    ...(isB2B ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
+    ...(showAdminItems ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
+    ...(showAdminItems ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
   ];
 

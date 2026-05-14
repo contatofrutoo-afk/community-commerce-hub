@@ -95,12 +95,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         const roles = (mems ?? []).map((m) => m.role);
+        console.log("AuthContext: roles:", roles);
         
         let newRole: AppRole | null = null;
         
-        if (roles.includes("owner") || roles.includes("admin")) {
-          newRole = roles.includes("admin") ? "admin" : "b2b";
-        } else if (roles.includes("member")) {
+        const hasOwner = roles.includes("owner");
+        const hasAdmin = roles.includes("admin");
+        const hasMember = roles.includes("member");
+        
+        console.log("AuthContext: hasOwner:", hasOwner, "hasAdmin:", hasAdmin, "hasMember:", hasMember);
+        
+        if (hasOwner || hasAdmin) {
+          newRole = hasAdmin ? "admin" : "b2b";
+          console.log("AuthContext: Definido como B2B!");
+        } else if (hasMember) {
           newRole = "b2c";
         } else {
           // Se não tem membership, cria como B2C

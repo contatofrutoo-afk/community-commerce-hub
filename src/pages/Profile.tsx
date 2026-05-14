@@ -12,12 +12,17 @@ import { LogOut, Building2, Upload, MapPin, Copy, ExternalLink, Link2 } from "lu
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, signOut, isB2B } = useAuth();
-  const { tenant } = useTenant();
+  const { user, signOut, isB2B, appRole } = useAuth();
+  const { tenant, isOwner, canManage } = useTenant();
 
   const nav = useNavigate();
+  
+  console.log("Profile: isB2B:", isB2B, "appRole:", appRole, "tenant:", tenant?.id, "isOwner:", isOwner, "canManage:", canManage);
 
   const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
+  
+  // Mostrar para B2B, admin ou owner/admin de comunidade
+  const canShare = isB2B || appRole === "admin" || isOwner || canManage;
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -165,7 +170,7 @@ export default function Profile() {
           </Button>
         </section>
 
-{isB2B && tenant?.slug && (
+{canShare && tenant?.slug && (
           <section className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-purple-600" />
