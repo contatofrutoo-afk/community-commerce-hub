@@ -36,6 +36,9 @@ export default function Profile() {
   
   const [copied, setCopied] = useState(false);
   
+  // Gerar link de compartilhamento da comunidade
+  const shareLink = tenant?.slug ? `https://weaze.app/c/${tenant.slug}` : "";
+  
   
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
