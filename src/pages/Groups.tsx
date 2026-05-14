@@ -230,7 +230,6 @@ export default function Groups() {
     setShowMembersModal(false);
     setSelectedGroup(null);
     setSearchTerm("");
-    setSearchResults([]);
     setSelectedMembers([]);
     toast.success(`${membersToInsert.length} membro(s) adicionado(s)!`);
   };
