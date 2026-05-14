@@ -131,15 +131,20 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
   const { tenant, tenants, loading: tenantLoading } = useTenant();
   
+  console.log("NeedsAccess: user:", user?.id, "loading:", loading, "tenantLoading:", tenantLoading, "tenants:", tenants.length, "tenant:", tenant?.id);
+  
   if (loading || tenantLoading) return <Loading />;
   
   // Se não tem tenant mas tem tenants, usa o primeiro
   const activeTenant = tenant || (tenants.length > 0 ? tenants[0] : null);
   
+  console.log("NeedsAccess: activeTenant:", activeTenant?.id);
+  
   if (!user) return <Navigate to="/auth" replace />;
   
   // Se não tem tenant disponível, mostra mensagem
   if (!activeTenant && tenants.length === 0) {
+    console.log("NeedsAccess: SEM TENANTS - mostrando mensagem");
     return (
       <div className="min-h-screen flex flex-col">
         <TopBar />

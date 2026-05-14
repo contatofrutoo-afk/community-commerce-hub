@@ -75,6 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     (async () => {
       try {
+        console.log("AuthContext: carregando memberships para user:", user.id);
+        
         const { data: mems, error } = await supabase
           .from("memberships")
           .select("tenant_id, role")
@@ -83,6 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cancelled) return;
         
         clearTimeout(timeout);
+        
+        console.log("AuthContext: memberships encontradas:", mems?.length, "erro:", error);
         
         if (error) {
           console.error("Erro ao carregar memberships:", error);

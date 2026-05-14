@@ -54,10 +54,14 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     }, 5000);
     
     try {
+      console.log("TenantContext: carregando para user_id:", user.id);
+      
       const { data: mems, error } = await supabase
         .from("memberships")
         .select("tenant_id, role, tenants(*)")
         .eq("user_id", user.id);
+      
+      console.log("TenantContext: memberships retornadas:", mems?.length, "erro:", error);
       
       clearTimeout(timeout);
       
@@ -67,7 +71,17 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
+      if (!mems || mems.length === 0) {
+        console.log("TenantContext: nenhuma membership encontrada");
+        setTenants([]);
+        setTenant(null);
+        setLoading(false);
+        return;
+      }
+      
       const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
+      console.log("TenantContext: tenants encontrados:", list.length);
+      
       const roles: TenantRoles = {} as TenantRoles;
       (mems ?? []).forEach((m: unknown) => {
         const membership = m as { tenant_id: string; role: "owner" | "admin" | "member" };
