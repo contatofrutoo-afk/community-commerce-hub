@@ -235,14 +235,6 @@ export default function Groups() {
     toast.success(`${membersToInsert.length} membro(s) adicionado(s)!`);
   };
 
-  const openAddMembers = (group: Group) => {
-    setSelectedGroup(group);
-    setShowMembersModal(true);
-    setSearchTerm("");
-    setSearchResults([]);
-    setSelectedMembers([]);
-  };
-
   // Group detail / forum
   const openGroup = (group: Group) => {
     setCurrentGroup(group);
