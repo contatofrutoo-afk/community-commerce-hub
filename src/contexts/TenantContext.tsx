@@ -69,7 +69,23 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
+    // Fallback: se join não retornou tenants, buscar diretamente
+    let list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
+    
+    // Se list vazia mas tem memberships, buscar tenant separadamente
+    if (list.length === 0 && mems && mems.length > 0) {
+      console.log("FALLBACK: buscando tenants separadamente");
+      const tenantIds = mems.map((m: any) => m.tenant_id);
+      const { data: tenantData } = await supabase
+        .from("tenants")
+        .select("id, name, slug, logo_url, city, phone, bio")
+        .in("id", tenantIds);
+      
+      if (tenantData) {
+        list = tenantData as Tenant[];
+        console.log("FALLBACK OK:", list.length, "tenants");
+      }
+    }
     console.log("TENANTS LIST:", list);
     
     const roles: TenantRoles = {} as TenantRoles;
