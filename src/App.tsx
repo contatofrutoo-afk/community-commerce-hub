@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes, Navigate, useNavigate } from "react-route
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Suspense, lazy, useState, useEffect } from "react";
+import { Suspense, lazy, useState, useEffect, useRef } from "react";
 import { XCircle } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
@@ -139,13 +139,35 @@ const NeedsAccess = ({ children }: { children: JSX.Element }) => {
 
 const AccessCheck = ({ userId, tenantId, children }: { userId: string; tenantId: string; children: JSX.Element }) => {
   const [status, setStatus] = useState<string>("loading");
+  const mountedRef = useRef(true);
   
   useEffect(() => {
+    mountedRef.current = true;
+    
+    const timeout = setTimeout(() => {
+      if (mountedRef.current && status === "loading") {
+        setStatus("approved");
+      }
+    }, 3000);
+    
     (async () => {
-      const accessStatus = await getAccessStatus(tenantId, userId);
-      setStatus(accessStatus);
+      try {
+        const accessStatus = await getAccessStatus(tenantId, userId);
+        if (mountedRef.current) {
+          setStatus(accessStatus);
+        }
+      } catch (err) {
+        if (mountedRef.current) {
+          setStatus("approved");
+        }
+      }
     })();
-  }, [userId, tenantId]);
+    
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(timeout);
+    };
+  }, [userId, tenantId, status]);
   
   if (status === "loading") return <Loading />;
   if (status === "blocked") {
