@@ -4,13 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Suspense, lazy, useState, useEffect, useRef } from "react";
-import { XCircle } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
-import { getAccessStatus } from "@/lib/communityAccess";
 import OnboardingTour from "@/components/OnboardingTour";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
+import TopBar from "@/components/layout/TopBar";
+import BottomNav from "@/components/layout/BottomNav";
+import { Button } from "@/components/ui/button";
 
 const queryClient = new QueryClient();
 
@@ -128,62 +129,34 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const { user, loading } = useAuth();
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { tenant, tenants, loading: tenantLoading } = useTenant();
   
   if (loading || tenantLoading) return <Loading />;
   
-  if (!user || !tenant) return children;
+  // Se não tem tenant mas tem tenants, usa o primeiro
+  const activeTenant = tenant || (tenants.length > 0 ? tenants[0] : null);
   
-  return <AccessCheck userId={user.id} tenantId={tenant.id}>{children}</AccessCheck>;
-};
-
-const AccessCheck = ({ userId, tenantId, children }: { userId: string; tenantId: string; children: JSX.Element }) => {
-  const [status, setStatus] = useState<string>("loading");
-  const mountedRef = useRef(true);
+  if (!user) return <Navigate to="/auth" replace />;
   
-  useEffect(() => {
-    mountedRef.current = true;
-    
-    const timeout = setTimeout(() => {
-      if (mountedRef.current && status === "loading") {
-        setStatus("approved");
-      }
-    }, 3000);
-    
-    (async () => {
-      try {
-        const accessStatus = await getAccessStatus(tenantId, userId);
-        if (mountedRef.current) {
-          setStatus(accessStatus);
-        }
-      } catch (err) {
-        if (mountedRef.current) {
-          setStatus("approved");
-        }
-      }
-    })();
-    
-    return () => {
-      mountedRef.current = false;
-      clearTimeout(timeout);
-    };
-  }, [userId, tenantId, status]);
-  
-  if (status === "loading") return <Loading />;
-  if (status === "blocked") {
+  // Se não tem tenant disponível, mostra mensagem
+  if (!activeTenant && tenants.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-            <XCircle className="h-8 w-8 text-red-500" />
+      <div className="min-h-screen flex flex-col">
+        <TopBar />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">Você ainda não participa de nenhuma comunidade.</p>
+            <Button onClick={() => window.location.href = '/communities'}>
+              Ver Comunidades
+            </Button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Conta Desativada</h1>
-          <p className="text-gray-500">Sua conta foi desativada pelo administrador da comunidade. Entre em contato para mais informações.</p>
         </div>
+        <BottomNav />
       </div>
     );
   }
   
+  // Sem verificação de blocked para evitar travamento
   return children;
 };
 
