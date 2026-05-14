@@ -128,17 +128,31 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
-  const { tenant, tenants, loading: tenantLoading } = useTenant();
+  const { user, loading, isB2B, appRole } = useAuth();
+  const { tenant, tenants, loading: tenantLoading, isOwner, canManage } = useTenant();
   
-  if (loading) return <Loading />;
+  console.log("=== NEEDSACCESS ===");
+  console.log("user:", user?.id);
+  console.log("authLoading:", loading);
+  console.log("tenantLoading:", tenantLoading);
+  console.log("tenant:", tenant?.id);
+  console.log("tenants.length:", tenants.length);
+  console.log("isB2B:", isB2B);
+  console.log("appRole:", appRole);
+  console.log("isOwner:", isOwner);
+  console.log("canManage:", canManage);
   
-  // Se ainda carregando tenant, deixa passar
-  if (tenantLoading) return children;
+  if (loading || tenantLoading) {
+    console.log("RETORNANDO LOADING");
+    return <Loading />;
+  }
   
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    console.log("SEM USER - REDIRECT /auth");
+    return <Navigate to="/auth" replace />;
+  }
   
-  // Permite acesso mesmo sem tenant - o componente que decide se mostra algo
+  console.log("RETORNANDO CHILDREN");
   return children;
 };
 

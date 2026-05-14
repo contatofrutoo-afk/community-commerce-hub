@@ -60,7 +60,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    console.log("=== AUTHCONTEXT EFFECT ===");
+    console.log("User received:", user?.id);
+    
     if (!user) { 
+      console.log("Sem user - limpando role");
       setAppRole(null);
       setLoading(false);
       return; 
@@ -68,21 +72,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     let cancelled = false;
     (async () => {
+      console.log("AuthContext: buscando memberships para", user.id);
       const { data: mems } = await supabase
         .from("memberships")
         .select("tenant_id, role")
         .eq("user_id", user.id);
       
+      console.log("AuthContext: memberships:", mems);
+      
       if (cancelled) return;
       
       const roles = (mems ?? []).map((m) => m.role);
+      console.log("AuthContext: roles:", roles);
       
       let newRole: AppRole | null = null;
       
       if (roles.includes("owner") || roles.includes("admin")) {
         newRole = roles.includes("admin") ? "admin" : "b2b";
+        console.log("AuthContext: DEFINIDO COMO B2B/ADMIN");
       } else {
         newRole = "b2c";
+        console.log("AuthContext: DEFINIDO COMO B2C");
       }
       
       setAppRole(newRole);
@@ -95,6 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasJoinedCommunities: mems && mems.length > 0,
       });
       
+      console.log("AuthContext: loading=false");
       setLoading(false);
     })();
     return () => { cancelled = true; };
