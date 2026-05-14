@@ -128,31 +128,12 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading, isB2B, appRole } = useAuth();
-  const { tenant, tenants, loading: tenantLoading, isOwner, canManage } = useTenant();
+  const { user, loading } = useAuth();
+  const { tenant, tenants, loading: tenantLoading } = useTenant();
   
-  console.log("=== NEEDSACCESS ===");
-  console.log("user:", user?.id);
-  console.log("authLoading:", loading);
-  console.log("tenantLoading:", tenantLoading);
-  console.log("tenant:", tenant?.id);
-  console.log("tenants.length:", tenants.length);
-  console.log("isB2B:", isB2B);
-  console.log("appRole:", appRole);
-  console.log("isOwner:", isOwner);
-  console.log("canManage:", canManage);
+  if (loading || tenantLoading) return <Loading />;
+  if (!user) return <Navigate to="/auth" replace />;
   
-  if (loading || tenantLoading) {
-    console.log("RETORNANDO LOADING");
-    return <Loading />;
-  }
-  
-  if (!user) {
-    console.log("SEM USER - REDIRECT /auth");
-    return <Navigate to="/auth" replace />;
-  }
-  
-  console.log("RETORNANDO CHILDREN");
   return children;
 };
 
