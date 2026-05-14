@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users, Folder } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -26,6 +26,7 @@ export default function BottomNav() {
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
     ...(showAdminItems ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
     ...(showAdminItems ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
+    ...(showAdminItems ? [{ to: "/groups", icon: Folder, label: "Grupos" }] : []),
     { to: "/profile", icon: User, label: "Perfil" },
   ];
 
