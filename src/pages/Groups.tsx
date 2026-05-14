@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -55,7 +55,6 @@ export default function Groups() {
   const { user, isB2B } = useAuth();
   const { tenant } = useTenant();
   const navigate = useNavigate();
-  const { groupId } = useParams();
   
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,27 +174,44 @@ export default function Groups() {
     setSelectedMembers([]);
     setMembersLoading(true);
     
-    const { data, error } = await supabase
+    const { data: membershipsData, error: membershipsError } = await supabase
       .from("memberships")
-      .select("user_id, role, profiles(name, avatar_url, city)")
+      .select("user_id, role, city")
       .eq("tenant_id", group.tenant_id)
       .neq("role", "owner")
       .eq("is_active", true);
     
-    setMembersLoading(false);
-    
-    if (error) {
+    if (membershipsError) {
+      setMembersLoading(false);
       setAllMembers([]);
       return;
     }
     
-    const members = (data || []).map((m: any) => ({
+    if (!membershipsData || membershipsData.length === 0) {
+      setMembersLoading(false);
+      setAllMembers([]);
+      return;
+    }
+    
+    const userIds = [...new Set(membershipsData.map(m => m.user_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url")
+      .in("id", userIds);
+    
+    const profilesMap = (profilesData || []).reduce((acc: any, p) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+    
+    const members = membershipsData.map((m: any) => ({
       user_id: m.user_id,
-      name: m.profiles?.name || "Usuário",
-      avatar_url: m.profiles?.avatar_url || null,
-      city: m.profiles?.city || null,
+      name: profilesMap[m.user_id]?.name || "Usuário",
+      avatar_url: profilesMap[m.user_id]?.avatar_url || null,
+      city: m.city || null,
     }));
     
+    setMembersLoading(false);
     setAllMembers(members);
   };
 
