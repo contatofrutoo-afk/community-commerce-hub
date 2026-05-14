@@ -68,9 +68,9 @@ export default function Groups() {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<MemberSearch[]>([]);
+  const [allMembers, setAllMembers] = useState<MemberSearch[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<MemberSearch[]>([]);
-  const [searching, setSearching] = useState(false);
   const [savingMembers, setSavingMembers] = useState(false);
 
   // Group posts (forum)
@@ -153,42 +153,44 @@ export default function Groups() {
     toast.success("Grupo excluído");
   };
 
-  // Members search with debounce
-  const searchMembers = useCallback(async (query: string) => {
-    if (!tenant || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    setSearching(true);
+  // Load all members when opening modal
+  const openAddMembers = async (group: Group) => {
+    setSelectedGroup(group);
+    setShowMembersModal(true);
+    setSearchTerm("");
+    setSelectedMembers([]);
+    setMembersLoading(true);
+    
     const { data, error } = await supabase
       .from("memberships")
       .select("user_id, role, profiles(name, avatar_url, city)")
-      .eq("tenant_id", tenant.id)
+      .eq("tenant_id", group.tenant_id)
       .neq("role", "owner")
       .eq("is_active", true);
-    setSearching(false);
+    
+    setMembersLoading(false);
+    
     if (error) {
-      setSearchResults([]);
+      setAllMembers([]);
       return;
     }
-    const filtered = (data || [])
-      .filter((m: any) => {
-        const name = m.profiles?.name?.toLowerCase() || "";
-        return name.includes(query.toLowerCase());
-      })
-      .map((m: any) => ({
-        user_id: m.user_id,
-        name: m.profiles?.name || "Usuário",
-        avatar_url: m.profiles?.avatar_url || null,
-        city: m.profiles?.city || null,
-      }));
-    setSearchResults(filtered);
-  }, [tenant]);
+    
+    const members = (data || []).map((m: any) => ({
+      user_id: m.user_id,
+      name: m.profiles?.name || "Usuário",
+      avatar_url: m.profiles?.avatar_url || null,
+      city: m.profiles?.city || null,
+    }));
+    
+    setAllMembers(members);
+  };
 
-  useEffect(() => {
-    const timer = setTimeout(() => searchMembers(searchTerm), 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm, searchMembers]);
+  // Filter members locally based on search term
+  const filteredMembers = searchTerm.length < 2 
+    ? allMembers 
+    : allMembers.filter(m => 
+        m.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
   const toggleMember = (member: MemberSearch) => {
     const exists = selectedMembers.find(m => m.user_id === member.user_id);
@@ -597,9 +599,13 @@ export default function Groups() {
               <Input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="🔎 Procurar membro..." className="pr-10" />
               {searching && <Loader2 className="h-4 w-4 absolute right-3 top-3 animate-spin text-gray-400" />}
             </div>
-            {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border rounded-lg">
-                {searchResults.map(member => {
+            {membersLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            ) : filteredMembers.length > 0 ? (
+              <div className="max-h-64 overflow-y-auto border rounded-lg">
+                {filteredMembers.map(member => {
                   const isSelected = selectedMembers.some(m => m.user_id === member.user_id);
                   return (
                     <div key={member.user_id} onClick={() => toggleMember(member)} className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-purple-50" : ""}`}>
@@ -617,9 +623,8 @@ export default function Groups() {
                   );
                 })}
               </div>
-            )}
-            {searchTerm.length >= 2 && searchResults.length === 0 && !searching && (
-              <p className="text-center text-gray-500 text-sm">Nenhum membro encontrado</p>
+            ) : (
+              <p className="text-center text-gray-500 text-sm py-2">Nenhum membro encontrado</p>
             )}
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowMembersModal(false)} className="flex-1">Cancelar</Button>
