@@ -17,8 +17,6 @@ export default function BottomNav() {
 
   // Mostrar itens de admin se for B2B, admin ou owner/canManage
   const showAdminItems = isB2B || appRole === "admin" || isOwner || canManage;
-  
-  console.log("BottomNav: isB2B:", isB2B, "appRole:", appRole, "isOwner:", isOwner, "canManage:", canManage, "showAdminItems:", showAdminItems);
 
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },

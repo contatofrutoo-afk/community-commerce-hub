@@ -17,10 +17,6 @@ export default function Profile() {
 
   const nav = useNavigate();
   
-  console.log("Profile: isB2B:", isB2B, "appRole:", appRole, "tenant:", tenant?.id, "isOwner:", isOwner, "canManage:", canManage);
-
-  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/invite/${tenant?.slug}` : `/invite/${tenant?.slug}`;
-  
   // Mostrar para B2B, admin ou owner/admin de comunidade
   const canShare = isB2B || appRole === "admin" || isOwner || canManage;
 

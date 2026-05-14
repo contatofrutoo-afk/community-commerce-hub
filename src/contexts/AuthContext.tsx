@@ -67,77 +67,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     let cancelled = false;
-    const timeout = setTimeout(() => {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    }, 5000);
-    
     (async () => {
-      try {
-        console.log("AuthContext: carregando memberships para user:", user.id);
-        
-        const { data: mems, error } = await supabase
-          .from("memberships")
-          .select("tenant_id, role")
-          .eq("user_id", user.id);
-        
-        if (cancelled) return;
-        
-        clearTimeout(timeout);
-        
-        console.log("AuthContext: memberships encontradas:", mems?.length, "erro:", error);
-        
-        if (error) {
-          console.error("Erro ao carregar memberships:", error);
-          setLoading(false);
-          return;
-        }
-        
-        const roles = (mems ?? []).map((m) => m.role);
-        console.log("AuthContext: roles:", roles);
-        
-        let newRole: AppRole | null = null;
-        
-        const hasOwner = roles.includes("owner");
-        const hasAdmin = roles.includes("admin");
-        const hasMember = roles.includes("member");
-        
-        console.log("AuthContext: hasOwner:", hasOwner, "hasAdmin:", hasAdmin, "hasMember:", hasMember);
-        
-        if (hasOwner || hasAdmin) {
-          newRole = hasAdmin ? "admin" : "b2b";
-          console.log("AuthContext: Definido como B2B!");
-        } else if (hasMember) {
-          newRole = "b2c";
-        } else {
-          // Se não tem membership, cria como B2C
-          newRole = "b2c";
-        }
-        
-        setAppRole(newRole);
-        
-        // Set userState directly from memberships
-        const isB2B = roles.includes("owner") || roles.includes("admin");
-        setUserState({
-          isB2B,
-          hasCommunity: isB2B,
-          hasJoinedCommunities: mems && mems.length > 0,
-        });
-        
-        setLoading(false);
-      } catch (err) {
-        if (!cancelled) {
-          clearTimeout(timeout);
-          console.error("Erro no auth effect:", err);
-          setLoading(false);
-        }
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", user.id);
+      
+      if (cancelled) return;
+      
+      const roles = (mems ?? []).map((m) => m.role);
+      
+      let newRole: AppRole | null = null;
+      
+      if (roles.includes("owner") || roles.includes("admin")) {
+        newRole = roles.includes("admin") ? "admin" : "b2b";
+      } else {
+        newRole = "b2c";
       }
+      
+      setAppRole(newRole);
+      
+      // Set userState directly from memberships
+      const isB2B = roles.includes("owner") || roles.includes("admin");
+      setUserState({
+        isB2B,
+        hasCommunity: isB2B,
+        hasJoinedCommunities: mems && mems.length > 0,
+      });
+      
+      setLoading(false);
     })();
-    return () => { 
-      cancelled = true; 
-      clearTimeout(timeout);
-    };
+    return () => { cancelled = true; };
   }, [user]);
 
 // Buscar estado do usuário e definir redirecionamento
