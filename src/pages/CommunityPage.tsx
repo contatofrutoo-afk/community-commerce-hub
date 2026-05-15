@@ -83,6 +83,27 @@ export default function CommunityPage() {
       const status = await getAccessStatus(tenantData.id, user.id);
       setAccessStatus(status);
 
+      if (status === "approved") {
+        setLoading(false);
+        return;
+      }
+
+      const { data: mem } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("tenant_id", tenantData.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!mem) {
+        await supabase.from("memberships").insert({
+          tenant_id: tenantData.id,
+          user_id: user.id,
+          role: "member",
+        });
+        setAccessStatus("approved");
+      }
+
       setLoading(false);
     })();
   }, [communitySlug, isB2B, user]);

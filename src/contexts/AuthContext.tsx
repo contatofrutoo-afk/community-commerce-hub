@@ -112,8 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (pendingSlug) {
-      const redirectPath = `/invite/${pendingSlug}`;
-      setRedirectTo(redirectPath);
+      setRedirectTo(`/c/${pendingSlug}`);
       setRedirected(true);
       return;
     }
