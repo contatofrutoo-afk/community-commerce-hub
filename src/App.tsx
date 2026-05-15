@@ -138,11 +138,11 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
-                    <Route path="/m" element={<CommunityPage />} />
-                    <Route path="/c" element={<CommunityPage />} />
                     <Route path="/m/:slug" element={<CommunityPage />} />
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/community/:slug" element={<CommunityPage />} />
+                    <Route path="/m" element={<CommunityPage />} />
+                    <Route path="/c" element={<CommunityPage />} />
                     <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
 <Route path="/communities" element={<Protected><B2BOnly><Communities /></B2BOnly></Protected>} />
                     <Route path="/feed" element={<Protected><NeedsTenant><NeedsAccess><Feed /></NeedsAccess></NeedsTenant></Protected>} />

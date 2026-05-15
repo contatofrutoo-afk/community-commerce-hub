@@ -34,7 +34,7 @@ export default function CommunityPage() {
   };
   
   const getSlugFromUrl = () => {
-    if (slug) return slug;
+    if (slug && slug.trim()) return slug.trim();
     const params = new URLSearchParams(location.search);
     return params.get("slug") || params.get("s") || "";
   };
