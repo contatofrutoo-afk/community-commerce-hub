@@ -60,7 +60,7 @@ function BuyDialog({ cta, postId, tenantId, open, onClose }: any) {
   const go = async () => {
     if (c.checkout_url) {
       await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "buy" } });
-      window.open(c.checkout_url, "_blank", "noopener,noreferrer");
+      window.location.href = c.checkout_url;
     }
     onClose();
   };
@@ -333,7 +333,7 @@ function InfoDialog({ cta, postId, tenantId, open, onClose }: any) {
   const goExternal = async () => {
     if (c.url) {
       await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "info_external" } });
-      window.open(c.url, "_blank", "noopener,noreferrer");
+      window.location.href = c.url;
     }
     onClose();
   };
@@ -366,7 +366,7 @@ function LiveDialog({ cta, postId, tenantId, open, onClose }: any) {
   const goLive = async () => {
     if (c.external_url) {
       await track({ tenantId, postId, ctaId: cta.id, action: "click_cta", metadata: { intent: "live" } });
-      window.open(c.external_url, "_blank", "noopener,noreferrer");
+      window.location.href = c.external_url;
     }
     onClose();
   };

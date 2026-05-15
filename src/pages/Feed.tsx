@@ -237,18 +237,16 @@ export default function Feed() {
       <TopBar />
       {/* Live indicator at top when there's an active live */}
       {activeLiveUrl && (
-        <button 
-          type="button"
-          onClick={() => {
-            console.log("CLICK LIVE - URL:", activeLiveUrl);
-            window.open(activeLiveUrl, "_blank");
-          }}
+        <a
+          href={activeLiveUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mx-3 mt-2 flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg animate-pulse hover:bg-red-500/20 transition w-full text-left"
         >
           <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
           <span className="text-sm font-semibold text-red-500">Há uma live acontecendo agora!</span>
           <span className="text-xs text-red-400 ml-auto">Assistir →</span>
-        </button>
+        </a>
       )}
       {pinnedPost && (
         <button
