@@ -37,7 +37,8 @@ export default function Profile() {
   const [copied, setCopied] = useState(false);
   
   // Gerar link de compartilhamento da comunidade
-  const shareLink = tenant?.slug ? `https://weaze.app/c/${tenant.slug}` : "";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const shareLink = tenant?.slug ? `${baseUrl}/c/${tenant.slug}` : "";
   
   
 

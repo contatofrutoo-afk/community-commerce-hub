@@ -31,7 +31,7 @@ export default function InviteLinks() {
   const [campaign, setCampaign] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://app.weaze.app";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const brandSlug = tenant?.slug || "sua-marca";
   const inviteUrl = `${baseUrl}/m/${brandSlug}${ref || campaign ? "?" : ""}${ref ? `ref=${encodeURIComponent(ref)}` : ""}${ref && campaign ? "&" : ""}${campaign ? `campaign=${encodeURIComponent(campaign)}` : ""}`;
 
