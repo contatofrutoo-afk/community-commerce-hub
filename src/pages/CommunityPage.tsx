@@ -69,6 +69,14 @@ export default function CommunityPage() {
     })();
   }, [communitySlug, isB2B, user]);
 
+  const enterCommunity = () => {
+    if (tenant) {
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+      sessionStorage.setItem("just_joined_community", tenant.id);
+    }
+    navigate("/feed");
+  };
+  
   const handleRequestAccess = async () => {
     if (!communitySlug || !user || !tenant) {
       return;
@@ -130,7 +138,7 @@ export default function CommunityPage() {
           <p className="text-green-800">
             Você é membro de <strong>{tenant.name}</strong>!
           </p>
-          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={enterCommunity}>
             Entrar na Comunidade
           </Button>
         </div>
@@ -224,7 +232,7 @@ export default function CommunityPage() {
           <p className="text-green-800">
             Você é membro de <strong>{tenant.name}</strong>!
           </p>
-          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={() => navigate(`/feed`)}>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={enterCommunity}>
             Entrar na Comunidade
           </Button>
         </div>
