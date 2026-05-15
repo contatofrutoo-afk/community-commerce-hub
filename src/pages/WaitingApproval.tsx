@@ -42,8 +42,8 @@ export default function WaitingApproval() {
       
       if (request && request.status !== "pending") {
         setStatus(request.status as "approved" | "rejected");
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
+        localStorage.removeItem("weaze:pending_invite_slug");
+        sessionStorage.removeItem("weaze:pending_invite_slug");
         clearInterval(interval);
       }
     }, 10000);
@@ -101,8 +101,8 @@ export default function WaitingApproval() {
 
       if (memberCheck) {
         // Already a member, redirect to feed
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
+        localStorage.removeItem("weaze:pending_invite_slug");
+        sessionStorage.removeItem("weaze:pending_invite_slug");
         localStorage.setItem("weaze:active_tenant", tenantData.id);
         sessionStorage.setItem("just_joined_community", tenantData.id);
         navigate("/feed", { replace: true });

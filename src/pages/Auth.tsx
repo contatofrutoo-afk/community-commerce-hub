@@ -26,7 +26,7 @@ export default function Auth() {
   const [login, setLogin] = useState({ email: "", password: "" });
 
   useEffect(() => {
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
     if (pendingSlug) {
       setFromInvite(true);
       supabase.from("tenants").select("name").eq("slug", pendingSlug).single()
@@ -75,7 +75,7 @@ export default function Auth() {
     setLoading(false);
     toast.success("Conta criada! Bem-vindo!");
 
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
     nav(pendingSlug ? `/invite/${pendingSlug}` : "/feed", { replace: true });
   };
 
@@ -99,7 +99,7 @@ export default function Auth() {
     setLoading(false);
     toast.success("Bem-vindo");
 
-    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
     nav(pendingSlug ? `/invite/${pendingSlug}` : "/feed", { replace: true });
   };
 

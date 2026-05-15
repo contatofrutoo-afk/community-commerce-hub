@@ -25,6 +25,8 @@ export default function CommunityPage() {
   const enterCommunity = () => {
     if (tenant) {
       localStorage.setItem("weaze:active_tenant", tenant.id);
+      localStorage.setItem("weaze:pending_invite_slug", tenant.slug);
+      sessionStorage.setItem("weaze:pending_invite_slug", tenant.slug);
       window.location.href = "/feed";
     } else {
       navigate("/feed");

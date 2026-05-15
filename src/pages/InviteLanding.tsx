@@ -58,8 +58,8 @@ export default function InviteLanding() {
       
       // If not logged in, save slug to both localStorage and sessionStorage
       if (!user) {
-        localStorage.setItem("pending_invite_slug", slug);
-        sessionStorage.setItem("pending_invite_slug", slug);
+        localStorage.setItem("weaze:pending_invite_slug", slug);
+        sessionStorage.setItem("weaze:pending_invite_slug", slug);
       }
       
       setLoading(false);
@@ -82,8 +82,8 @@ export default function InviteLanding() {
       if (existingMembership) {
         localStorage.setItem("weaze:active_tenant", tenant.id);
         sessionStorage.setItem("just_joined_community", tenant.id);
-        localStorage.removeItem("pending_invite_slug");
-        sessionStorage.removeItem("pending_invite_slug");
+        localStorage.removeItem("weaze:pending_invite_slug");
+        sessionStorage.removeItem("weaze:pending_invite_slug");
         navigate("/feed");
         return;
       }
@@ -106,8 +106,8 @@ export default function InviteLanding() {
       }
       
       // Success - go to feed
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
+      localStorage.removeItem("weaze:pending_invite_slug");
+      sessionStorage.removeItem("weaze:pending_invite_slug");
       localStorage.setItem("weaze:active_tenant", tenant.id);
       sessionStorage.setItem("just_joined_community", tenant.id);
       
@@ -118,8 +118,8 @@ export default function InviteLanding() {
 
   const handleAuth = (isSignUp: boolean) => {
     if (slug) {
-      localStorage.setItem("pending_invite_slug", slug);
-      sessionStorage.setItem("pending_invite_slug", slug);
+      localStorage.setItem("weaze:pending_invite_slug", slug);
+      sessionStorage.setItem("weaze:pending_invite_slug", slug);
     }
     const authParams = new URLSearchParams();
     if (ref) authParams.set("ref", ref);

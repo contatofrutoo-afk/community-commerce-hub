@@ -106,9 +106,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user || !appRole || redirected) return;
 
-    let pendingSlug = localStorage.getItem("pending_invite_slug");
+    let pendingSlug = localStorage.getItem("weaze:pending_invite_slug");
     if (!pendingSlug) {
-      pendingSlug = sessionStorage.getItem("pending_invite_slug");
+      pendingSlug = sessionStorage.getItem("weaze:pending_invite_slug");
     }
 
     if (pendingSlug) {
