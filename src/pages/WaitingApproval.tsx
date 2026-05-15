@@ -162,8 +162,8 @@ export default function WaitingApproval() {
     const tenantId = tenantIdRef.current || tenant?.id;
     
     if (tenantId) {
-      localStorage.removeItem("pending_invite_slug");
-      sessionStorage.removeItem("pending_invite_slug");
+      localStorage.removeItem("weaze:pending_invite_slug");
+      sessionStorage.removeItem("weaze:pending_invite_slug");
       sessionStorage.setItem("just_joined_community", tenantId);
       localStorage.setItem("weaze:active_tenant", tenantId);
     }
