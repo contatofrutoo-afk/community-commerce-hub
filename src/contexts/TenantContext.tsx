@@ -68,8 +68,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     if (targetId && targetRole) {
       setTenant(list.find(t => t.id === targetId)!);
       setIsOwner(targetRole === "owner");
-      // Qualquer membro (owner/admin/member) com vínculo pode gerenciar lives
-      setCanManage(true);
+      // Apenas owners e admins podem gerenciar
+      setCanManage(targetRole === "owner" || targetRole === "admin");
       if (savedId) localStorage.setItem("weaze:active_tenant", targetId);
     } else {
       setTenant(null);
@@ -87,7 +87,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const role = memRoles[id];
     setTenant(t);
     setIsOwner(role === "owner");
-    setCanManage(true); // Qualquer membro pode gerenciar lives
+    setCanManage(role === "owner" || role === "admin");
     localStorage.setItem("weaze:active_tenant", id);
   };
 
