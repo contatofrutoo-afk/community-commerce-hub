@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Users, Building2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,45 +17,12 @@ const signupSchema = z.object({
 });
 
 export default function Auth() {
-  const nav = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fromInvite, setFromInvite] = useState(false);
   const [inviteTenantName, setInviteTenantName] = useState<string | null>(null);
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
   const [login, setLogin] = useState({ email: "", password: "" });
-
-  // Track if user has tried to authenticate
-  const [hasAuthAttempt, setHasAuthAttempt] = useState(false);
-  // Track if auth was just completed successfully
-  const [authJustCompleted, setAuthJustCompleted] = useState(false);
-
-  useEffect(() => {
-    // Don't redirect on initial mount - only redirect if user already logged in BEFORE visiting this page
-    if (authLoading) return;
-    
-    // If user was already logged in before visiting /auth, redirect
-    if (user && !hasAuthAttempt) {
-      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-      if (pendingSlug) {
-        nav(`/invite/${pendingSlug}`, { replace: true });
-      } else {
-        nav("/feed", { replace: true });
-      }
-      return;
-    }
-    
-    // If auth just completed (login/signup was clicked and succeeded), redirect to invite
-    if (user && authJustCompleted) {
-      setAuthJustCompleted(false);
-      const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
-      if (pendingSlug) {
-        nav(`/invite/${pendingSlug}`, { replace: true });
-      } else {
-        nav("/feed", { replace: true });
-      }
-    }
-  }, [user, authLoading, nav, hasAuthAttempt, authJustCompleted]);
 
   useEffect(() => {
     const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
@@ -70,13 +35,23 @@ export default function Auth() {
     }
   }, []);
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-background grid place-items-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-t-brand border-brand/20 rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Carregando...</span>
+        </div>
+      </main>
+    );
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setHasAuthAttempt(true); // Mark that user is trying to authenticate
     const parsed = signupSchema.safeParse(signup);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    
+
     const { data: authData, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
@@ -85,9 +60,9 @@ export default function Auth() {
         data: { name: parsed.data.name, account_type: "b2c" },
       },
     });
-    
-    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
-    
+
+    if (error) { setLoading(false); toast.error(error.message); return; }
+
     if (authData.user) {
       await supabase.from("profiles").upsert({
         user_id: authData.user.id,
@@ -95,15 +70,13 @@ export default function Auth() {
         email: parsed.data.email,
       });
     }
-    
-    setAuthJustCompleted(true); // Mark that auth just completed
+
     setLoading(false);
     toast.success("Conta criada! Bem-vindo!");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setHasAuthAttempt(true); // Mark that user is trying to authenticate
     const loginSchema = z.object({
       email: z.string().trim().email("Email inválido"),
       password: z.string().min(1, "Senha obrigatória"),
@@ -111,15 +84,14 @@ export default function Auth() {
     const parsed = loginSchema.safeParse(login);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    
-    const { error } = await supabase.auth.signInWithPassword({ 
-      email: parsed.data.email, 
-      password: parsed.data.password 
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password
     });
-    
-    if (error) { setLoading(false); setHasAuthAttempt(false); toast.error(error.message); return; }
-    
-    setAuthJustCompleted(true); // Mark that auth just completed
+
+    if (error) { setLoading(false); toast.error(error.message); return; }
+
     setLoading(false);
     toast.success("Bem-vindo");
   };
@@ -139,7 +111,7 @@ export default function Auth() {
               <p className="font-semibold text-purple-900">{inviteTenantName}</p>
             </div>
           )}
-          
+
           <Tabs defaultValue="login">
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="login">Entrar</TabsTrigger>

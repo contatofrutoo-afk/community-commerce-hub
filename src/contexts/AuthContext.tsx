@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "./TenantContext";
 
 export type AppRole = "admin" | "b2b" | "b2c";
 
@@ -14,6 +15,7 @@ type AuthCtx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  combinedLoading: boolean;
   appRole: AppRole | null;
   isB2B: boolean;
   isB2C: boolean;
@@ -25,7 +27,7 @@ type AuthCtx = {
 };
 
 const Ctx = createContext<AuthCtx>({
-  user: null, session: null, loading: true,
+  user: null, session: null, loading: true, combinedLoading: true,
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
   userState: null, redirectTo: null,
   signOut: async () => {}, clearRedirect: () => {},
@@ -87,18 +89,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setAppRole(newRole);
       
-      // Set userState directly from memberships
       const isB2B = roles.includes("owner") || roles.includes("admin");
       setUserState({
         isB2B,
         hasCommunity: isB2B,
         hasJoinedCommunities: mems && mems.length > 0,
       });
-      
-      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
+
+  const { loading: tenantLoading } = useTenant();
+  const combinedLoading = loading || tenantLoading;
 
 // Buscar estado do usuário e definir redirecionamento
   useEffect(() => {
@@ -143,7 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <Ctx.Provider
       value={{
-        user, session, loading,
+        user, session, loading, combinedLoading,
         appRole,
         isB2B: appRole === "b2b" || appRole === "admin",
         isB2C: appRole === "b2c",

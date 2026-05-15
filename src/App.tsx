@@ -81,60 +81,46 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { user, combinedLoading } = useAuth();
   const navigate = useNavigate();
-  const [redirectHandled, setRedirectHandled] = useState(false);
-  
-  // Handle redirect from auth context - this takes priority
-  useEffect(() => {
-    // This effect is specifically for handling redirects from AuthContext
-    // It runs when the app first mounts and auth state is resolved
-    if (redirectHandled) return;
-    
-    // Let the AuthContext handle redirects - we just show loading
-    if (loading || tenantLoading) return;
-    
-    setRedirectHandled(true);
-  }, [loading, tenantLoading, redirectHandled]);
-  
-  // Wait for both auth and tenant to load before checking
-  if (loading || tenantLoading) return <Loading />;
+
+  if (combinedLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   return children;
 };
 
 const B2BOnly = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
-  const { isOwner, loading: tenantLoading } = useTenant();
+  const { user, combinedLoading } = useAuth();
+  const { isOwner } = useTenant();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
-    if (loading || tenantLoading) return;
+    if (combinedLoading) return;
     if (!user) return;
     if (!isOwner) {
       navigate("/feed", { replace: true });
     }
-  }, [loading, tenantLoading, isOwner, user, navigate]);
-  
-  if (loading || tenantLoading) return <Loading />;
+  }, [combinedLoading, isOwner, user, navigate]);
+
+  if (combinedLoading) return <Loading />;
   if (!isOwner) return null;
   return children;
 };
 
 const NeedsTenant = ({ children }: { children: JSX.Element }) => {
-  const { loading } = useTenant();
-  if (loading) return <Loading />;
+  const { combinedLoading } = useAuth();
+  const { loading: tenantLoading } = useTenant();
+
+  if (combinedLoading || tenantLoading) return <Loading />;
   return children;
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
-  const { tenant, tenants, loading: tenantLoading } = useTenant();
-  
-  if (loading || tenantLoading) return <Loading />;
+  const { user, combinedLoading } = useAuth();
+
+  if (combinedLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
-  
+
   return children;
 };
 
