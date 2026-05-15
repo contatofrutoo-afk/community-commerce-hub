@@ -215,6 +215,7 @@ export default function CreatePost() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("SUBMIT CLICK - type:", type, "mediaUrl:", !!mediaUrl, "file:", !!file, "ctaType:", ctaType, "usage:", usage);
     if (!tenant || !user) return;
     if (type !== "text" && !mediaUrl && !file) { toast.error("Adicione uma mídia (URL ou upload)"); return; }
     if (type !== "text" && mediaMode === "upload" && !file) { toast.error("Selecione um arquivo para upload"); return; }
@@ -536,7 +537,7 @@ if (ctaType !== "none") {
             disabled={loading || (usage ? usage.posts >= usage.max : false)}
             className="w-full bg-brand text-primary-foreground hover:opacity-90"
           >
-            {loading ? "Publicando…" : "Publicar"}
+            {loading ? "Publicando…" : usage && usage.posts >= usage.max ? `Limite: ${usage.posts}/${usage.max}` : "Publicar"}
           </Button>
         </form>
       </div>
