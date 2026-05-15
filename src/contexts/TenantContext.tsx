@@ -49,9 +49,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
+    // Get all memberships with tenant data
     const { data: mems } = await supabase
       .from("memberships")
-      .select("tenant_id, role, tenants(*)")
+      .select("tenant_id, role, tenants(id, name, slug)")
       .eq("user_id", user.id);
     
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
@@ -64,25 +65,58 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setMemRoles(roles);
     setTenants(list);
     
-    // Determine target tenant quickly
+    // Get slug from URL path (e.g., /c/slug or /m/slug)
+    const pathMatch = window.location.pathname.match(/\/(c|m)\/([a-zA-Z0-9-]+)/);
+    const urlSlug = pathMatch ? pathMatch[2] : null;
+    console.log("TenantContext load - URL slug:", urlSlug);
+    
+    // Determine target tenant
     const justJoinedId = sessionStorage.getItem("just_joined_community");
     const savedId = localStorage.getItem("weaze:active_tenant");
-    let targetId: string | null = justJoinedId || savedId || (list[0]?.id ?? null);
+    
+    let targetId: string | null = null;
+    
+    // Priority 1: If there's a URL slug, find the tenant by slug
+    if (urlSlug) {
+      const tenantBySlug = list.find(t => t.slug === urlSlug);
+      if (tenantBySlug) {
+        targetId = tenantBySlug.id;
+        console.log("TenantContext - found tenant by URL slug:", tenantBySlug.name);
+      }
+    }
+    
+    // Priority 2: Just joined community
+    if (!targetId && justJoinedId) {
+      targetId = justJoinedId;
+    }
+    
+    // Priority 3: Saved active tenant
+    if (!targetId && savedId && list.find(t => t.id === savedId)) {
+      targetId = savedId;
+    }
+    
+    // Priority 4: First tenant in list
+    if (!targetId && list[0]) {
+      targetId = list[0].id;
+    }
     
     // Validate targetId exists in list
-    if (!list.find(t => t.id === targetId)) {
+    if (targetId && !list.find(t => t.id === targetId)) {
       targetId = list[0]?.id ?? null;
     }
     
     if (targetId && roles[targetId]) {
       const targetRole = roles[targetId];
-      setTenant(list.find(t => t.id === targetId)!);
+      const targetTenant = list.find(t => t.id === targetId)!;
+      setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
+      // Save to localStorage
+      localStorage.setItem("weaze:active_tenant", targetId);
       if (justJoinedId) {
         sessionStorage.removeItem("just_joined_community");
-        localStorage.setItem("weaze:active_tenant", targetId);
       }
+      console.log("TenantContext - set tenant to:", targetTenant.name);
     } else {
       setTenant(null);
       setIsOwner(false);
