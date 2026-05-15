@@ -24,7 +24,7 @@ export default function CommunityPage() {
   
   const enterCommunity = () => {
     if (tenant) {
-      localStorage.setItem("wenity:active_tenant", tenant.id);
+      localStorage.setItem("weaze:active_tenant", tenant.id);
       window.location.href = "/feed";
     } else {
       navigate("/feed");

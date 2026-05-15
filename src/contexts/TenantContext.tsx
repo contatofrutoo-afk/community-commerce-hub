@@ -62,7 +62,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setTenants(list);
     
     // Auto-selecionar tenant - qualquer membro pode gerenciar
-    const savedId = localStorage.getItem("wenity:active_tenant");
+    const savedId = localStorage.getItem("weaze:active_tenant");
     const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
     const targetRole = targetId ? roles[targetId] : null;
     if (targetId && targetRole) {
@@ -70,7 +70,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       setIsOwner(targetRole === "owner");
       // Qualquer membro (owner/admin/member) com vínculo pode gerenciar lives
       setCanManage(true);
-      if (savedId) localStorage.setItem("wenity:active_tenant", targetId);
+      if (savedId) localStorage.setItem("weaze:active_tenant", targetId);
     } else {
       setTenant(null);
       setIsOwner(false);
@@ -88,7 +88,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setTenant(t);
     setIsOwner(role === "owner");
     setCanManage(true); // Qualquer membro pode gerenciar lives
-    localStorage.setItem("wenity:active_tenant", id);
+    localStorage.setItem("weaze:active_tenant", id);
   };
 
   return (
