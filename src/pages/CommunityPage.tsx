@@ -38,6 +38,8 @@ export default function CommunityPage() {
     const params = new URLSearchParams(location.search);
     return params.get("slug") || params.get("s") || "";
   };
+
+  console.log("[CommunityPage] slug param:", slug, "communitySlug:", communitySlug);
   
   const communitySlug = getSlugFromUrl();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
@@ -54,11 +56,14 @@ export default function CommunityPage() {
     }
 
     (async () => {
+      console.log("[CommunityPage] Fetching tenant with slug:", communitySlug);
       const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
         .eq("slug", communitySlug)
         .maybeSingle();
+
+      console.log("[CommunityPage] tenant result:", tenantData, "error:", err);
 
       if (err || !tenantData) {
         setError("Comunidade não encontrada");
