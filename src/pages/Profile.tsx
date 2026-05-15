@@ -38,7 +38,7 @@ export default function Profile() {
   
   // Gerar link de compartilhamento da comunidade
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const shareLink = tenant?.slug ? `${baseUrl}/c/${tenant.slug}` : "";
+  const shareLink = tenant?.slug ? `${baseUrl}/m/${tenant.slug}` : "";
   
   
 

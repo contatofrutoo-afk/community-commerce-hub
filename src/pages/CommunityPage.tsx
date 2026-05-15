@@ -18,10 +18,26 @@ type PublicTenant = {
 
 export default function CommunityPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, isB2B } = useAuth();
   
-  const communitySlug = slug || "";
+  const enterCommunity = () => {
+    if (tenant) {
+      localStorage.setItem("wenity:active_tenant", tenant.id);
+      window.location.href = "/feed";
+    } else {
+      navigate("/feed");
+    }
+  };
+  
+  const getSlugFromUrl = () => {
+    if (slug) return slug;
+    const params = new URLSearchParams(location.search);
+    return params.get("slug") || params.get("s") || "";
+  };
+  
+  const communitySlug = getSlugFromUrl();
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +45,6 @@ export default function CommunityPage() {
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
-    console.log("COMMUNITY PAGE - slug from URL:", communitySlug);
-    
     if (!communitySlug) {
       setError("Slug não fornecido");
       setLoading(false);
@@ -38,15 +52,11 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      console.log("Searching for tenant with slug:", communitySlug);
-      
       const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
         .eq("slug", communitySlug)
         .maybeSingle();
-
-      console.log("Tenant found:", tenantData, "error:", err);
 
       if (err || !tenantData) {
         setError("Comunidade não encontrada");
@@ -55,7 +65,6 @@ export default function CommunityPage() {
       }
 
       setTenant(tenantData);
-      console.log("Set tenant to:", tenantData.name, tenantData.id);
 
       if (isB2B) {
         setAccessStatus("approved");
@@ -76,20 +85,6 @@ export default function CommunityPage() {
     })();
   }, [communitySlug, isB2B, user]);
 
-  const enterCommunity = () => {
-    console.log("ENTER COMMUNITY - saving tenant:", tenant?.name, "id:", tenant?.id);
-    if (tenant) {
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      sessionStorage.setItem("just_joined_community", tenant.id);
-      console.log("Saved to localStorage:", tenant.id);
-      // Force full reload to ensure tenant context is properly initialized
-      window.location.href = "/feed";
-    } else {
-      console.log("NO TENANT - this is the bug!");
-      navigate("/feed");
-    }
-  };
-  
   const handleRequestAccess = async () => {
     if (!communitySlug || !user || !tenant) {
       return;
@@ -191,7 +186,7 @@ export default function CommunityPage() {
           </div>
 
           <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" asChild>
-            <a href={`/auth?redirect=/c/${tenant.slug}`}>Entrar na comunidade</a>
+            <a href={`/auth?redirect=/c?slug=${tenant.slug}`}>Entrar na comunidade</a>
           </Button>
         </div>
       );
