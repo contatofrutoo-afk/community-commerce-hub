@@ -223,6 +223,7 @@ export default function CreatePost() {
 
     let ctaConfig: any = null;
     if (ctaType !== "none") {
+      if (ctaType === "live" && !isOwner) { toast.error("Apenas proprietários podem criar lives"); return; }
       const r = buildCtaConfig();
       if (!r.ok) { toast.error(r.error!); return; }
       ctaConfig = r.config;
@@ -436,7 +437,7 @@ if (ctaType !== "none") {
                 <SelectItem value="quote">Orçamento</SelectItem>
                 <SelectItem value="register">Inscrição em evento</SelectItem>
                 <SelectItem value="info">Saiba mais</SelectItem>
-                <SelectItem value="live">Ao Vivo (LIVE)</SelectItem>
+                {isOwner && <SelectItem value="live">Ao Vivo (LIVE)</SelectItem>}
               </SelectContent>
             </Select>
           </div>
