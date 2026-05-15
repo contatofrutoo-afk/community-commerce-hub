@@ -65,27 +65,20 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     let targetRole: "owner" | "admin" | "member" | null = null;
 
     const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
-    if (pendingSlug) {
-      const pendingTenant = list.find(t => t.slug === pendingSlug);
-      if (pendingTenant) {
-        targetTenant = pendingTenant;
-        targetRole = roles[pendingTenant.id];
-      }
-    }
+    const pendingTenant = list.find(t => t.slug === pendingSlug);
 
-    if (!targetTenant) {
-      const savedId = localStorage.getItem("weaze:active_tenant");
-      const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
-      targetRole = targetId ? roles[targetId] : null;
-      if (targetId && targetRole) {
-        targetTenant = list.find(t => t.id === targetId)!;
-      }
+    if (pendingTenant) {
+      targetTenant = pendingTenant;
+      targetRole = roles[pendingTenant.id];
+      localStorage.removeItem("weaze:pending_invite_slug");
+      sessionStorage.removeItem("weaze:pending_invite_slug");
     }
 
     if (targetTenant && targetRole) {
       setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
+      localStorage.setItem("weaze:active_tenant", targetTenant.id);
     } else {
       setTenant(null);
       setIsOwner(false);
