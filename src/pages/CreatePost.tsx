@@ -215,7 +215,9 @@ export default function CreatePost() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tenant || !user) return;
+    console.log("SUBMIT - tenant:", !!tenant, "user:", !!user, "type:", type, "mediaUrl:", !!mediaUrl, "file:", !!file);
+    if (!tenant) { toast.error("Tenant não carregou. Recarregue a página."); return; }
+    if (!user) { toast.error("Você precisa estar logado."); return; }
     if (type !== "text" && !mediaUrl && !file) { toast.error("Adicione uma mídia (URL ou upload)"); return; }
     if (type !== "text" && mediaMode === "upload" && !file) { toast.error("Selecione um arquivo para upload"); return; }
 
