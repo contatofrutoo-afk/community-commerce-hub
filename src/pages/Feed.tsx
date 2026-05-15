@@ -92,7 +92,9 @@ export default function Feed() {
   useEffect(() => {
     if (!tenant) return;
     (async () => {
-      const [{ data: pinnedData }, { data: liveData }] = await Promise.all([
+      console.log("Feed load - tenant:", tenant.name, tenant.id);
+      
+      const [{ data: pinnedData }, { data: liveData, error: liveError }] = await Promise.all([
         (supabase as any)
           .from("posts")
           .select("*")
@@ -108,6 +110,7 @@ export default function Feed() {
           .limit(1)
           .maybeSingle()
       ]);
+      console.log("Live query result:", liveData, "error:", liveError);
       setPinnedPost((pinnedData as any) || null);
       setActiveLiveUrl((liveData as any)?.external_url || null);
     })();
@@ -223,6 +226,9 @@ export default function Feed() {
           <span className="text-sm font-semibold text-red-500">Há uma live acontecendo agora!</span>
           <span className="text-xs text-red-400 ml-auto">Assistir →</span>
         </a>
+      )}
+      {!activeLiveUrl && tenant && (
+        <div className="hidden">Debug: activeLiveUrl is empty but tenant exists</div>
       )}
       {pinnedPost && (
         <button
