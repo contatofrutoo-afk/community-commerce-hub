@@ -277,6 +277,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   };
 
   const postCta = post.post_cta?.[0] ?? null;
+  const isLivePost = post.is_live || (postCta?.type === "live");
 
   return (
     <article className="relative h-[100dvh] w-full snap-start bg-foreground text-background overflow-hidden" onClick={onTap}>
@@ -297,8 +298,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
       <div className="absolute inset-0 bg-overlay-top pointer-events-none" />
       <div className="absolute inset-0 bg-overlay pointer-events-none" />
 
-      {/* Live Badge */}
-      {post.is_live && (
+      {/* Live Badge - appears for both is_live flag and live CTA type */}
+      {isLivePost && (
         <div className="absolute top-20 left-4 z-20">
           <span className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-1.5 rounded-full text-sm font-bold animate-pulse shadow-lg">
             <span className="w-2 h-2 bg-white rounded-full animate-ping" />

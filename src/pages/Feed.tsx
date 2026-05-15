@@ -19,6 +19,7 @@ export default function Feed() {
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [pinnedPost, setPinnedPost] = useState<Post | null>(null);
+  const [hasActiveLive, setHasActiveLive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -87,18 +88,28 @@ export default function Feed() {
     }, { onConflict: "tenant_id,user_id,post_id,action_type" });
   }, [user, tenant]);
 
-  // Load pinned post
+  // Load pinned post and check for active live
   useEffect(() => {
     if (!tenant) return;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("posts")
-        .select("*")
-        .eq("tenant_id", tenant.id)
-        .eq("is_pinned", true)
-        .limit(1)
-        .maybeSingle();
-      setPinnedPost((data as any) || null);
+      const [{ data: pinnedData }, { data: liveData }] = await Promise.all([
+        (supabase as any)
+          .from("posts")
+          .select("*")
+          .eq("tenant_id", tenant.id)
+          .eq("is_pinned", true)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("lives")
+          .select("id, title")
+          .eq("tenant_id", tenant.id)
+          .eq("is_live", true)
+          .limit(1)
+          .maybeSingle()
+      ]);
+      setPinnedPost((pinnedData as any) || null);
+      setHasActiveLive(!!liveData);
     })();
   }, [tenant?.id]);
 
@@ -200,6 +211,15 @@ export default function Feed() {
   return (
     <div className="h-[100dvh] flex flex-col bg-background">
       <TopBar />
+      {/* Live indicator at top when there's an active live */}
+      {hasActiveLive && (
+        <div className="mx-3 mt-2 flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg animate-pulse cursor-pointer hover:bg-red-500/20 transition"
+          onClick={() => nav("/content/lives")}>
+          <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+          <span className="text-sm font-semibold text-red-500">Há uma live acontecendo agora!</span>
+          <span className="text-xs text-red-400 ml-auto">Ver live →</span>
+        </div>
+      )}
       {pinnedPost && (
         <button
           onClick={() => {
