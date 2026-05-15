@@ -73,8 +73,11 @@ export default function CommunityPage() {
     if (tenant) {
       localStorage.setItem("weaze:active_tenant", tenant.id);
       sessionStorage.setItem("just_joined_community", tenant.id);
+      // Force full reload to ensure tenant context is properly initialized
+      window.location.href = "/feed";
+    } else {
+      navigate("/feed");
     }
-    navigate("/feed");
   };
   
   const handleRequestAccess = async () => {
