@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "react-router-dom";
 import { isPWA, hasVisitedBefore, markAsVisited } from "@/utils/isPWA";
 
 interface AppEntranceProps {
@@ -8,13 +7,10 @@ interface AppEntranceProps {
 }
 
 export default function AppEntrance({ children }: AppEntranceProps) {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, combinedLoading } = useAuth();
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if (combinedLoading) return;
     if (hasRedirected.current) return;
 
     const isAuthPage = location.pathname === "/auth";
@@ -30,7 +26,7 @@ export default function AppEntrance({ children }: AppEntranceProps) {
     if (!visited && isStandalone) {
       markAsVisited();
     }
-  }, [combinedLoading, user, location.pathname]);
+  }, [location.pathname]);
 
   return <>{children}</>;
 }
