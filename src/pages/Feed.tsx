@@ -245,7 +245,7 @@ export default function Feed() {
         >
           <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
           <span className="text-sm font-semibold text-red-500">Há uma live acontecendo agora!</span>
-          <span className="text-xs text-red-400 ml-auto">Assistir →</span>
+          <span className="text-xs text-red-400 ml-auto">Assistir agora →</span>
         </a>
       )}
       {pinnedPost && (
