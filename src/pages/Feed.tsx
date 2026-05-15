@@ -240,7 +240,8 @@ export default function Feed() {
         <button
           type="button"
           onClick={() => {
-            window.location.href = activeLiveUrl;
+            const fullUrl = activeLiveUrl.startsWith("http") ? activeLiveUrl : `https://${activeLiveUrl}`;
+            window.location.href = fullUrl;
           }}
           className="mx-3 mt-2 flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-3 py-2 rounded-lg animate-pulse hover:bg-red-500/20 transition w-full text-left"
         >
