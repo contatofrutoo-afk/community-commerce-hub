@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ const signupSchema = z.object({
 });
 
 export default function Auth() {
+  const nav = useNavigate();
   const { loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fromInvite, setFromInvite] = useState(false);
@@ -73,6 +74,9 @@ export default function Auth() {
 
     setLoading(false);
     toast.success("Conta criada! Bem-vindo!");
+
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    nav(pendingSlug ? `/invite/${pendingSlug}` : "/feed", { replace: true });
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -94,6 +98,9 @@ export default function Auth() {
 
     setLoading(false);
     toast.success("Bem-vindo");
+
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    nav(pendingSlug ? `/invite/${pendingSlug}` : "/feed", { replace: true });
   };
 
   return (

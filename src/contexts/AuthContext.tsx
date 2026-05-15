@@ -95,6 +95,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasCommunity: isB2B,
         hasJoinedCommunities: mems && mems.length > 0,
       });
+
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
