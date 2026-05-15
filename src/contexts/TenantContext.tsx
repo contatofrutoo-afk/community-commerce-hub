@@ -60,17 +60,39 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     });
     setMemRoles(roles);
     setTenants(list);
-    
-    // Auto-selecionar tenant - qualquer membro pode gerenciar
-    const savedId = localStorage.getItem("weaze:active_tenant");
-    const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
-    const targetRole = targetId ? roles[targetId] : null;
-    if (targetId && targetRole) {
-      setTenant(list.find(t => t.id === targetId)!);
+
+    let targetTenant: Tenant | null = null;
+    let targetRole: "owner" | "admin" | "member" | null = null;
+
+    // Priority 1: If user entered via a shared link, use that community
+    const pendingSlug = localStorage.getItem("pending_invite_slug") || sessionStorage.getItem("pending_invite_slug");
+    if (pendingSlug) {
+      const pendingTenant = list.find(t => t.slug === pendingSlug);
+      if (pendingTenant) {
+        targetTenant = pendingTenant;
+        targetRole = roles[pendingTenant.id];
+      }
+    }
+
+    // Priority 2: Otherwise fall back to saved or first tenant
+    if (!targetTenant) {
+      const savedId = localStorage.getItem("weaze:active_tenant");
+      const targetId = savedId && list.find(t => t.id === savedId) ? savedId : list[0]?.id;
+      targetRole = targetId ? roles[targetId] : null;
+      if (targetId && targetRole) {
+        targetTenant = list.find(t => t.id === targetId)!;
+      }
+    }
+
+    if (targetTenant && targetRole) {
+      setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
-      // Apenas owners e admins podem gerenciar
       setCanManage(targetRole === "owner" || targetRole === "admin");
-      if (savedId) localStorage.setItem("weaze:active_tenant", targetId);
+      if (pendingSlug && targetTenant.slug === pendingSlug) {
+        localStorage.removeItem("pending_invite_slug");
+        sessionStorage.removeItem("pending_invite_slug");
+      }
+      if (targetTenant.id) localStorage.setItem("weaze:active_tenant", targetTenant.id);
     } else {
       setTenant(null);
       setIsOwner(false);
