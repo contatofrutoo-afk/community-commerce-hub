@@ -661,7 +661,7 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
 
     const userName = values.name || profile?.name || user?.email?.split("@")[0] || "Usuário";
 
-    const { error } = await supabase.from("event_registrations").insert({
+    const insertData = {
       event_id: event.id,
       post_id: postId,
       tenant_id: tenantId,
@@ -671,7 +671,22 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
       phone: values.phone ?? null,
       notes: values.notes ?? null,
       answers: payload,
-    });
+    };
+
+    let error: any = null;
+    
+    try {
+      const result = await supabase.from("event_registrations").insert(insertData);
+      error = result.error;
+    } catch (e: any) {
+      if (e.message?.includes("answers")) {
+        delete insertData.answers;
+        const result = await supabase.from("event_registrations").insert(insertData);
+        error = result.error;
+      } else {
+        error = e;
+      }
+    }
     setLoading(false);
     if (error) { 
       if (error.code === "23505") {
