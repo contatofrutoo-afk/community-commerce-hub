@@ -565,7 +565,7 @@ export default function Notifications() {
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma notificação</p>
               </div>
-            ) : notifications.map(n => {
+            ) : [...notifications].reverse().map(n => {
               const isJoinRequest = n.type === "join_request";
               const isTopicReply = n.type === "topic_reply";
               return (
