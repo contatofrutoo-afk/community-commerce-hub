@@ -90,7 +90,7 @@ function BuyDialog({ cta, postId, tenantId, open, onClose }: any) {
 function ScheduleDialog({ cta, postId, tenantId, open, onClose }: any) {
   const { user } = useAuth();
   const c = cta.config_json ?? {};
-  const isNewSystem = c.type === "appointment";
+  const isNewSystem = c?.type === "appointment" || c?.service_name;
 
   if (!isNewSystem) {
     return <LegacyScheduleDialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={onClose} />;
@@ -123,14 +123,17 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
     if (!selectedTime || !user) return;
     setLoading(true);
 
-    const { data: appointmentCta } = await supabase
+    console.log("[Appointment] postId:", postId, "ctaId:", cta.id);
+
+    const { data: appointmentCta, error: fetchError } = await supabase
       .from("appointment_cta")
       .select("id")
       .eq("post_id", postId)
       .maybeSingle();
 
     if (!appointmentCta) {
-      toast.error("Erro: agendamento não encontrado");
+      console.log("[Appointment] fetchError:", fetchError);
+      toast.error(fetchError?.message || "Erro: agendamento não encontrado");
       setLoading(false);
       return;
     }
