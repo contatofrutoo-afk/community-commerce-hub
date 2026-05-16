@@ -18,7 +18,7 @@ const signupSchema = z.object({
 
 export default function Auth() {
   const nav = useNavigate();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fromInvite, setFromInvite] = useState(false);
   const [inviteTenantName, setInviteTenantName] = useState<string | null>(null);
@@ -36,6 +36,17 @@ export default function Auth() {
     }
   }, []);
 
+  useEffect(() => {
+    if (user && !authLoading && loading === false) {
+      const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
+      if (pendingSlug) {
+        nav(`/c/${pendingSlug}`, { replace: true });
+      } else {
+        nav("/feed", { replace: true });
+      }
+    }
+  }, [user, authLoading, loading, nav]);
+
   if (authLoading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
@@ -45,6 +56,16 @@ export default function Auth() {
         </div>
       </main>
     );
+  }
+
+  if (user) {
+    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
+    if (pendingSlug) {
+      nav(`/c/${pendingSlug}`, { replace: true });
+    } else {
+      nav("/feed", { replace: true });
+    }
+    return null;
   }
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -74,13 +95,6 @@ export default function Auth() {
 
     setLoading(false);
     toast.success("Conta criada! Bem-vindo!");
-
-    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
-    if (pendingSlug) {
-      nav(`/c/${pendingSlug}`, { replace: true });
-    } else {
-      nav("/feed", { replace: true });
-    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -102,13 +116,6 @@ export default function Auth() {
 
     setLoading(false);
     toast.success("Bem-vindo");
-
-    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
-    if (pendingSlug) {
-      nav(`/c/${pendingSlug}`, { replace: true });
-    } else {
-      nav("/feed", { replace: true });
-    }
   };
 
   return (
