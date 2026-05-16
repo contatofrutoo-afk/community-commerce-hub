@@ -693,6 +693,36 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
       return;
     }
 
+    const answers: Record<string, any> = {};
+    if (values.name) answers["Nome"] = values.name;
+    if (values.phone) answers["Telefone"] = values.phone;
+    if (values.email) answers["Email"] = values.email;
+    customFields.forEach((cf: any) => {
+      if (values[cf.name]) answers[cf.name] = values[cf.name];
+    });
+    if (values.notes) answers["Observação"] = values.notes;
+
+    const { error: regError } = await supabase.from("event_registrations").insert({
+      event_id: cta.id,
+      post_id: postId,
+      tenant_id: tenantId,
+      user_id: user?.id,
+      name: values.name || null,
+      email: values.email || null,
+      phone: values.phone || null,
+      notes: values.notes || null,
+      answers: answers,
+      status: "pending",
+      event_name: eventData.event_name,
+      event_date: eventData.event_date || null,
+      event_time: eventData.event_time || null,
+      location: eventData.location || null,
+    });
+
+    if (regError) {
+      console.error("[RegisterDialog] Registration save error:", regError);
+    }
+
     await supabase.from("notifications").insert({
       tenant_id: tenantId,
       user_id: user?.id,
