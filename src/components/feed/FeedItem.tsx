@@ -32,10 +32,10 @@ export type Post = {
   topics?: { id: string; title: string; replies_count: number; last_activity_at: string }[];
 };
 
-export default function FeedItem({ post, active }: { post: Post; active: boolean }) {
+export default function FeedItem({ post, active, onDelete }: { post: Post; active: boolean; onDelete?: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { user, appRole } = useAuth();
-  const { tenant, isOwner } = useTenant();
+  const { tenant, isOwner, canManage } = useTenant();
   const nav = useNavigate();
   const [liked, setLiked] = useState(false);
   const [popHeart, setPopHeart] = useState(false);
@@ -54,7 +54,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
   const [topicCount, setTopicCount] = useState(0);
   const [showTopicPreview, setShowTopicPreview] = useState(false);
 
-  const isPostOwner = isOwner && post.author_id === user?.id;
+  const canDeletePost = canManage || (user && post.author_id === user.id);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
@@ -116,6 +116,8 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
     if (error) { toast.error("Erro ao excluir"); return; }
     toast.success("Postagem excluída");
+    if (onDelete) onDelete();
+    else window.location.reload();
   };
 
   // Video progress
@@ -381,7 +383,7 @@ export default function FeedItem({ post, active }: { post: Post; active: boolean
             </button>
           </>
         )}
-        {isPostOwner && (
+        {canDeletePost && (
           <button onClick={deletePost} className="flex flex-col items-center gap-1" aria-label="Excluir">
             <Trash2 className="h-7 w-7 drop-shadow-md text-background" />
             <span className="text-xs font-semibold drop-shadow-md">Excluir</span>
