@@ -673,20 +673,33 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
     };
 
     let error: any = null;
+    let insertSuccess = false;
+    
     try {
       const result = await supabase.from("event_registrations").insert(insertData);
-      error = result.error;
-    } catch (e: any) {
-      error = e;
-    }
-    setLoading(false);
-    if (error) { 
-      if (error.code === "23505") {
-        toast.error("Você já está inscrito neste evento");
+      if (result.error) {
+        error = result.error;
       } else {
+        insertSuccess = true;
+      }
+    } catch (e: any) {
+      if (e.message?.includes("schema cache") || e.message?.includes("column") || e.message?.includes("event_cta") || e.message?.includes("event_registrations")) {
+        toast.error("Erro de configuração. Recarregue a página.");
+      } else {
+        error = e;
+      }
+    }
+    
+    setLoading(false);
+    if (!insertSuccess) {
+      if (error?.code === "23505") {
+        toast.error("Você já está inscrito neste evento");
+      } else if (error?.code === "23503") {
+        toast.error("Evento não encontrado. Recarregue a página.");
+      } else if (error) {
         toast.error(error.message);
       }
-      return; 
+      return;
     }
 
     // Notify B2C user
