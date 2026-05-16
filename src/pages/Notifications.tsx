@@ -228,43 +228,43 @@ export default function Notifications() {
       }
 
       // Load event registrations for B2B from config_json
-      const { data: ctas, error: ctasError } = await supabase
+      const { data: allCtas } = await supabase
         .from("post_cta")
         .select("id, post_id, config_json, tenant_id, type")
-        .in("tenant_id", tenantIds)
-        .eq("type", "register");
+        .in("tenant_id", tenantIds);
+      
+      console.log("[Notifications] All CTAs:", allCtas?.map(c => ({ id: c.id, type: c.type, hasEventData: !!c.config_json?.event_data })));
 
-      console.log("[Notifications] CTAs register:", ctas, ctasError);
+      const registerCtas = allCtas?.filter(c => c.type === "register") || [];
+      console.log("[Notifications] Register CTAs:", registerCtas);
 
       const allRegistrations: any[] = [];
       
-      if (ctas && ctas.length > 0) {
-        for (const cta of ctas) {
-          const configJson = typeof cta.config_json === 'string' ? JSON.parse(cta.config_json) : cta.config_json;
-          const eventData = configJson?.event_data;
-          const registrations = eventData?.registrations || [];
-          
-          console.log("[Notifications] Event data:", eventData, "registrations:", registrations);
-          
-          for (const reg of registrations) {
-            allRegistrations.push({
-              id: cta.id,
-              post_id: cta.post_id,
-              tenant_id: cta.tenant_id,
-              user_id: reg.user_id,
-              name: reg.user_name,
-              email: reg.user_email,
-              phone: reg.user_phone,
-              notes: reg.notes,
-              answers: reg.custom_answers,
-              created_at: reg.created_at,
-              event_name: eventData?.event_name,
-              event_date: eventData?.event_date,
-              event_time: eventData?.event_time,
-              location: eventData?.location,
-              status: "pending",
-            });
-          }
+      for (const cta of registerCtas) {
+        const configJson = typeof cta.config_json === 'string' ? JSON.parse(cta.config_json) : cta.config_json;
+        const eventData = configJson?.event_data;
+        const registrations = eventData?.registrations || [];
+        
+        console.log("[Notifications] Event data for CTA", cta.id, ":", eventData, "registrations:", registrations);
+        
+        for (const reg of registrations) {
+          allRegistrations.push({
+            id: cta.id,
+            post_id: cta.post_id,
+            tenant_id: cta.tenant_id,
+            user_id: reg.user_id,
+            name: reg.user_name,
+            email: reg.user_email,
+            phone: reg.user_phone,
+            notes: reg.notes,
+            answers: reg.custom_answers,
+            created_at: reg.created_at,
+            event_name: eventData?.event_name,
+            event_date: eventData?.event_date,
+            event_time: eventData?.event_time,
+            location: eventData?.location,
+            status: "pending",
+          });
         }
       }
       
