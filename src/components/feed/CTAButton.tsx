@@ -23,9 +23,37 @@ type CTA = {
 
 export default function CTAButton({ cta, postId, tenantId, className }: { cta: CTA; postId: string; tenantId: string; className?: string }) {
   const [open, setOpen] = useState(false);
+  const [realRegCount, setRealRegCount] = useState<number | null>(null);
   const buttonLabel = cta.label?.trim() || "Ver mais";
 
+  useEffect(() => {
+    if (cta.type === "register" && cta.id) {
+      (async () => {
+        const { count } = await supabase
+          .from("event_registrations")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", cta.id);
+        
+        if (count !== null) setRealRegCount(count);
+      })();
+    }
+  }, [cta]);
+
+  let isFull = false;
+  if (cta.type === "register") {
+    let c = cta.config_json;
+    if (typeof c === "string") {
+      try { c = JSON.parse(c); } catch {}
+    }
+    const ed = c?.event_data;
+    if (ed && ed.max_participants) {
+      const currentLen = realRegCount !== null ? realRegCount : (ed.registrations?.length || 0);
+      if (currentLen >= ed.max_participants) isFull = true;
+    }
+  }
+
   const handleClick = async () => {
+    if (isFull) return;
     await track({ tenantId, postId, ctaId: cta.id, action: "click_cta" });
     setOpen(true);
   };
@@ -34,10 +62,11 @@ export default function CTAButton({ cta, postId, tenantId, className }: { cta: C
     <div className={cn("w-full", className)}>
       <Button
         onClick={handleClick}
+        disabled={isFull}
         size="lg"
-        className="feed-cta-button w-full min-h-12 rounded-xl px-5 text-base font-bold text-primary-foreground shadow-brand pointer-events-auto"
+        className="feed-cta-button w-full min-h-12 rounded-xl px-5 text-base font-bold text-primary-foreground shadow-brand pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {buttonLabel}
+        {isFull ? "Vagas encerradas" : buttonLabel}
       </Button>
       {open && <CTADialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={() => setOpen(false)} />}
     </div>
@@ -621,6 +650,20 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [realRegCount, setRealRegCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (cta.id && open) {
+      (async () => {
+        const { count } = await supabase
+          .from("event_registrations")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", cta.id);
+        
+        if (count !== null) setRealRegCount(count);
+      })();
+    }
+  }, [cta.id, open]);
 
   const setVal = (k: string, v: string) => setValues((p) => ({ ...p, [k]: v }));
 
@@ -659,39 +702,27 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
 
     const currentRegistrations = eventData.registrations ?? [];
     
-    const existingReg = currentRegistrations.find((r: any) => r.user_id === user?.id);
-    if (existingReg) {
+    // Check if user is already registered in the DB
+    const { data: existingDbReg } = await supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", cta.id)
+      .eq("user_id", user?.id)
+      .maybeSingle();
+
+    if (existingDbReg) {
       setLoading(false);
       toast.error("Você já está inscrito neste evento");
       return;
     }
 
-    if (eventData.max_participants && currentRegistrations.length >= eventData.max_participants) {
+    if (eventData.max_participants && realRegCount >= eventData.max_participants) {
       setLoading(false);
       toast.error("Inscrições esgotadas");
       return;
     }
 
-    const newRegistrations = [...currentRegistrations, registration];
-    const newEventData = { ...eventData, registrations: newRegistrations };
-    
-    console.log("[RegisterDialog] Saving registration to post_id:", postId);
-    console.log("[RegisterDialog] New event data:", newEventData);
-
-    const { error: updateError } = await supabase
-      .from("post_cta")
-      .update({ config_json: { ...c, event_data: newEventData } })
-      .eq("post_id", postId)
-      .eq("type", "register");
-
-    console.log("[RegisterDialog] Update error:", updateError);
-
-    setLoading(false);
-
-    if (updateError) {
-      toast.error(updateError.message);
-      return;
-    }
+    // We no longer update post_cta.config_json since we rely on the event_registrations table.
 
     const answers: Record<string, any> = {};
     if (values.name) answers["Nome"] = values.name;
@@ -763,6 +794,7 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
     }
 
     await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "register" } });
+    setLoading(false);
     toast.success("Inscrição recebida. Em breve entraremos em contato.");
     onClose();
   };
@@ -775,6 +807,11 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
           <div className="text-sm text-muted-foreground space-y-1">
             {eventData.event_date && <p>{formatDate(eventData.event_date)} • {formatTime(eventData.event_time)}</p>}
             {eventData.location && <p>{eventData.location}</p>}
+            {eventData.max_participants && (
+              <p className="font-medium text-brand mt-1">
+                Vagas disponíveis: {Math.max(0, eventData.max_participants - realRegCount)} de {eventData.max_participants}
+              </p>
+            )}
             {eventData.description && <p className="text-xs mt-2">{eventData.description}</p>}
           </div>
         </DialogHeader>

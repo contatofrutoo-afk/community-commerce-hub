@@ -77,6 +77,7 @@ type NotificationItem = {
   data: any;
   created_at: string;
   actor_id: string | null;
+  content?: string;
 };
 
 export default function Notifications() {
@@ -227,62 +228,18 @@ export default function Notifications() {
         setBudgetRequests([]);
       }
 
-      // Load event registrations for B2B from config_json
-      const { data: allCtas, error: ctasError } = await supabase
-        .from("post_cta")
-        .select("id, post_id, config_json, tenant_id, type");
+      // Load event registrations for B2B from event_registrations table
+      const { data: regsData, error: regsError } = await supabase
+        .from("event_registrations")
+        .select("*")
+        .in("tenant_id", tenantIds)
+        .order("created_at", { ascending: false });
 
-      console.log("[Notifications] Error:", ctasError);
-      console.log("[Notifications] All CTAs count:", allCtas?.length);
-      
-      const allRegistrations: any[] = [];
-      
-      if (allCtas && allCtas.length > 0) {
-        for (const cta of allCtas) {
-          // Skip if tenant not in our list
-          if (tenantIds && tenantIds.length > 0 && !tenantIds.includes(cta.tenant_id)) {
-            continue;
-          }
-          
-          // Skip if not register type
-          if (cta.type !== "register") continue;
-          
-          let configJson = cta.config_json;
-          if (typeof configJson === "string") {
-            try { configJson = JSON.parse(configJson); } catch { continue; }
-          }
-          
-          if (!configJson) continue;
-          
-          const eventData = configJson.event_data;
-          if (!eventData || !eventData.registrations) continue;
-          
-          console.log("[Notifications] Found register CTA:", cta.id, "registrations:", eventData.registrations.length);
-          
-          for (const reg of eventData.registrations) {
-            allRegistrations.push({
-              id: cta.id + "_" + (reg.user_id || Math.random()),
-              post_id: cta.post_id,
-              tenant_id: cta.tenant_id,
-              user_id: reg.user_id,
-              name: reg.user_name || "Participante",
-              email: reg.user_email,
-              phone: reg.user_phone,
-              notes: reg.notes,
-              answers: reg.custom_answers,
-              created_at: reg.created_at,
-              event_name: eventData.event_name || "Evento",
-              event_date: eventData.event_date,
-              event_time: eventData.event_time,
-              location: eventData.location,
-              status: "pending",
-            });
-          }
-        }
+      if (regsData && regsData.length > 0) {
+        setEventRegistrations(regsData);
+      } else {
+        setEventRegistrations([]);
       }
-      
-      console.log("[Notifications] Total event registrations found:", allRegistrations.length);
-      setEventRegistrations(allRegistrations);
       
       const { data: notifs } = await supabase
         .from("notifications")
@@ -439,6 +396,9 @@ export default function Notifications() {
   };
 
   const handleConfirmEventRegistration = async (registration: EventRegistration) => {
+    const { error } = await supabase.from("event_registrations").update({ status: "confirmed" }).eq("id", registration.id);
+    if (error) { toast.error("Erro ao confirmar"); return; }
+
     await supabase.from("notifications").insert({
       tenant_id: registration.tenant_id,
       user_id: registration.user_id,
@@ -453,6 +413,9 @@ export default function Notifications() {
   };
 
   const handleCancelEventRegistration = async (registration: EventRegistration) => {
+    const { error } = await supabase.from("event_registrations").update({ status: "cancelled" }).eq("id", registration.id);
+    if (error) { toast.error("Erro ao cancelar"); return; }
+
     await supabase.from("notifications").insert({
       tenant_id: registration.tenant_id,
       user_id: registration.user_id,
@@ -464,6 +427,13 @@ export default function Notifications() {
 
     toast.success("Inscrição cancelada!");
     setEventRegistrations(prev => prev.map(r => r.id === registration.id ? { ...r, status: "cancelled" } : r));
+  };
+
+  const handleDeleteEventRegistration = async (registrationId: string) => {
+    const { error } = await supabase.from("event_registrations").delete().eq("id", registrationId);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Inscrição excluída!");
+    setEventRegistrations(prev => prev.filter(r => r.id !== registrationId));
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -769,8 +739,15 @@ export default function Notifications() {
                     )}
                     {r.status === "confirmed" && (
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleCancelEventRegistration(r)}>
-                          <X className="h-4 w-4" />Cancelar Inscrição
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 w-full" onClick={() => handleDeleteEventRegistration(r.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" />Excluir
+                        </Button>
+                      </div>
+                    )}
+                    {r.status === "cancelled" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 w-full" onClick={() => handleDeleteEventRegistration(r.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" />Excluir
                         </Button>
                       </div>
                     )}
@@ -815,6 +792,9 @@ export default function Notifications() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{n.title}</p>
+                    {n.content && (
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.content}</p>
+                    )}
                     {isTopicReply && n.data?.topic_title && (
                       <p className="text-sm text-blue-700 font-medium mt-0.5">{n.data.topic_title}</p>
                     )}
