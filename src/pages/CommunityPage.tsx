@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { getAccessStatus, requestAccess, AccessStatus } from "@/lib/communityAccess";
 import { Building2, Users, MessageCircle, Calendar, ArrowRight, ArrowLeft, Clock, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,13 +22,14 @@ export default function CommunityPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isB2B } = useAuth();
+  const { refresh } = useTenant();
   
-  const enterCommunity = () => {
+  const enterCommunity = async () => {
     if (tenant) {
-      localStorage.setItem("weaze:active_tenant", tenant.id);
       localStorage.setItem("weaze:pending_invite_slug", tenant.slug);
       sessionStorage.setItem("weaze:pending_invite_slug", tenant.slug);
-      window.location.href = "/feed";
+      await refresh();
+      navigate("/feed", { replace: true });
     } else {
       navigate("/feed");
     }
@@ -67,6 +69,10 @@ export default function CommunityPage() {
       }
 
       setTenant(tenantData);
+
+      // Sempre atualiza o pending invite slug para garantir que o login/Auth saiba qual comunidade o usuário está tentando acessar
+      localStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
+      sessionStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
 
       if (isB2B) {
         setAccessStatus("approved");
