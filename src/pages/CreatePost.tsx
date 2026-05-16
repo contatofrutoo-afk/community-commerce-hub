@@ -72,11 +72,19 @@ export default function CreatePost() {
   const [services, setServices] = useState<any[]>([]);
   const [serviceId, setServiceId] = useState("");
 
-  // REGISTER
-  const [events, setEvents] = useState<any[]>([]);
-  const [eventId, setEventId] = useState("");
+  // REGISTER - Event CTA
+  const [eventName, setEventName] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventMaxParticipants, setEventMaxParticipants] = useState("");
+  const [eventCustomFields, setEventCustomFields] = useState<{name: string; type: string}[]>([]);
   const [registerFields, setRegisterFields] = useState<string[]>(["name", "phone"]);
   const [customFieldLabel, setCustomFieldLabel] = useState("");
+  const [showCustomFieldModal, setShowCustomFieldModal] = useState(false);
+  const [newCustomFieldName, setNewCustomFieldName] = useState("");
+  const [newCustomFieldType, setNewCustomFieldType] = useState("text");
 
   // INFO
   const [infoMode, setInfoMode] = useState<"internal" | "external">("internal");
@@ -148,12 +156,10 @@ export default function CreatePost() {
       ]);
       const max = (tp as any)?.plans?.max_posts ?? 100;
       setUsage({ posts: c ?? 0, max });
-      const [{ data: svc }, { data: ev }] = await Promise.all([
+      const [{ data: svc }] = await Promise.all([
         supabase.from("services").select("id, name").eq("tenant_id", tenant.id),
-        supabase.from("events").select("id, title").eq("tenant_id", tenant.id),
       ]);
       setServices(svc ?? []);
-      setEvents(ev ?? []);
     })();
   }, [tenant?.id]);
 
@@ -202,14 +208,14 @@ export default function CreatePost() {
     }
     if (ctaType === "quote") return { ok: true, config: {} };
     if (ctaType === "register") {
-      if (!eventId) return { ok: false, error: "Selecione um evento" };
+      if (!eventName.trim()) return { ok: false, error: "Nome do evento obrigatório" };
       if (registerFields.length === 0) return { ok: false, error: "Selecione ao menos um campo" };
       const fields = registerFields.map((k) => {
         if (k === "custom") return { key: "custom", label: customFieldLabel.trim() || "Campo extra", required: false };
         const f = REGISTER_FIELDS.find((x) => x.key === k)!;
         return { key: f.key, label: f.label, required: f.required };
       });
-      return { ok: true, config: { event_id: eventId, fields } };
+      return { ok: true, config: { fields }, eventData: { event_name: eventName.trim(), description: eventDescription.trim() || null, event_date: eventDate || null, event_time: eventTime || null, location: eventLocation.trim() || null, max_participants: eventMaxParticipants ? parseInt(eventMaxParticipants) : null, custom_fields: eventCustomFields } };
     }
     if (ctaType === "info") {
       if (infoMode === "external") {
@@ -247,11 +253,13 @@ export default function CreatePost() {
     if (type !== "text" && mediaMode === "upload" && !file) { toast.error("Selecione um arquivo para upload"); return; }
 
     let ctaConfig: any = null;
+    let ctaEventData: any = null;
     if (ctaType !== "none") {
       if (ctaType === "live" && !isOwner) { toast.error("Apenas proprietários podem criar lives"); return; }
       const r = buildCtaConfig();
       if (!r.ok) { toast.error(r.error!); return; }
       ctaConfig = r.config;
+      ctaEventData = (r as any).eventData;
     }
 
     setLoading(true);
@@ -316,6 +324,16 @@ if (ctaType !== "none") {
         }).select();
         console.log("[CreatePost] appointment_cta result:", appointmentData, "error:", appointmentErr);
         if (appointmentErr) { toast.error(`Agendamento: ${appointmentErr.message}`); setLoading(false); return; }
+      }
+
+      // Create event CTA if type is "register"
+      if (ctaType === "register" && ctaEventData) {
+        const { error: eventErr } = await supabase.from("event_cta").insert({
+          post_id: post.id,
+          tenant_id: tenant.id,
+          ...ctaEventData,
+        });
+        if (eventErr) { toast.error(`Evento: ${eventErr.message}`); setLoading(false); return; }
       }
     }
 
@@ -547,36 +565,68 @@ if (ctaType !== "none") {
               )}
 
               {ctaType === "register" && (
-                <>
-                  <div>
-                    <Label>Evento</Label>
-                    <Select value={eventId} onValueChange={setEventId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>{events.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}</SelectContent>
-                    </Select>
-                    {events.length === 0 && <p className="text-xs text-muted-foreground mt-2">Crie um evento em Conteúdo → Eventos.</p>}
+                <div className="space-y-4">
+                  <div><Label>Nome do evento</Label><Input value={eventName} onChange={(e) => setEventName(e.target.value)} maxLength={120} placeholder="Workshop de Marketing" /></div>
+                  <div><Label>Descrição do evento</Label><Textarea value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} placeholder="Descreva rapidamente o evento" rows={2} maxLength={500} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Data</Label><Input value={eventDate} onChange={(e) => setEventDate(e.target.value)} type="date" /></div>
+                    <div><Label>Horário</Label><Input value={eventTime} onChange={(e) => setEventTime(e.target.value)} type="time" /></div>
                   </div>
+                  <div><Label>Local</Label><Input value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} placeholder="Online, Auditório, Link Zoom, Rua..." /></div>
+                  <div><Label>Limite de participantes</Label><Input value={eventMaxParticipants} onChange={(e) => setEventMaxParticipants(e.target.value)} type="number" min="1" placeholder="50" className="w-32" /></div>
+                  
                   <div>
                     <Label className="mb-2 block">Campos a coletar</Label>
                     <div className="space-y-2">
                       {REGISTER_FIELDS.map((f) => (
                         <label key={f.key} className="flex items-center gap-3 text-sm">
-                          <Checkbox
-                            checked={registerFields.includes(f.key) || f.required}
-                            disabled={f.required}
-                            onCheckedChange={() => !f.required && toggleField(f.key)}
-                          />
+                          <Checkbox checked={registerFields.includes(f.key) || f.required} disabled={f.required} onCheckedChange={() => !f.required && toggleField(f.key)} />
                           <span>{f.label}{f.required && " (obrigatório)"}</span>
                         </label>
                       ))}
                     </div>
-                    {registerFields.includes("custom") && (
-                      <div className="mt-2"><Label>Rótulo do campo personalizado</Label>
-                        <Input value={customFieldLabel} onChange={(e) => setCustomFieldLabel(e.target.value)} maxLength={40} placeholder="Ex: Empresa" />
-                      </div>
-                    )}
                   </div>
-                </>
+
+                  <div>
+                    <Label className="mb-2 block">Campos extras personalizados</Label>
+                    <p className="text-xs text-muted-foreground mb-2">Adicione informações adicionais que deseja solicitar dos participantes.</p>
+                    <div className="space-y-2">
+                      {eventCustomFields.map((field, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-secondary/40 rounded-lg px-3 py-2">
+                          <span className="text-sm font-medium">{field.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">{field.type}</span>
+                            <button type="button" onClick={() => setEventCustomFields(eventCustomFields.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowCustomFieldModal(true)} className="w-full">+ Adicionar campo</Button>
+                    </div>
+                  </div>
+
+                  {showCustomFieldModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                      <div className="bg-background rounded-xl p-4 w-80 space-y-3">
+                        <h3 className="font-semibold">Novo campo</h3>
+                        <div><Label>Nome do campo</Label><Input value={newCustomFieldName} onChange={(e) => setNewCustomFieldName(e.target.value)} placeholder="Profissão, Instagram, Cidade..." /></div>
+                        <div><Label>Tipo</Label>
+                          <Select value={newCustomFieldType} onValueChange={setNewCustomFieldType}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Texto</SelectItem>
+                              <SelectItem value="number">Número</SelectItem>
+                              <SelectItem value="select">Seleção</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => { if (newCustomFieldName.trim()) { setEventCustomFields([...eventCustomFields, { name: newCustomFieldName.trim(), type: newCustomFieldType }]); setNewCustomFieldName(""); setShowCustomFieldModal(false); } }} className="flex-1">Salvar</Button>
+                          <Button size="sm" variant="outline" onClick={() => setShowCustomFieldModal(false)} className="flex-1">Cancelar</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {ctaType === "info" && (

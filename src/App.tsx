@@ -81,15 +81,13 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
-  const { loading: tenantLoading, tenant } = useTenant();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: tenantLoading } = useTenant();
 
-  if (!user && loading) return <Loading />;
+  const isLoading = authLoading || tenantLoading;
+  
+  if (isLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
-
-  if (loading || tenantLoading) {
-    return <Loading />;
-  }
 
   return children;
 };
