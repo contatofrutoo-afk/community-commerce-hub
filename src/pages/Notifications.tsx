@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, X, User, Mail, Users, Clock, MessageSquare, Calendar } from "lucide-react";
+import { Bell, Check, X, User, Mail, Users, Clock, MessageSquare, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type PendingRequest = {
@@ -363,6 +363,34 @@ export default function Notifications() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
+  const handleDeleteNotification = async (notificationId: string) => {
+    const { error } = await supabase.from("notifications").delete().eq("id", notificationId);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Notificação excluída");
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    const { error } = await supabase.from("community_requests").delete().eq("id", requestId);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Solicitação excluída");
+    setRequests(prev => prev.filter(r => r.id !== requestId));
+  };
+
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    const { error } = await supabase.from("appointment_requests").delete().eq("id", appointmentId);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Agendamento excluído");
+    setAppointments(prev => prev.filter(a => a.id !== appointmentId));
+  };
+
+  const handleDeleteBudget = async (budgetId: string) => {
+    const { error } = await supabase.from("budget_requests").delete().eq("id", budgetId);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Orçamento excluído");
+    setBudgetRequests(prev => prev.filter(b => b.id !== budgetId));
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 
   return (
@@ -416,6 +444,7 @@ export default function Notifications() {
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" className="flex-1 gap-2" onClick={() => handleApprove(r)}><Check className="h-4 w-4" />Aprovar</Button>
                       <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleReject(r.id)}><X className="h-4 w-4" />Recusar</Button>
+                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 p-1" onClick={() => handleDeleteRequest(r.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
                 ))}
@@ -476,8 +505,18 @@ export default function Notifications() {
                     )}
                     {a.status === "approved" && (
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" className="w-full gap-2" onClick={() => handleCompleteAppointment(a)}>
+                        <Button size="sm" className="flex-1 gap-2" onClick={() => handleCompleteAppointment(a)}>
                           <Check className="h-4 w-4" />Concluir Agendamento
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 p-1" onClick={() => handleDeleteAppointment(a.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {a.status !== "approved" && a.status !== "pending" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 w-full" onClick={() => handleDeleteAppointment(a.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" />Excluir
                         </Button>
                       </div>
                     )}
@@ -540,8 +579,18 @@ export default function Notifications() {
                     )}
                     {b.status === "contacted" && (
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" className="w-full gap-2" onClick={() => handleCompleteBudget(b)}>
+                        <Button size="sm" className="flex-1 gap-2" onClick={() => handleCompleteBudget(b)}>
                           <Check className="h-4 w-4" />Concluir Orçamento
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 p-1" onClick={() => handleDeleteBudget(b.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {b.status === "completed" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-500 w-full" onClick={() => handleDeleteBudget(b.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" />Excluir
                         </Button>
                       </div>
                     )}
@@ -604,6 +653,12 @@ export default function Notifications() {
                       <Clock className="h-3 w-3" /> {formatDate(n.created_at)}
                     </p>
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
+                    className="text-muted-foreground hover:text-red-500 p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
               );
