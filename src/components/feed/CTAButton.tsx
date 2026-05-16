@@ -106,10 +106,36 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
   console.log("[NewAppointmentDialog] cta:", cta, "postId:", postId);
 
-  const availableTimes: string[] = c.available_times ?? [];
+  useEffect(() => {
+    if (!open || !postId) return;
+    (async () => {
+      const { data: appointmentCta } = await supabase
+        .from("appointment_cta")
+        .select("id")
+        .eq("post_id", postId)
+        .maybeSingle();
+
+      if (!appointmentCta) return;
+
+      const { data: approvedAppts } = await supabase
+        .from("appointment_requests")
+        .select("selected_time")
+        .eq("appointment_id", appointmentCta.id)
+        .eq("status", "approved");
+
+      if (approvedAppts && approvedAppts.length > 0) {
+        const times = approvedAppts.map((a: any) => a.selected_time);
+        setBookedTimes(times);
+      }
+    })();
+  }, [open, postId]);
+
+  const allAvailableTimes: string[] = c.available_times ?? [];
+  const availableTimes = allAvailableTimes.filter(t => !bookedTimes.includes(t));
   const serviceName = c.service_name ?? cta.label ?? "Serviço";
   const serviceDate = c.service_date ?? "";
   const duration = c.duration_minutes ?? 60;
@@ -280,22 +306,36 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
 
         <div>
           <p className="text-sm font-medium mb-2">Horários disponíveis:</p>
-          {availableTimes.length === 0 ? (
+          {allAvailableTimes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sem horários disponíveis</p>
           ) : (
             <div className="grid grid-cols-4 gap-2">
-              {availableTimes.map((t) => (
-                <Button
-                  key={t}
-                  size="sm"
-                  variant={selectedTime === t ? "default" : "outline"}
-                  onClick={() => setSelectedTime(t)}
-                  className={selectedTime === t ? "bg-brand text-primary-foreground hover:opacity-90" : ""}
-                >
-                  {t}
-                </Button>
-              ))}
+              {allAvailableTimes.map((t) => {
+                const isBooked = bookedTimes.includes(t);
+                return (
+                  <Button
+                    key={t}
+                    size="sm"
+                    variant={selectedTime === t ? "default" : "outline"}
+                    disabled={isBooked}
+                    onClick={() => !isBooked && setSelectedTime(t)}
+                    className={`${
+                      selectedTime === t 
+                        ? "bg-brand text-primary-foreground hover:opacity-90" 
+                        : isBooked 
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50" 
+                          : ""
+                    }`}
+                  >
+                    {t}
+                    {isBooked && " ✓"}
+                  </Button>
+                );
+              })}
             </div>
+          )}
+          {bookedTimes.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">✓ = já ocupado</p>
           )}
         </div>
 
