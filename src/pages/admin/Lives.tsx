@@ -81,12 +81,60 @@ export default function Lives() {
   };
 
   const toggleLive = async (live: Live, start: boolean) => {
+    // 1. Update lives table
     const { error } = await supabase
       .from("lives")
       .update({ is_live: start })
       .eq("id", live.id);
     
     if (error) { toast.error(error.message); return; }
+
+    // 2. Sync is_live into post_cta.config_json if this live has a linked post
+    if (live.post_id) {
+      const { data: ctaRow } = await supabase
+        .from("post_cta")
+        .select("id, config_json")
+        .eq("post_id", live.post_id)
+        .eq("type", "live")
+        .maybeSingle();
+
+      if (ctaRow) {
+        let cfg = ctaRow.config_json ?? {};
+        if (typeof cfg === "string") {
+          try { cfg = JSON.parse(cfg); } catch {}
+        }
+        cfg.is_live = start;
+        await supabase
+          .from("post_cta")
+          .update({ config_json: cfg })
+          .eq("id", ctaRow.id);
+      }
+    } else {
+      // Try to find any post_cta with this live's external_url in config_json
+      const { data: allLiveCtas } = await supabase
+        .from("post_cta")
+        .select("id, config_json")
+        .eq("type", "live")
+        .eq("tenant_id", live.tenant_id);
+
+      if (allLiveCtas) {
+        for (const ctaRow of allLiveCtas) {
+          let cfg = ctaRow.config_json ?? {};
+          if (typeof cfg === "string") {
+            try { cfg = JSON.parse(cfg); } catch {}
+          }
+          if (cfg.external_url === live.external_url) {
+            cfg.is_live = start;
+            await supabase
+              .from("post_cta")
+              .update({ config_json: cfg })
+              .eq("id", ctaRow.id);
+            break;
+          }
+        }
+      }
+    }
+
     toast.success(start ? "Live iniciada!" : "Live encerrada!");
     loadLives();
   };
