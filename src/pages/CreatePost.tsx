@@ -328,12 +328,19 @@ if (ctaType !== "none") {
 
       // Create event CTA if type is "register"
       if (ctaType === "register" && ctaEventData) {
-        const { error: eventErr } = await supabase.from("event_cta").insert({
-          post_id: post.id,
-          tenant_id: tenant.id,
-          ...ctaEventData,
-        });
-        if (eventErr) { toast.error(`Evento: ${eventErr.message}`); setLoading(false); return; }
+        let eventErr = null;
+        try {
+          const { error: e } = await supabase.from("event_cta").insert({
+            post_id: post.id,
+            tenant_id: tenant.id,
+            ...ctaEventData,
+          });
+          eventErr = e;
+        } catch (e: any) {
+          console.error("Event CTA creation error:", e);
+          eventErr = e;
+        }
+        if (eventErr) { console.error("Event CTA error:", eventErr); toast.error(`Evento: ${eventErr.message || "Erro ao criar evento"}`); setLoading(false); return; }
       }
     }
 

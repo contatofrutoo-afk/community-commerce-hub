@@ -617,7 +617,10 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
 
   useEffect(() => {
     if (open && postId) {
-      supabase.from("event_cta").select("*").eq("post_id", postId).maybeSingle().then(({ data }) => setEvent(data));
+      supabase.from("event_cta").select("*").eq("post_id", postId).maybeSingle().then(({ data, error }) => {
+        console.log("[RegisterDialog] event_cta lookup:", postId, data, error);
+        setEvent(data);
+      });
     }
   }, [open, postId]);
 
