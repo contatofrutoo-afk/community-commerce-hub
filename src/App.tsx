@@ -82,15 +82,12 @@ const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading } = useAuth();
-  const { loading: tenantLoading, tenant } = useTenant();
+  const { loading: tenantLoading } = useTenant();
 
-  if (authLoading) return <Loading />;
-  if (!user) {
-    // Add small delay to prevent flicker
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (tenantLoading) return <Loading />;
+  const isLoading = authLoading || tenantLoading;
+  
+  if (isLoading) return <Loading />;
+  if (!user) return <Navigate to="/auth" replace />;
 
   return children;
 };
