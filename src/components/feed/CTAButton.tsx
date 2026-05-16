@@ -670,22 +670,14 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
       email: values.email ?? null,
       phone: values.phone ?? null,
       notes: values.notes ?? null,
-      answers: payload,
     };
 
     let error: any = null;
-    
     try {
       const result = await supabase.from("event_registrations").insert(insertData);
       error = result.error;
     } catch (e: any) {
-      if (e.message?.includes("answers")) {
-        delete insertData.answers;
-        const result = await supabase.from("event_registrations").insert(insertData);
-        error = result.error;
-      } else {
-        error = e;
-      }
+      error = e;
     }
     setLoading(false);
     if (error) { 
