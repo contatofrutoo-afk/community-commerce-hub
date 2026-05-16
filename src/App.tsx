@@ -85,7 +85,10 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { loading: tenantLoading, tenant } = useTenant();
 
   if (authLoading) return <Loading />;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    // Add small delay to prevent flicker
+    return <Navigate to="/auth" replace />;
+  }
 
   if (tenantLoading) return <Loading />;
 
