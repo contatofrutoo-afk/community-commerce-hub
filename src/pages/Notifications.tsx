@@ -34,6 +34,22 @@ type AppointmentRequest = {
   service_date?: string;
 };
 
+type BudgetRequest = {
+  id: string;
+  tenant_id: string;
+  post_id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  status: string;
+  created_at: string;
+  profile_name?: string;
+  profile_email?: string;
+  post_title?: string;
+};
+
 type NotificationItem = {
   id: string;
   type: string;
@@ -50,6 +66,7 @@ export default function Notifications() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRequest[]>([]);
+  const [budgetRequests, setBudgetRequests] = useState<BudgetRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
@@ -155,6 +172,40 @@ export default function Notifications() {
       } else {
         setAppointments([]);
       }
+
+      // Load budget requests for B2B
+      const { data: budgets } = await supabase
+        .from("budget_requests")
+        .select("*")
+        .in("tenant_id", tenantIds)
+        .order("created_at", { ascending: false });
+
+      if (budgets && budgets.length > 0) {
+        const budgetUserIds = budgets.map(b => b.user_id);
+        const budgetPostIds = budgets.map(b => b.post_id);
+
+        const [{ data: profiles2 }, { data: posts }] = await Promise.all([
+          supabase.from("profiles").select("user_id, name, email").in("user_id", budgetUserIds),
+          supabase.from("posts").select("id, description").in("id", budgetPostIds),
+        ]);
+
+        const profileMap2: Record<string, any> = {};
+        (profiles2 || []).forEach((p: any) => { profileMap2[p.user_id] = p; });
+
+        const postMap: Record<string, any> = {};
+        (posts || []).forEach((p: any) => { postMap[p.id] = p; });
+
+        const enrichedBudgets = budgets.map(b => ({
+          ...b,
+          profile_name: profileMap2[b.user_id]?.name || b.name,
+          profile_email: profileMap2[b.user_id]?.email || b.email,
+          post_title: postMap[b.post_id]?.description?.substring(0, 50) || "Post",
+        }));
+
+        setBudgetRequests(enrichedBudgets);
+      } else {
+        setBudgetRequests([]);
+      }
       
       const { data: notifs } = await supabase
         .from("notifications")
@@ -257,6 +308,57 @@ export default function Notifications() {
 
     toast.success("Agendamento cancelado!");
     setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "cancelled" } : a));
+  };
+
+  const handleContactBudget = async (budget: BudgetRequest) => {
+    const { error } = await supabase.from("budget_requests").update({ status: "contacted" }).eq("id", budget.id);
+    if (error) { toast.error("Erro ao atualizar"); return; }
+
+    await supabase.from("notifications").insert({
+      tenant_id: budget.tenant_id,
+      user_id: budget.user_id,
+      type: "budget_contacted",
+      title: "Estamos entrando em contato",
+      content: "Estamos entrando em contato com você.",
+      link: "/feed",
+    });
+
+    toast.success("Marcado como contactado!");
+    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "contacted" } : b));
+  };
+
+  const handleCompleteBudget = async (budget: BudgetRequest) => {
+    const { error } = await supabase.from("budget_requests").update({ status: "completed" }).eq("id", budget.id);
+    if (error) { toast.error("Erro ao concluir"); return; }
+
+    await supabase.from("notifications").insert({
+      tenant_id: budget.tenant_id,
+      user_id: budget.user_id,
+      type: "budget_completed",
+      title: "Solicitação concluída",
+      content: "Sua solicitação foi concluída.",
+      link: "/feed",
+    });
+
+    toast.success("Orçamento concluído!");
+    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "completed" } : b));
+  };
+
+  const handleCancelBudget = async (budget: BudgetRequest) => {
+    const { error } = await supabase.from("budget_requests").update({ status: "cancelled" }).eq("id", budget.id);
+    if (error) { toast.error("Erro ao cancelar"); return; }
+
+    await supabase.from("notifications").insert({
+      tenant_id: budget.tenant_id,
+      user_id: budget.user_id,
+      type: "budget_cancelled",
+      title: "Solicitação encerrada",
+      content: "Sua solicitação foi encerrada.",
+      link: "/feed",
+    });
+
+    toast.success("Orçamento cancelado!");
+    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "cancelled" } : b));
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -384,8 +486,72 @@ export default function Notifications() {
               </div>
             )}
 
+            {/* Budget Requests */}
+            {budgetRequests.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground">Orçamentos</h3>
+                {budgetRequests.map(b => (
+                  <div key={b.id} className="bg-card border border-blue-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{b.name || "Cliente"}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            {b.email || "-"}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        b.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                        b.status === "contacted" ? "bg-green-100 text-green-700" :
+                        b.status === "completed" ? "bg-blue-100 text-blue-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        {b.status === "pending" ? "Pendente" :
+                         b.status === "contacted" ? "Contatado" :
+                         b.status === "completed" ? "Concluído" :
+                         "Cancelado"}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium">Post: {b.post_title}</p>
+                      {b.phone && <p className="text-xs">Telefone: {b.phone}</p>}
+                    </div>
+                    {b.message && (
+                      <div className="bg-secondary/50 rounded-lg p-2 text-sm">
+                        <p className="text-muted-foreground">{b.message}</p>
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 pt-1">
+                      <Clock className="h-3 w-3" /> {formatDate(b.created_at)}
+                    </div>
+                    {b.status === "pending" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" className="flex-1 gap-2" onClick={() => handleContactBudget(b)}>
+                          <Check className="h-4 w-4" />Contatar
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleCancelBudget(b)}>
+                          <X className="h-4 w-4" />Cancelar
+                        </Button>
+                      </div>
+                    )}
+                    {b.status === "contacted" && (
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" className="w-full gap-2" onClick={() => handleCompleteBudget(b)}>
+                          <Check className="h-4 w-4" />Concluir Orçamento
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Empty state */}
-            {requests.length === 0 && appointments.length === 0 && (
+            {requests.length === 0 && appointments.length === 0 && budgetRequests.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma solicitação pendente</p>

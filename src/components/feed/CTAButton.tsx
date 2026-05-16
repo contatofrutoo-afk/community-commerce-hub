@@ -496,36 +496,110 @@ const quoteSchema = z.object({
 function QuoteDialog({ cta, postId, tenantId, open, onClose }: any) {
   const { user } = useAuth();
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
-  const [content, setContent] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!user || !open || profileLoaded) return;
+    (async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, email, phone")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (profile) {
+        setName(profile.name || "");
+        setEmail(profile.email || "");
+        setPhone(profile.phone || "");
+      }
+      setProfileLoaded(true);
+    })();
+  }, [user, open, profileLoaded]);
+
   const send = async () => {
-    const parsed = quoteSchema.safeParse({ name, contact, content });
-    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    if (!name.trim()) { toast.error("Nome obrigatório"); return; }
+    if (!message.trim()) { toast.error("Mensagem obrigatória"); return; }
+    if (!user) return;
+    
     setLoading(true);
-    const { error } = await supabase.from("quotes").insert({
-      tenant_id: tenantId, user_id: user?.id ?? null, post_id: postId,
-      customer_name: name.trim(), customer_contact: contact.trim(), content: content.trim(),
+    
+    const { error } = await supabase.from("budget_requests").insert({
+      tenant_id: tenantId,
+      post_id: postId,
+      user_id: user.id,
+      name: name.trim(),
+      email: email.trim() || null,
+      phone: phone.trim() || null,
+      message: message.trim(),
+      status: "pending",
     });
+
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Você já enviou uma solicitação para este post");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+
+    // Notify B2B owner
+    const { data: owners } = await supabase
+      .from("memberships")
+      .select("user_id")
+      .eq("tenant_id", tenantId)
+      .eq("role", "owner");
+
+    if (owners && owners.length > 0) {
+      for (const o of owners) {
+        if (o.user_id !== user.id) {
+          await supabase.from("notifications").insert({
+            tenant_id: tenantId,
+            user_id: o.user_id,
+            type: "budget_pending",
+            title: "Nova solicitação de orçamento",
+            content: `${name.trim()} enviou uma solicitação de orçamento.\n\nServiço: ${cta.label || "Serviço"}\n\nMensagem: ${message.trim()}\n\nTelefone: ${phone.trim() || "Não informado"}`,
+            link: "/notifications",
+          });
+        }
+      }
+    }
+
+    // Notify B2C user
+    await supabase.from("notifications").insert({
+      tenant_id: tenantId,
+      user_id: user.id,
+      type: "budget_received",
+      title: "Solicitação recebida",
+      content: "Sua solicitação de orçamento foi recebida. Em breve entraremos em contato.",
+      link: "/feed",
+    });
+
     await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "quote" } });
-    toast.success("Solicitacao enviada");
+    toast.success("Solicitação enviada!");
     onClose();
   };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">{cta.label}</DialogTitle>
-          <DialogDescription>Conte o que voce precisa. Retornamos em breve.</DialogDescription>
+          <DialogDescription>Conte rapidamente o que precisa. Entraremos em contato.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div><Label htmlFor="q-name">Nome</Label><Input id="q-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></div>
-          <div><Label htmlFor="q-contact">Contato (email ou telefone)</Label><Input id="q-contact" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={120} /></div>
-          <div><Label htmlFor="q-content">Mensagem</Label><Textarea id="q-content" value={content} onChange={(e) => setContent(e.target.value)} maxLength={1000} rows={4} /></div>
+          <div><Label htmlFor="q-name">Nome</Label><Input id="q-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Seu nome" /></div>
+          <div><Label htmlFor="q-email">Email</Label><Input id="q-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="seu@email.com" /></div>
+          <div><Label htmlFor="q-phone">Telefone</Label><Input id="q-phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} placeholder="(00)00000-0000" /></div>
+          <div><Label htmlFor="q-message">Mensagem</Label><Textarea id="q-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={1000} rows={4} placeholder="Descreva o que você precisa..." /></div>
           <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={send} disabled={loading}>
-            {loading ? "Enviando…" : "Enviar"}
+            {loading ? "Enviando…" : "Enviar solicitação"}
           </Button>
         </div>
       </DialogContent>
