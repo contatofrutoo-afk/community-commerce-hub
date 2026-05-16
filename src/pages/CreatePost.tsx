@@ -60,7 +60,15 @@ export default function CreatePost() {
   const [buyPrice, setBuyPrice] = useState("");
   const [buyUrl, setBuyUrl] = useState("");
 
-  // SCHEDULE
+  // SCHEDULE - Appointments (new system)
+  const [scheduleServiceName, setScheduleServiceName] = useState("");
+  const [scheduleDuration, setScheduleDuration] = useState("60");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTimes, setScheduleTimes] = useState<string[]>([]);
+  const [scheduleNotes, setScheduleNotes] = useState("");
+  const [scheduleMaxBookings, setScheduleMaxBookings] = useState("1");
+
+  // Legacy SCHEDULE (services)
   const [services, setServices] = useState<any[]>([]);
   const [serviceId, setServiceId] = useState("");
 
@@ -172,8 +180,25 @@ export default function CreatePost() {
       };
     }
     if (ctaType === "schedule") {
-      if (!serviceId) return { ok: false, error: "Selecione um serviço" };
-      return { ok: true, config: { service_id: serviceId } };
+      const isNewSystem = !serviceId;
+      if (isNewSystem) {
+        if (!scheduleServiceName.trim()) return { ok: false, error: "Nome do serviço obrigatório" };
+        if (!scheduleDate) return { ok: false, error: "Data obrigatória" };
+        if (scheduleTimes.length === 0) return { ok: false, error: "Selecione ao menos um horário" };
+        return {
+          ok: true,
+          config: {
+            type: "appointment",
+            service_name: scheduleServiceName.trim(),
+            duration_minutes: parseInt(scheduleDuration),
+            service_date: scheduleDate,
+            available_times: scheduleTimes,
+            notes: scheduleNotes.trim() || undefined,
+            max_bookings: parseInt(scheduleMaxBookings) || 1,
+          },
+        };
+      }
+      return { ok: true, config: { type: "legacy", service_id: serviceId } };
     }
     if (ctaType === "quote") return { ok: true, config: {} };
     if (ctaType === "register") {
@@ -273,6 +298,22 @@ if (ctaType !== "none") {
           created_by: user.id,
         });
         if (liveErr) { toast.error(`Live: ${liveErr.message}`); setLoading(false); return; }
+      }
+
+      // Create appointment CTA if type is "schedule" with new system
+      if (ctaType === "schedule" && ctaConfig?.type === "appointment") {
+        const { error: appointmentErr } = await supabase.from("appointment_cta").insert({
+          post_id: post.id,
+          tenant_id: tenant.id,
+          service_name: ctaConfig.service_name,
+          duration_minutes: ctaConfig.duration_minutes,
+          service_date: ctaConfig.service_date,
+          available_times: ctaConfig.available_times,
+          notes: ctaConfig.notes,
+          max_bookings: ctaConfig.max_bookings,
+          created_by: user.id,
+        });
+        if (appointmentErr) { toast.error(`Agendamento: ${appointmentErr.message}`); setLoading(false); return; }
       }
     }
 
@@ -457,13 +498,49 @@ if (ctaType !== "none") {
               )}
 
               {ctaType === "schedule" && (
-                <div>
-                  <Label>Serviço</Label>
-                  <Select value={serviceId} onValueChange={setServiceId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {services.length === 0 && <p className="text-xs text-muted-foreground mt-2">Crie um serviço em Conteúdo → Serviços antes de usar.</p>}
+                <div className="space-y-3">
+                  {services.length > 0 && (
+                    <div>
+                      <Label>Serviço (legado)</Label>
+                      <Select value={serviceId} onValueChange={setServiceId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>{services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      {services.length > 0 && <p className="text-xs text-muted-foreground mt-1">Ou use o sistema de agendamento abaixo</p>}
+                    </div>
+                  )}
+                  <hr className="my-2" />
+                  <div><Label>Serviço</Label><Input value={scheduleServiceName} onChange={(e) => setScheduleServiceName(e.target.value)} placeholder="Ex: Limpeza de carro" maxLength={100} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Duração</Label>
+                      <Select value={scheduleDuration} onValueChange={setScheduleDuration}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 min</SelectItem>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="45">45 min</SelectItem>
+                          <SelectItem value="60">1h</SelectItem>
+                          <SelectItem value="90">1h30</SelectItem>
+                          <SelectItem value="120">2h</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Data</Label><Input value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} type="date" /></div>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">Horários disponíveis</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map((t) => (
+                        <label key={t} className="flex items-center gap-1 text-sm border rounded p-2 cursor-pointer hover:bg-secondary">
+                          <Checkbox checked={scheduleTimes.includes(t)} onCheckedChange={(c) => { if (c) setScheduleTimes([...scheduleTimes, t]); else setScheduleTimes(scheduleTimes.filter(x => x !== t)); }} />
+                          <span>{t}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div><Label>Observações</Label><Textarea value={scheduleNotes} onChange={(e) => setScheduleNotes(e.target.value)} placeholder="Ex: Chegar 10 minutos antes" rows={2} maxLength={300} /></div>
+                  <div><Label>Qtd. máxima de agendamentos</Label><Input value={scheduleMaxBookings} onChange={(e) => setScheduleMaxBookings(e.target.value)} type="number" min="1" max="100" className="w-24" /></div>
                 </div>
               )}
 

@@ -90,6 +90,204 @@ function BuyDialog({ cta, postId, tenantId, open, onClose }: any) {
 function ScheduleDialog({ cta, postId, tenantId, open, onClose }: any) {
   const { user } = useAuth();
   const c = cta.config_json ?? {};
+  const isNewSystem = c.type === "appointment";
+
+  if (!isNewSystem) {
+    return <LegacyScheduleDialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={onClose} />;
+  }
+
+  return <NewAppointmentDialog cta={cta} postId={postId} tenantId={tenantId} open={open} onClose={onClose} />;
+}
+
+function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
+  const { user } = useAuth();
+  const c = cta.config_json ?? {};
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const availableTimes: string[] = c.available_times ?? [];
+  const serviceName = c.service_name ?? "Serviço";
+  const serviceDate = c.service_date ?? "";
+  const duration = c.duration_minutes ?? 60;
+  const notes = c.notes ?? "";
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  const confirm = async () => {
+    if (!selectedTime || !user) return;
+    setLoading(true);
+
+    const { data: appointmentCta } = await supabase
+      .from("appointment_cta")
+      .select("id")
+      .eq("post_id", postId)
+      .maybeSingle();
+
+    if (!appointmentCta) {
+      toast.error("Erro: agendamento não encontrado");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from("appointment_requests").insert({
+      appointment_id: appointmentCta.id,
+      post_id: postId,
+      tenant_id: tenantId,
+      user_id: user.id,
+      selected_time: selectedTime,
+      message: message.trim() || null,
+      status: "pending",
+    });
+
+    setLoading(false);
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Você já agendou neste horário");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const userName = profile?.name || user.email?.split("@")[0] || "Usuário";
+
+    await supabase.from("notifications").insert({
+      tenant_id: tenantId,
+      user_id: user.id,
+      type: "appointment_pending",
+      title: "Nova solicitação de agendamento",
+      content: `${userName} solicitou agendamento para ${serviceName} às ${selectedTime}`,
+      link: `/requests`,
+    });
+
+    const { data: owners } = await supabase
+      .from("memberships")
+      .select("user_id")
+      .eq("tenant_id", tenantId)
+      .eq("role", "owner");
+
+    if (owners && owners.length > 0) {
+      for (const o of owners) {
+        if (o.user_id !== user.id) {
+          await supabase.from("notifications").insert({
+            tenant_id: tenantId,
+            user_id: o.user_id,
+            type: "appointment_pending",
+            title: "Nova solicitação de agendamento",
+            content: `${userName} solicitou agendamento para ${serviceName} às ${selectedTime}`,
+            link: `/requests`,
+          });
+        }
+      }
+    }
+
+    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "schedule" } });
+    setSubmitted(true);
+    toast.success("Solicitação de agendamento enviada!");
+  };
+
+  if (submitted) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Agendamento Solicitado</DialogTitle>
+            <DialogDescription>
+              Sua solicitação foi enviada. Você será notificado quando for aprovada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
+            <p className="font-medium">{serviceName}</p>
+            <p className="text-sm text-muted-foreground">{formatDate(serviceDate)} • {selectedTime} • {duration}min</p>
+          </div>
+          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={onClose}>
+            Fechar
+          </Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">{serviceName}</DialogTitle>
+          <DialogDescription>
+            {formatDate(serviceDate)} • {duration}min
+          </DialogDescription>
+        </DialogHeader>
+
+        {notes && (
+          <div className="bg-secondary/50 rounded-lg p-3 text-sm">
+            <p className="font-medium mb-1">Observações:</p>
+            <p className="text-muted-foreground">{notes}</p>
+          </div>
+        )}
+
+        <div>
+          <p className="text-sm font-medium mb-2">Horários disponíveis:</p>
+          {availableTimes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sem horários disponíveis</p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {availableTimes.map((t) => (
+                <Button
+                  key={t}
+                  size="sm"
+                  variant={selectedTime === t ? "default" : "outline"}
+                  onClick={() => setSelectedTime(t)}
+                  className={selectedTime === t ? "bg-brand text-primary-foreground hover:opacity-90" : ""}
+                >
+                  {t}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {selectedTime && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <div>
+              <Label htmlFor="ap-message">Observações (opcional)</Label>
+              <Textarea
+                id="ap-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Algo que precise informar..."
+                maxLength={500}
+                rows={2}
+              />
+            </div>
+            <Button
+              className="w-full bg-brand text-primary-foreground hover:opacity-90"
+              onClick={confirm}
+              disabled={loading}
+            >
+              {loading ? "Enviando…" : "Confirmar"}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LegacyScheduleDialog({ cta, postId, tenantId, open, onClose }: any) {
+  const { user } = useAuth();
+  const c = cta.config_json ?? {};
   const serviceId: string | undefined = c.service_id;
   const [date, setDate] = useState<Date | undefined>();
   const [slots, setSlots] = useState<string[]>([]);
