@@ -20,7 +20,7 @@ export default function BottomNav() {
 
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },
-    ...(showAdminItems ? [{ to: "/content", icon: Plus, label: "Criar", special: true }] : []),
+    ...(showAdminItems ? [{ to: "/create", icon: Plus, label: "Criar", special: true }] : []),
     { to: "/conversas", icon: MessageSquare, label: "Conversas" },
     { to: "/notifications", icon: Bell, label: "Notificações", badge: pendingCount },
     { to: "/messages", icon: MessageCircle, label: "Msgs" },
