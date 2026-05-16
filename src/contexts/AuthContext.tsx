@@ -46,10 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
       if (!isMounted) return;
+      const hasSession = !!s?.user;
       setSession(s);
       setUser(s?.user ?? null);
       setRedirected(false);
-      if (!s?.user) {
+      if (!hasSession) {
         setAppRole(null);
         setUserState(null);
         setRedirectTo(null);
@@ -63,9 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionCheckComplete = true;
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (!data.session) {
-        setLoading(false);
-      }
+      setLoading(false);
     });
     return () => { isMounted = false; sub.subscription.unsubscribe(); };
   }, []);
