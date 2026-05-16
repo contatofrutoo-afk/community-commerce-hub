@@ -190,6 +190,23 @@ export default function Notifications() {
   const handleApproveAppointment = async (appt: AppointmentRequest) => {
     const { error } = await supabase.from("appointment_requests").update({ status: "approved" }).eq("id", appt.id);
     if (error) { toast.error("Erro ao aprovar"); return; }
+
+    // Send notification to B2C user
+    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+    const serviceName = cta?.service_name || appt.service_name || "Serviço";
+    const serviceDate = cta?.service_date || appt.service_date || "";
+
+    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+
+    await supabase.from("notifications").insert({
+      tenant_id: appt.tenant_id,
+      user_id: appt.user_id,
+      type: "appointment_approved",
+      title: "Agendamento aprovado!",
+      content: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi aprovado!`,
+      link: "/feed",
+    });
+
     toast.success("Agendamento aprovado!");
     setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "approved" } : a));
   };
@@ -197,6 +214,23 @@ export default function Notifications() {
   const handleCompleteAppointment = async (appt: AppointmentRequest) => {
     const { error } = await supabase.from("appointment_requests").update({ status: "completed" }).eq("id", appt.id);
     if (error) { toast.error("Erro ao concluir"); return; }
+
+    // Send notification to B2C user
+    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+    const serviceName = cta?.service_name || appt.service_name || "Serviço";
+    const serviceDate = cta?.service_date || appt.service_date || "";
+
+    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+
+    await supabase.from("notifications").insert({
+      tenant_id: appt.tenant_id,
+      user_id: appt.user_id,
+      type: "appointment_completed",
+      title: "Agendamento concluído!",
+      content: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi concluído.`,
+      link: "/feed",
+    });
+
     toast.success("Agendamento concluído!");
     setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "completed" } : a));
   };
@@ -204,6 +238,23 @@ export default function Notifications() {
   const handleCancelAppointment = async (appt: AppointmentRequest) => {
     const { error } = await supabase.from("appointment_requests").update({ status: "cancelled" }).eq("id", appt.id);
     if (error) { toast.error("Erro ao cancelar"); return; }
+
+    // Send notification to B2C user
+    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+    const serviceName = cta?.service_name || appt.service_name || "Serviço";
+    const serviceDate = cta?.service_date || appt.service_date || "";
+
+    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+
+    await supabase.from("notifications").insert({
+      tenant_id: appt.tenant_id,
+      user_id: appt.user_id,
+      type: "appointment_cancelled",
+      title: "Agendamento cancelado",
+      content: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi cancelado.`,
+      link: "/feed",
+    });
+
     toast.success("Agendamento cancelado!");
     setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "cancelled" } : a));
   };
