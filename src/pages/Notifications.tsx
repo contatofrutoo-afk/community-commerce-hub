@@ -228,18 +228,23 @@ export default function Notifications() {
       }
 
       // Load event registrations for B2B from config_json
-      const { data: ctas } = await supabase
+      const { data: ctas, error: ctasError } = await supabase
         .from("post_cta")
-        .select("id, post_id, config_json, tenant_id")
+        .select("id, post_id, config_json, tenant_id, type")
         .in("tenant_id", tenantIds)
         .eq("type", "register");
+
+      console.log("[Notifications] CTAs register:", ctas, ctasError);
 
       const allRegistrations: any[] = [];
       
       if (ctas && ctas.length > 0) {
         for (const cta of ctas) {
-          const eventData = cta.config_json?.event_data;
+          const configJson = typeof cta.config_json === 'string' ? JSON.parse(cta.config_json) : cta.config_json;
+          const eventData = configJson?.event_data;
           const registrations = eventData?.registrations || [];
+          
+          console.log("[Notifications] Event data:", eventData, "registrations:", registrations);
           
           for (const reg of registrations) {
             allRegistrations.push({
@@ -263,6 +268,7 @@ export default function Notifications() {
         }
       }
       
+      console.log("[Notifications] All registrations:", allRegistrations);
       setEventRegistrations(allRegistrations);
       
       const { data: notifs } = await supabase
