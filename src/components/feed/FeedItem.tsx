@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play, Pencil, MoreVertical, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play, Trash2 } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 
@@ -117,19 +116,10 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [topicCount, setTopicCount] = useState(0);
   const [showTopicPreview, setShowTopicPreview] = useState(false);
 
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editContent, setEditContent] = useState(post.description || "");
-  const [savingEdit, setSavingEdit] = useState(false);
   const [savingDelete, setSavingDelete] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
 
   const isPostAuthor = user && post.author_id === user.id;
-  const canDeletePost = canManage || isPostAuthor;
-  const canEditPost = canManage || isPostAuthor;
-  
-  // Debug: log dos IDs para auditoria
-  console.log("[FeedItem Debug] post.author_id:", post.author_id, "user.id:", user?.id, "isPostAuthor:", isPostAuthor, "canManage:", canManage);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
@@ -182,46 +172,21 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMuted(m => !m);
-    if (videoRef.current) videoRef.current.muted = !muted);
-  };
-
-  const handleDeleteSuccess = () => {
-    if (onDelete) onDelete();
-  };
-
-  const handleEditSave = async () => {
-    const trimmed = editContent.trim();
-    if (!trimmed) { toast.error("Digite um conteúdo"); return; }
-    setSavingEdit(true);
-    const { error } = await supabase.from("posts").update({ description: trimmed }).eq("id", post.id);
-    setSavingEdit(false);
-    if (error) { toast.error("Erro ao salvar"); return; }
-    toast.success("Postagem atualizada");
-    setShowEditDialog(false);
-    if (onDelete) onDelete();
+    if (videoRef.current) videoRef.current.muted = !muted;
   };
 
   const handleDeleteConfirm = async () => {
-    console.log("[DELETE] Starting delete for post:", post.id);
-    console.log("[DELETE] User:", user?.id);
-    console.log("[DELETE] Post author_id:", post.author_id);
-    console.log("[DELETE] canManage:", canManage);
     setSavingDelete(true);
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
-    console.log("[DELETE] Supabase response error:", error);
     setSavingDelete(false);
     if (error) { 
       console.error("[DELETE] Delete failed:", error);
-      toast.error("Erro ao excluir: " + error.message); 
+      toast.error("Erro ao excluir postagem"); 
       return; 
     }
-    console.log("[DELETE] Success, calling onDelete callback");
     toast.success("Postagem removida");
     setShowDeleteDialog(false);
-    if (onDelete) {
-      console.log("[DELETE] Executing onDelete, post.id:", post.id);
-      onDelete();
-    }
+    if (onDelete) onDelete();
   };
 
   // Video progress
@@ -487,6 +452,16 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
           <MessageCircle className="h-7 w-7 drop-shadow-md text-background" />
           <span className="text-xs font-semibold drop-shadow-md">{counts.comments}</span>
         </button>
+        {isPostAuthor && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} 
+            className="flex flex-col items-center gap-1" 
+            aria-label="Excluir"
+          >
+            <Trash2 className="h-7 w-7 drop-shadow-md text-background" />
+            <span className="text-xs font-semibold drop-shadow-md">Excluir</span>
+          </button>
+        )}
         {/* Discussion button - appears if discussion_enabled */}
         {post.discussion_enabled && (
           <button 
@@ -510,63 +485,7 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
             </button>
           </>
         )}
-        {(canEditPost || canDeletePost) && (
-          <div className="flex flex-col items-center gap-1 relative">
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-              className="flex flex-col items-center gap-1"
-              aria-label="Mais opções"
-            >
-              <MoreVertical className="h-7 w-7 drop-shadow-md text-background" />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 bottom-full mb-2 bg-card rounded-xl shadow-lg border border-border py-1 z-50 min-w-[140px]">
-                {canEditPost && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowEditDialog(true); }}
-                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary flex items-center gap-2"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Editar postagem
-                  </button>
-                )}
-                {canDeletePost && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setShowDeleteDialog(true); }}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Excluir postagem
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Editar postagem</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            placeholder="Digite o conteúdo da postagem..."
-            rows={4}
-            maxLength={500}
-          />
-          <p className="text-xs text-muted-foreground text-right">{editContent.length}/500</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
-            <Button onClick={handleEditSave} disabled={savingEdit || !editContent.trim()}>
-              {savingEdit ? "Salvando..." : "Salvar alterações"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
