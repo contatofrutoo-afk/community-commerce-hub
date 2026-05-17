@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Trash2, MessageSquare, MessageSquareText } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, Trash2, MessageSquare, MessageSquareText, Play } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -31,6 +31,69 @@ export type Post = {
   profiles?: { name: string; avatar_url: string | null } | null;
   topics?: { id: string; title: string; replies_count: number; last_activity_at: string }[];
 };
+
+type MediaType = "video" | "image" | "youtube" | "instagram" | "vimeo";
+
+function getMediaType(url: string | null): MediaType | null {
+  if (!url) return null;
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes("youtube.com") || lowerUrl.includes("youtu.be") || lowerUrl.includes("youtube-nocookie.com")) {
+    return "youtube";
+  }
+  if (lowerUrl.includes("instagram.com")) {
+    return "instagram";
+  }
+  if (lowerUrl.includes("vimeo.com")) {
+    return "vimeo";
+  }
+  if (lowerUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i) || lowerUrl.includes("cloudinary") || lowerUrl.includes("video")) {
+    return "video";
+  }
+  return null;
+}
+
+function getVideoEmbedUrl(url: string, type: MediaType): string | null {
+  if (!url) return null;
+  try {
+    const urlObj = new URL(url);
+    if (type === "youtube") {
+      let videoId = urlObj.searchParams.get("v");
+      if (!videoId && url.includes("youtu.be")) {
+        videoId = url.split("/").pop()?.split("?")[0] ?? null;
+      }
+      if (!videoId && url.includes("/shorts/")) {
+        videoId = url.split("/shorts/")[1]?.split("?")[0] ?? null;
+      }
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+      }
+    }
+    if (type === "instagram") {
+      return url.replace("instagram.com", "instagram.com/oembed");
+    }
+    if (type === "vimeo") {
+      const match = url.match(/vimeo\.com\/(\d+)/);
+      if (match && match[1]) {
+        return `https://player.vimeo.com/video/${match[1]}`;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function isDirectVideoUrl(url: string | null): boolean {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  return (
+    lowerUrl.endsWith(".mp4") ||
+    lowerUrl.endsWith(".webm") ||
+    lowerUrl.endsWith(".ogg") ||
+    lowerUrl.endsWith(".mov") ||
+    lowerUrl.includes("cloudinary") ||
+    lowerUrl.includes("video.") ||
+    lowerUrl.includes("stream")
+  );
+}
 
 export default function FeedItem({ post, active, onDelete }: { post: Post; active: boolean; onDelete?: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -280,13 +343,36 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
 
   const postCta = post.post_cta?.[0] ?? null;
   const isLivePost = post.is_live || (postCta?.type === "live");
+  const mediaType = getMediaType(post.media_url);
+  const isExternalVideo = mediaType === "youtube" || mediaType === "instagram" || mediaType === "vimeo";
+  const isDirectVideo = isDirectVideoUrl(post.media_url);
+  const embedUrl = isExternalVideo && mediaType ? getVideoEmbedUrl(post.media_url!, mediaType) : null;
 
   return (
     <article className="relative h-[100dvh] w-full snap-start bg-foreground text-background overflow-hidden" onClick={onTap}>
       {post.type === "video" && post.media_url ? (
-        <video ref={videoRef} src={post.media_url} className="feed-media absolute inset-0 h-full w-full object-cover"
-          loop muted={muted} playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
-          onTimeUpdate={onTimeUpdate} onClick={toggleMute} />
+        isExternalVideo && embedUrl ? (
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 h-full w-full object-cover"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            frameBorder="0"
+          />
+        ) : isDirectVideo ? (
+          <video ref={videoRef} src={post.media_url} className="feed-media absolute inset-0 h-full w-full object-cover"
+            loop muted={muted} playsInline preload="metadata" poster={post.thumbnail_url ?? undefined}
+            onTimeUpdate={onTimeUpdate} onClick={toggleMute} />
+        ) : post.thumbnail_url ? (
+          <div className="absolute inset-0 w-full h-full">
+            <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="w-16 h-16 rounded-full bg-white/80 flex items-center justify-center">
+                <Play className="h-8 w-8 text-foreground ml-1" />
+              </div>
+            </div>
+          </div>
+        ) : null
       ) : post.type === "image" && post.media_url ? (
         <div className="absolute inset-0 w-full h-full flex items-center justify-center">
           <img src={post.media_url} alt={post.description ?? ""} className="w-full h-full object-cover" style={{ aspectRatio: "4/5" }} />
@@ -431,7 +517,13 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
           <div className="space-y-4 px-5 py-4">
             <div className="aspect-[4/5] max-h-[50vh] mx-auto rounded-xl overflow-hidden bg-gray-100 shadow-inner">
               {post.type === "video" && post.media_url ? (
-                <video src={post.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                isExternalVideo && embedUrl ? (
+                  <iframe src={embedUrl} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen frameBorder="0" />
+                ) : isDirectVideo ? (
+                  <video src={post.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                ) : post.thumbnail_url ? (
+                  <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                ) : null
               ) : post.type === "image" && post.media_url ? (
                 <img src={post.media_url} alt="Post" className="w-full h-full object-cover" />
               ) : post.type === "text" ? (
