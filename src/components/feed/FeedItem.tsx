@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Trash2, MessageSquare, MessageSquareText, Play } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import CTAButton from "./CTAButton";
 import CommentsSheet from "./CommentsSheet";
+import PostActionsMenu from "./PostActionsMenu";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -118,6 +119,7 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [showTopicPreview, setShowTopicPreview] = useState(false);
 
   const canDeletePost = canManage || (user && post.author_id === user.id);
+  const canEditPost = canManage || (user && post.author_id === user.id);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
@@ -170,17 +172,11 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMuted(m => !m);
-    if (videoRef.current) videoRef.current.muted = !muted;
+    if (videoRef.current) videoRef.current.muted = !muted);
   };
 
-  const deletePost = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Tem certeza que deseja excluir esta postagem?")) return;
-    const { error } = await supabase.from("posts").delete().eq("id", post.id);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Postagem excluída");
+  const handleDeleteSuccess = () => {
     if (onDelete) onDelete();
-    else window.location.reload();
   };
 
   // Video progress
@@ -469,13 +465,15 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
             </button>
           </>
         )}
-        {canDeletePost && (
-          <button onClick={deletePost} className="flex flex-col items-center gap-1" aria-label="Excluir">
-            <Trash2 className="h-7 w-7 drop-shadow-md text-background" />
-            <span className="text-xs font-semibold drop-shadow-md">Excluir</span>
-          </button>
-        )}
       </div>
+
+      {/* Post Actions Menu (Edit/Delete for owners) */}
+      <PostActionsMenu
+        post={post}
+        canDelete={canDeletePost}
+        canEdit={canEditPost}
+        onDelete={handleDeleteSuccess}
+      />
 
       {/* bottom info */}
       {postCta !== null && (
