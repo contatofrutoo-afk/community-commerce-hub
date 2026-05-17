@@ -51,7 +51,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .eq("is_approved", true);
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
     const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
@@ -81,17 +82,29 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         targetTenant = activeTenant;
         targetRole = roles[activeTenant.id];
       } else {
-        targetTenant = list[0];
-        targetRole = roles[list[0].id];
-        localStorage.setItem("weaze:active_tenant", list[0].id);
+        const ownedTenants = list.filter(t => roles[t.id] === "owner" || roles[t.id] === "admin");
+        if (ownedTenants.length > 0) {
+          targetTenant = ownedTenants[0];
+          targetRole = roles[targetTenant.id];
+        } else {
+          targetTenant = list[0];
+          targetRole = roles[list[0].id];
+        }
+        localStorage.setItem("weaze:active_tenant", targetTenant.id);
       }
     }
 
     if (targetTenant && !roles[targetTenant.id]) {
       if (list.length > 0) {
-        targetTenant = list[0];
-        targetRole = roles[list[0].id];
-        localStorage.setItem("weaze:active_tenant", list[0].id);
+        const ownedTenants = list.filter(t => roles[t.id] === "owner" || roles[t.id] === "admin");
+        if (ownedTenants.length > 0) {
+          targetTenant = ownedTenants[0];
+          targetRole = roles[targetTenant.id];
+        } else {
+          targetTenant = list[0];
+          targetRole = roles[list[0].id];
+        }
+        localStorage.setItem("weaze:active_tenant", targetTenant.id);
       } else {
         targetTenant = null;
         targetRole = null;

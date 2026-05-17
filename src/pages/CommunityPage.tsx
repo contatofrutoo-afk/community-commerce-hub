@@ -138,6 +138,14 @@ export default function CommunityPage() {
     })();
   }, [communitySlug, isB2B, user]);
 
+  useEffect(() => {
+    if (!loading && accessStatus === "approved" && tenant && user) {
+      selectTenant(tenant.id);
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+      navigate("/feed", { replace: true });
+    }
+  }, [loading, accessStatus, tenant, user, navigate, selectTenant]);
+
   const handleRequestAccess = async () => {
     if (!communitySlug || !user || !tenant) {
       return;
