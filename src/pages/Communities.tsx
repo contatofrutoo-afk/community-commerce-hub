@@ -20,8 +20,8 @@ type TenantCard = {
 };
 
 export default function Communities() {
-  const { user, signOut, isB2B } = useAuth();
-  const { tenants, selectTenant, isOwner } = useTenant();
+  const { user, signOut } = useAuth();
+  const { tenants, selectTenant, isOwner: hasOwnedCommunities } = useTenant();
   const nav = useNavigate();
   const [discover, setDiscover] = useState<TenantCard[]>([]);
   const [query, setQuery] = useState("");
@@ -46,21 +46,8 @@ export default function Communities() {
     const tenant = tenants.find(t => t.id === id);
     if (!tenant) return;
 
-    if (isB2B) {
-      selectTenant(id);
-      nav("/feed");
-      return;
-    }
-
-    const status = await getAccessStatus(tenant.id, user.id);
-
-    if (status === "approved") {
-      selectTenant(id);
-      nav("/feed");
-    } else {
-      selectTenant(id);
-      nav(`/c/${tenant.slug}`);
-    }
+    selectTenant(id);
+    nav("/feed");
   };
 
   const join = async (id: string) => {
@@ -68,12 +55,6 @@ export default function Communities() {
 
     const tenant = discover.find(t => t.id === id);
     if (!tenant) return;
-
-    if (isB2B) {
-      selectTenant(id);
-      nav("/feed");
-      return;
-    }
 
     const status = await getAccessStatus(tenant.id, user.id);
 
@@ -108,7 +89,7 @@ export default function Communities() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h1 className="font-display text-3xl">Minhas comunidades</h1>
-            {isB2B && (
+            {hasOwnedCommunities && (
               <Button asChild size="sm" variant="outline" className="rounded-full">
                 <Link to="/onboarding"><Plus className="h-4 w-4 mr-1" />Nova marca</Link>
               </Button>
@@ -121,11 +102,11 @@ export default function Communities() {
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                {isB2B
+                {hasOwnedCommunities
                   ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."
                   : "Você ainda não participa de nenhuma comunidade. Explore abaixo para entrar."}
               </p>
-              {isB2B ? (
+              {hasOwnedCommunities ? (
                 <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
                   <Link to="/onboarding">Criar minha marca</Link>
                 </Button>

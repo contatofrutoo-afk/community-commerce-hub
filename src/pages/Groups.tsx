@@ -52,8 +52,8 @@ type MemberSearch = {
 };
 
 export default function Groups() {
-  const { user, isB2B } = useAuth();
-  const { tenant } = useTenant();
+  const { user } = useAuth();
+  const { tenant, canManage } = useTenant();
   const navigate = useNavigate();
   
   const [groups, setGroups] = useState<Group[]>([]);
@@ -91,12 +91,12 @@ export default function Groups() {
   const [savingReply, setSavingReply] = useState(false);
 
   useEffect(() => {
-    if (!user || !isB2B || !tenant) {
+    if (!user || !canManage || !tenant) {
       navigate("/");
       return;
     }
     loadGroups();
-  }, [user, isB2B, tenant]);
+  }, [user, canManage, tenant]);
 
   const loadGroups = async () => {
     if (!user || !tenant) return;

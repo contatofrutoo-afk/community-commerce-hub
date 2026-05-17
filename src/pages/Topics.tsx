@@ -55,8 +55,8 @@ function formatTime(dateStr: string | null | undefined): string {
 }
 
 export default function Topics() {
-  const { tenant } = useTenant();
-  const { user, isB2B } = useAuth();
+  const { tenant, canManage } = useTenant();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const params = useParams();
@@ -403,7 +403,7 @@ export default function Topics() {
           <p className="text-sm text-gray-500 mt-1">Discussões da comunidade</p>
         </div>
 
-        {isB2B && (
+        {canManage && (
           <div className="p-4">
             <button onClick={() => setShowCreate(true)} className="w-full bg-purple-700 hover:bg-purple-800 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2">
               <Plus className="h-5 w-5" /> Criar nova conversa
@@ -417,7 +417,7 @@ export default function Topics() {
           <div className="p-8 text-center">
             <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500 mb-2">Nenhuma conversa ainda</p>
-            <p className="text-sm text-gray-400">{isB2B ? "Crie uma conversa para engajar sua comunidade" : "Comente em um post para começar"}</p>
+            <p className="text-sm text-gray-400">{canManage ? "Crie uma conversa para engajar sua comunidade" : "Comente em um post para começar"}</p>
           </div>
         ) : (
           <div className="bg-white">

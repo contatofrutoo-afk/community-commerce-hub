@@ -168,28 +168,30 @@ export default function Auth() {
                     <p className="text-sm text-muted-foreground">Cadastro para participar da comunidade</p>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label>Tipo de conta</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <AccountTypeOption
-                      active={accountType === "b2c"}
-                      onClick={() => setAccountType("b2c")}
-                      icon={Users}
-                      title="Usuário"
-                      desc="Participar de comunidades"
-                    />
-                    <AccountTypeOption
-                      active={accountType === "b2b"}
-                      onClick={() => setAccountType("b2b")}
-                      icon={Building2}
-                      title="Marca"
-                      desc="Criar minha comunidade"
-                    />
+                {!fromInvite && (
+                  <div className="space-y-2">
+                    <Label>Tipo de conta</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <AccountTypeOption
+                        active={accountType === "b2c"}
+                        onClick={() => setAccountType("b2c")}
+                        icon={Users}
+                        title="Usuário"
+                        desc="Participar de comunidades"
+                      />
+                      <AccountTypeOption
+                        active={accountType === "b2b"}
+                        onClick={() => setAccountType("b2b")}
+                        icon={Building2}
+                        title="Marca"
+                        desc="Criar minha comunidade"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-name">{accountType === "b2b" ? "Nome da marca / responsável" : "Nome"}</Label>
-                  <Input id="su-name" maxLength={80} value={signup.name} placeholder={accountType === "b2b" ? "Nome da sua marca" : "Seu nome"}
+                  <Label htmlFor="su-name">{!fromInvite && accountType === "b2b" ? "Nome da marca / responsável" : "Nome"}</Label>
+                  <Input id="su-name" maxLength={80} value={signup.name} placeholder={!fromInvite && accountType === "b2b" ? "Nome da sua marca" : "Seu nome"}
                     onChange={(e) => setSignup({ ...signup, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
@@ -203,7 +205,7 @@ export default function Auth() {
                     onChange={(e) => setSignup({ ...signup, password: e.target.value })} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
-                  {loading ? "Criando…" : accountType === "b2b" ? "Criar conta da marca" : "Criar conta"}
+                  {loading ? "Criando…" : !fromInvite && accountType === "b2b" ? "Criar conta da marca" : "Criar conta"}
                 </Button>
               </form>
             </TabsContent>

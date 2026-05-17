@@ -1,18 +1,16 @@
 import { Link } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
-import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { PlusSquare, Calendar, CalendarDays, BarChart3, Lock, Video } from "lucide-react";
 
 /**
- * Tab "Conteúdo" — área do B2B para gerenciar posts, agenda e eventos.
- * Para B2C (member), exibe mensagem de acesso restrito.
+ * Tab "Conteúdo" — área do owner/admin para gerenciar posts, agenda e eventos.
+ * Para member, exibe mensagem de acesso restrito.
  */
 export default function Content() {
-  const { tenant } = useTenant();
-  const { isB2B } = useAuth();
+  const { tenant, canManage } = useTenant();
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -21,11 +19,11 @@ export default function Content() {
         <div>
           <h1 className="font-display text-3xl mb-1">Conteúdo</h1>
           <p className="text-sm text-muted-foreground">
-            {isB2B ? `Gerencie ${tenant?.name}` : "Apenas a marca pode gerenciar conteúdo."}
+            {canManage ? `Gerencie ${tenant?.name}` : "Apenas a marca pode gerenciar conteúdo."}
           </p>
         </div>
 
-        {isB2B ? (
+        {canManage ? (
           <div className="grid gap-3">
             <ContentCard to="/create" icon={PlusSquare} title="Novo post" desc="Vídeo, imagem ou texto com CTA." />
             <ContentCard to="/content/agenda" icon={Calendar} title="Agenda" desc="Serviços e eventos para agendamento." />

@@ -37,15 +37,15 @@ type AppointmentRequest = {
 };
 
 export default function Requests() {
-  const { user, isB2B } = useAuth();
-  const { tenants } = useTenant();
+  const { user } = useAuth();
+  const { tenants, canManage } = useTenant();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadRequests = async () => {
-    if (!user || !isB2B) { navigate("/"); return; }
+    if (!user || !canManage) { navigate("/"); return; }
 
     const { data: mems } = await supabase
       .from("memberships")
@@ -138,8 +138,8 @@ export default function Requests() {
     setAppointments(enriched);
   };
 
-  useEffect(() => { loadRequests(); }, [user, isB2B, tenants, navigate]);
-  useEffect(() => { if (user && isB2B) loadAppointments(); }, [user, isB2B]);
+  useEffect(() => { loadRequests(); }, [user, canManage, tenants, navigate]);
+  useEffect(() => { if (user && canManage) loadAppointments(); }, [user, canManage]);
 
   const handleApprove = async (request: AccessRequest) => {
     const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);

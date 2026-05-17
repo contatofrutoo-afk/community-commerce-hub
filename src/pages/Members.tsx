@@ -25,20 +25,20 @@ type Member = {
 };
 
 export default function Members() {
-  const { user, isB2B } = useAuth();
-  const { tenant } = useTenant();
+  const { user } = useAuth();
+  const { tenant, canManage } = useTenant();
   const navigate = useNavigate();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !isB2B || !tenant) {
+    if (!user || !canManage || !tenant) {
       navigate("/");
       return;
     }
     loadMembers();
-  }, [user, isB2B, tenant]);
+  }, [user, canManage, tenant]);
 
   const loadMembers = async () => {
     if (!user || !tenant) return;

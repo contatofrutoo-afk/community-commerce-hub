@@ -87,12 +87,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cancelled) return;
 
         const roles = (mems ?? []).map((m) => m.role);
-        const isMetadataB2B = user.user_metadata?.account_type === "b2b";
         const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
 
         let newRole: AppRole | null = null;
 
-        if (isOwnerOrAdmin || isMetadataB2B) {
+        if (isOwnerOrAdmin) {
           newRole = roles.includes("admin") ? "admin" : "b2b";
         } else {
           newRole = "b2c";
@@ -100,10 +99,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setAppRole(newRole);
 
-        const isB2B = isOwnerOrAdmin || isMetadataB2B;
+        const hasCommunity = isOwnerOrAdmin;
         setUserState({
-          isB2B,
-          hasCommunity: isB2B,
+          isB2B: hasCommunity,
+          hasCommunity,
           hasJoinedCommunities: mems && mems.length > 0,
         });
       } catch (err) {
