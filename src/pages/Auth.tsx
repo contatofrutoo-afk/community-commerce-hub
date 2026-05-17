@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
+import { Users, Building2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const signupSchema = z.object({
   name: z.string().trim().min(2, "Nome muito curto").max(80),
@@ -22,6 +24,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [fromInvite, setFromInvite] = useState(false);
   const [inviteTenantName, setInviteTenantName] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<"b2c" | "b2b">("b2c");
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
   const [login, setLogin] = useState({ email: "", password: "" });
 
@@ -79,7 +82,7 @@ export default function Auth() {
       password: parsed.data.password,
       options: {
         emailRedirectTo: `${window.location.origin}/feed`,
-        data: { name: parsed.data.name, account_type: "b2c" },
+        data: { name: parsed.data.name, account_type: accountType },
       },
     });
 
@@ -165,9 +168,28 @@ export default function Auth() {
                     <p className="text-sm text-muted-foreground">Cadastro para participar da comunidade</p>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label>Tipo de conta</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <AccountTypeOption
+                      active={accountType === "b2c"}
+                      onClick={() => setAccountType("b2c")}
+                      icon={Users}
+                      title="Usuário"
+                      desc="Participar de comunidades"
+                    />
+                    <AccountTypeOption
+                      active={accountType === "b2b"}
+                      onClick={() => setAccountType("b2b")}
+                      icon={Building2}
+                      title="Marca"
+                      desc="Criar minha comunidade"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-name">Nome</Label>
-                  <Input id="su-name" maxLength={80} value={signup.name} placeholder="Seu nome"
+                  <Label htmlFor="su-name">{accountType === "b2b" ? "Nome da marca / responsável" : "Nome"}</Label>
+                  <Input id="su-name" maxLength={80} value={signup.name} placeholder={accountType === "b2b" ? "Nome da sua marca" : "Seu nome"}
                     onChange={(e) => setSignup({ ...signup, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
@@ -181,7 +203,7 @@ export default function Auth() {
                     onChange={(e) => setSignup({ ...signup, password: e.target.value })} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
-                  {loading ? "Criando…" : "Criar conta"}
+                  {loading ? "Criando…" : accountType === "b2b" ? "Criar conta da marca" : "Criar conta"}
                 </Button>
               </form>
             </TabsContent>
@@ -193,5 +215,28 @@ export default function Auth() {
         </p>
       </div>
     </main>
+  );
+}
+
+function AccountTypeOption({
+  active, onClick, icon: Icon, title, desc,
+}: {
+  active: boolean; onClick: () => void; icon: any; title: string; desc: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-xl border p-3 text-left transition-all",
+        active
+          ? "border-primary bg-brand-soft ring-2 ring-primary/20"
+          : "border-border bg-card hover:bg-secondary/40",
+      )}
+    >
+      <Icon className={cn("h-4 w-4 mb-1.5", active ? "text-primary" : "text-muted-foreground")} />
+      <p className="text-sm font-semibold leading-tight">{title}</p>
+      <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{desc}</p>
+    </button>
   );
 }
