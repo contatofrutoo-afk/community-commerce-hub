@@ -22,13 +22,14 @@ type AuthCtx = {
   redirectTo: string | null;
   signOut: () => Promise<void>;
   clearRedirect: () => void;
+  refreshAppRole: () => void;
 };
 
 const Ctx = createContext<AuthCtx>({
   user: null, session: null, loading: true,
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
   userState: null, redirectTo: null,
-  signOut: async () => {}, clearRedirect: () => {},
+  signOut: async () => {}, clearRedirect: () => {}, refreshAppRole: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -114,6 +115,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { cancelled = true; };
   }, [user]);
 
+  const refreshAppRole = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data: mems } = await supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", user.id);
+
+      const roles = (mems ?? []).map((m) => m.role);
+      const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
+
+      let newRole: AppRole | null = null;
+      if (isOwnerOrAdmin) {
+        newRole = roles.includes("admin") ? "admin" : "b2b";
+      } else {
+        newRole = "b2c";
+      }
+
+      setAppRole(newRole);
+
+      const hasCommunity = isOwnerOrAdmin;
+      setUserState({
+        isB2B: hasCommunity,
+        hasCommunity,
+        hasJoinedCommunities: mems && mems.length > 0,
+      });
+    } catch (err) {
+      console.error("Error refreshing app role:", err);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user || !appRole || redirected) return;
 
@@ -162,6 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         redirectTo,
         signOut,
         clearRedirect,
+        refreshAppRole,
       }}
     >
       {children}

@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Props) {
-  const { user } = useAuth();
+  const { user, refreshAppRole } = useAuth();
   const { selectTenant, refresh } = useTenant();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -96,6 +96,7 @@ export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Pro
 
     await refresh();
     selectTenant(data.id);
+    await refreshAppRole();
     toast.success("Marca criada");
     setLoading(false);
     onOpenChange(false);
