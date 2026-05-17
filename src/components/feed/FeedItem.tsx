@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play, Pencil } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import CTAButton from "./CTAButton";
 import CommentsSheet from "./CommentsSheet";
-import PostActionsMenu from "./PostActionsMenu";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -118,6 +117,12 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [topicCount, setTopicCount] = useState(0);
   const [showTopicPreview, setShowTopicPreview] = useState(false);
 
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editContent, setEditContent] = useState(post.description || "");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [savingDelete, setSavingDelete] = useState(false);
+
   const canDeletePost = canManage || (user && post.author_id === user.id);
   const canEditPost = canManage || (user && post.author_id === user.id);
   
@@ -176,6 +181,28 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   };
 
   const handleDeleteSuccess = () => {
+    if (onDelete) onDelete();
+  };
+
+  const handleEditSave = async () => {
+    const trimmed = editContent.trim();
+    if (!trimmed) { toast.error("Digite um conteúdo"); return; }
+    setSavingEdit(true);
+    const { error } = await supabase.from("posts").update({ description: trimmed }).eq("id", post.id);
+    setSavingEdit(false);
+    if (error) { toast.error("Erro ao salvar"); return; }
+    toast.success("Postagem atualizada");
+    setShowEditDialog(false);
+    if (onDelete) onDelete();
+  };
+
+  const handleDeleteConfirm = async () => {
+    setSavingDelete(true);
+    const { error } = await supabase.from("posts").delete().eq("id", post.id);
+    setSavingDelete(false);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Postagem removida");
+    setShowDeleteDialog(false);
     if (onDelete) onDelete();
   };
 
@@ -465,15 +492,58 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
             </button>
           </>
         )}
+        {(canEditPost || canDeletePost) && (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowEditDialog(true); }}
+              className="flex flex-col items-center gap-1"
+              aria-label="Editar"
+            >
+              <Pencil className="h-7 w-7 drop-shadow-md text-background" />
+              <span className="text-xs font-semibold drop-shadow-md">Editar</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Post Actions Menu (Edit/Delete for owners) */}
-      <PostActionsMenu
-        post={post}
-        canDelete={canDeletePost}
-        canEdit={canEditPost}
-        onDelete={handleDeleteSuccess}
-      />
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar postagem</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            placeholder="Digite o conteúdo da postagem..."
+            rows={4}
+            maxLength={500}
+          />
+          <p className="text-xs text-muted-foreground text-right">{editContent.length}/500</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
+            <Button onClick={handleEditSave} disabled={savingEdit || !editContent.trim()}>
+              {savingEdit ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir postagem?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Esta ação não pode ser desfeita.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={savingDelete}>
+              {savingDelete ? "Excluindo..." : "Excluir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* bottom info */}
       {postCta !== null && (
