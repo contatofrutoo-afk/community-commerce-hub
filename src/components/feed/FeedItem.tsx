@@ -121,7 +121,8 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [savingDelete, setSavingDelete] = useState(false);
 
   const isPostAuthor = user && post.author_id === user.id;
-  console.log("[FeedItem] author_id:", post.author_id, "user.id:", user?.id, "isPostAuthor:", isPostAuthor);
+  const canDeletePost = isPostAuthor || canManage;
+  console.log("[FeedItem] canManage:", canManage, "isPostAuthor:", isPostAuthor, "canDelete:", canDeletePost);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
@@ -454,7 +455,7 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
           <MessageCircle className="h-7 w-7 drop-shadow-md text-background" />
           <span className="text-xs font-semibold drop-shadow-md">{counts.comments}</span>
         </button>
-        {isPostAuthor && (
+        {canDeletePost && (
           <button 
             onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} 
             className="flex flex-col items-center gap-1" 
@@ -464,10 +465,6 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
             <span className="text-xs font-semibold drop-shadow-md">Excluir</span>
           </button>
         )}
-        {/* DEBUG */}
-        <div className="fixed bottom-20 right-2 bg-black/60 text-white text-[10px] px-1 rounded z-50">
-          autor={post.author_id?.slice(0,8) || 'null'} | user={user?.id?.slice(0,8)} | {isPostAuthor ? '✅' : '❌'}
-        </div>
         {/* Discussion button - appears if discussion_enabled */}
         {post.discussion_enabled && (
           <button 
