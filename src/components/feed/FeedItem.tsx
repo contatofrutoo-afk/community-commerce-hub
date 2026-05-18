@@ -77,7 +77,7 @@ function getVideoEmbedUrl(url: string, type: MediaType): string | null {
         return `https://player.vimeo.com/video/${match[1]}`;
       }
     }
-  } catch {}
+  } catch { /* ignore */ }
   return null;
 }
 
