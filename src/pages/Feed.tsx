@@ -290,7 +290,14 @@ export default function Feed() {
         )}
         {posts.map((p, i) => (
           <div key={p.id} ref={(el) => (itemRefs.current[i] = el)} data-idx={i} className="h-[calc(100dvh-3.5rem)] snap-start">
-            <FeedItem post={p} active={i === activeIdx} onDelete={() => setPosts(current => current.filter(post => post.id !== p.id))} />
+            <FeedItem post={p} active={i === activeIdx} onDelete={() => {
+            console.log("[Feed] onDelete triggered, removing post:", p.id);
+            setPosts(current => {
+              const filtered = current.filter(post => post.id !== p.id);
+              console.log("[Feed] Posts before:", current.length, "after:", filtered.length);
+              return filtered;
+            });
+          }} />
           </div>
         ))}
         {loading && <div className="py-6 text-center text-muted-foreground text-sm">Carregando…</div>}

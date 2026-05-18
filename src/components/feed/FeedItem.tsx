@@ -177,17 +177,23 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   };
 
   const handleDeleteConfirm = async () => {
+    console.log("[DELETE] Starting delete, post.id:", post.id, "type:", post.type);
     setSavingDelete(true);
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
+    console.log("[DELETE] Supabase response, error:", error);
     setSavingDelete(false);
     if (error) { 
       console.error("[DELETE] Delete failed:", error);
-      toast.error("Erro ao excluir postagem"); 
+      toast.error("Erro ao excluir postagem: " + error.message); 
       return; 
     }
+    console.log("[DELETE] Success, calling onDelete");
     toast.success("Postagem removida");
     setShowDeleteDialog(false);
-    if (onDelete) onDelete();
+    if (onDelete) {
+      console.log("[DELETE] Executing onDelete callback");
+      onDelete();
+    }
   };
 
   // Video progress
