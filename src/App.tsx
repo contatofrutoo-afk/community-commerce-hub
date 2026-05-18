@@ -67,7 +67,7 @@ const AdminUsers = lazy(() => import("./pages/admin/Users"));
 
 const Requests = lazy(() => import("./pages/Requests"));
 const Members = lazy(() => import("./pages/Members"));
-const Groups = lazy(() => import("./pages/Groups"));
+const GroupsPage = lazy(() => import("./pages/GroupsPage"));
 const AdminTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminGlobal = lazy(() => import("./pages/admin/AdminGlobal"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -173,7 +173,7 @@ const App = () => (
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
                     <Route path="/members" element={<Protected><NeedsTenant><NeedsAccess><Members /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/groups" element={<Protected><NeedsTenant><NeedsAccess><Groups /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/groups" element={<Protected><NeedsTenant><NeedsAccess><GroupsPage /></NeedsAccess></NeedsTenant></Protected>} />
                     <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
