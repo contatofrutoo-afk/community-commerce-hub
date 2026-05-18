@@ -76,8 +76,14 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
 
     if (!targetTenant && list.length > 0) {
       const activeTenantId = localStorage.getItem("weaze:active_tenant");
-      const activeTenant = list.find(t => t.id === activeTenantId);
-      if (activeTenant && roles[activeTenant.id]) {
+      const lastActiveTenantId = localStorage.getItem("weaze:last_active_tenant");
+      const lastActiveTenant = lastActiveTenantId ? list.find(t => t.id === lastActiveTenantId && roles[t.id]) : null;
+      const activeTenant = activeTenantId ? list.find(t => t.id === activeTenantId && roles[t.id]) : null;
+      
+      if (lastActiveTenant) {
+        targetTenant = lastActiveTenant;
+        targetRole = roles[lastActiveTenant.id];
+      } else if (activeTenant) {
         targetTenant = activeTenant;
         targetRole = roles[activeTenant.id];
       } else {
@@ -89,7 +95,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
           targetTenant = list[0];
           targetRole = roles[list[0].id];
         }
+      }
+      if (targetTenant) {
         localStorage.setItem("weaze:active_tenant", targetTenant.id);
+        localStorage.setItem("weaze:last_active_tenant", targetTenant.id);
       }
     }
 
@@ -104,10 +113,12 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
           targetRole = roles[list[0].id];
         }
         localStorage.setItem("weaze:active_tenant", targetTenant.id);
+        localStorage.setItem("weaze:last_active_tenant", targetTenant.id);
       } else {
         targetTenant = null;
         targetRole = null;
         localStorage.removeItem("weaze:active_tenant");
+        localStorage.removeItem("weaze:last_active_tenant");
       }
     }
 
@@ -134,6 +145,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     setIsOwner(role === "owner");
     setCanManage(role === "owner" || role === "admin");
     localStorage.setItem("weaze:active_tenant", id);
+    localStorage.setItem("weaze:last_active_tenant", id);
   };
 
   return (
