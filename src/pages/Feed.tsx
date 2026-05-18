@@ -13,8 +13,10 @@ import { Sparkles, Plus, Play, Video } from "lucide-react";
 const PAGE = 8;
 
 export default function Feed() {
-  const { tenant, loading: tLoading } = useTenant();
+  const { tenant, loading: tLoading, tenants } = useTenant();
   const { user, isB2B } = useAuth();
+  
+  console.log("[Feed] tenant:", tenant?.name, "tLoading:", tLoading, "isB2B:", isB2B, "tenants count:", tenants.length);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
