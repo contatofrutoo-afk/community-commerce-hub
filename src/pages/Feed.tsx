@@ -77,6 +77,7 @@ export default function Feed() {
     
     if (data.length < PAGE) setDone(true);
     setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
+    console.log("[Feed] Posts loaded:", data.map(p => ({ id: p.id, author_id: p.author_id, user_id: user?.id })));
   }, [tenant?.id, loading, done]);
 
   // Track view when post becomes active
