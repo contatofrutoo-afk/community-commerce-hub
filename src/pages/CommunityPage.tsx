@@ -44,6 +44,8 @@ export default function CommunityPage() {
   };
 
   const communitySlug = getSlugFromUrl();
+  console.log("[CommunityPage] URL slug:", slug);
+  console.log("[CommunityPage] Final communitySlug:", communitySlug);
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export default function CommunityPage() {
       }
 
       setTenant(tenantData);
+      console.log("[CommunityPage] Found tenant:", tenantData.name, tenantData.slug);
 
       // Sempre atualiza o pending invite slug para garantir que o login/Auth saiba qual comunidade o usuário está tentando acessar
       localStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
