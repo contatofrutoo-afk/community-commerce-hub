@@ -189,7 +189,7 @@ export default function CommunityPage() {
     );
   }
 
-  if (error || !tenant) {
+if (error || !tenant) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
@@ -197,19 +197,6 @@ export default function CommunityPage() {
           <h1 className="text-2xl font-bold mb-2">Comunidade não encontrada</h1>
           <p className="text-muted-foreground mb-6">{error || "Esta comunidade não existe ou foi removida."}</p>
           <p className="text-xs text-red-500 mb-4">DEBUG: slug = {communitySlug}</p>
-          <Button asChild>
-            <a href="/">Ir para página inicial</a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md px-4">
-          <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h1 className="text-2xl font-bold mb-2">Comunidade não encontrada</h1>
-          <p className="text-muted-foreground mb-6">{error || "Esta comunidade não existe ou foi removida."}</p>
           <Button asChild>
             <a href="/">Ir para página inicial</a>
           </Button>
