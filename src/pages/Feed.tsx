@@ -186,9 +186,17 @@ export default function Feed() {
     return () => io.disconnect();
   }, [posts.length]);
 
-  if (tLoading && !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+  if (tLoading && !initialLoadDone) return (
+    <div className="grid h-screen place-items-center text-muted-foreground">
+      <div className="text-center">
+        <p>Carregando…</p>
+        <p className="text-xs text-red-500 mt-2">DEBUG: tenant={tenant?.name || 'null'} | isB2B={String(isB2B)} | tenants={tenants.length}</p>
+      </div>
+    </div>
+  );
 
   // B2B sem tenant → criar marca
+  console.log("[Feed] Render - isB2B:", isB2B, "tenant:", tenant?.name);
   if (!tenant && isB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
