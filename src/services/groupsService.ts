@@ -112,8 +112,6 @@ export const groupsService = {
   ): Promise<{ data: MemberSearchResult[]; error: string | null }> {
     if (query.length < 3) return { data: [], error: null };
 
-    const searchPattern = `%${query}%`;
-
     const { data: membersInGroup, error: groupError } = await supabase
       .from("group_members")
       .select("user_id")
@@ -123,36 +121,36 @@ export const groupsService = {
 
     const excludedUserIds = (membersInGroup || []).map((m) => m.user_id);
 
-    const { data, error } = await supabase
+    const { data: membershipsData, error: memError } = await supabase
       .from("memberships")
       .select("user_id")
       .eq("tenant_id", tenantId)
       .eq("is_active", true)
-      .neq("role", "owner")
-      .ilike("profiles.name", searchPattern);
+      .neq("role", "owner");
 
-    if (error) return { data: [], error: error.message };
+    if (memError) return { data: [], error: memError.message };
 
-    const filteredByGroup = (data || []).filter(
-      (m) => !excludedUserIds.includes(m.user_id)
-    );
+    const availableUserIds = (membershipsData || [])
+      .map((m) => m.user_id)
+      .filter((id) => !excludedUserIds.includes(id));
 
-    const userIds = filteredByGroup.map((m) => m.user_id).slice(0, limit);
+    if (availableUserIds.length === 0) return { data: [], error: null };
 
-    if (userIds.length === 0) return { data: [], error: null };
-
-    const { data: profiles, error: profileError } = await supabase
+    const { data: profilesData, error: profileError } = await supabase
       .from("profiles")
       .select("id, name, avatar_url")
-      .in("id", userIds);
+      .in("id", availableUserIds)
+      .ilike("name", `%${query}%`);
 
     if (profileError) return { data: [], error: profileError.message };
 
-    const result = (profiles || []).map((p) => ({
-      user_id: p.id,
-      name: p.name || "Usuário",
-      avatar_url: p.avatar_url,
-    }));
+    const result = (profilesData || [])
+      .slice(0, limit)
+      .map((p) => ({
+        user_id: p.id,
+        name: p.name || "Usuário",
+        avatar_url: p.avatar_url,
+      }));
 
     return { data: result, error: null };
   },
