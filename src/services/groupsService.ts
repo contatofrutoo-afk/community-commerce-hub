@@ -117,53 +117,21 @@ export const groupsService = {
       return { data: [], error: null };
     }
 
-    const { data: membersInGroup, error: groupError } = await supabase
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", groupId);
+    const { data, error } = await supabase.rpc("search_group_members", {
+      p_tenant_id: tenantId,
+      p_group_id: groupId,
+      p_search_query: query
+    });
 
-    console.log("[groupsService] Members in group:", membersInGroup?.length || 0, groupError);
+    console.log("[groupsService] RPC result:", data?.length || 0, error);
 
-    if (groupError) return { data: [], error: groupError.message };
+    if (error) return { data: [], error: error.message };
 
-    const excludedUserIds = (membersInGroup || []).map((m) => m.user_id);
-
-    const { data: membershipsData, error: memError } = await supabase
-      .from("memberships")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true)
-      .neq("role", "owner");
-
-    console.log("[groupsService] Memberships found:", membershipsData?.length || 0, memError);
-
-    if (memError) return { data: [], error: memError.message };
-
-    const availableUserIds = (membershipsData || [])
-      .map((m) => m.user_id)
-      .filter((id) => !excludedUserIds.includes(id));
-
-    console.log("[groupsService] Available user IDs:", availableUserIds.length);
-
-    if (availableUserIds.length === 0) return { data: [], error: null };
-
-    const { data: profilesData, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url")
-      .in("id", availableUserIds)
-      .ilike("name", `%${query}%`);
-
-    console.log("[groupsService] Profiles found:", profilesData?.length || 0, profileError);
-
-    if (profileError) return { data: [], error: profileError.message };
-
-    const result = (profilesData || [])
-      .slice(0, limit)
-      .map((p) => ({
-        user_id: p.id,
-        name: p.name || "Usuário",
-        avatar_url: p.avatar_url,
-      }));
+    const result = (data || []).map((p: any) => ({
+      user_id: p.user_id,
+      name: p.name || "Usuário",
+      avatar_url: p.avatar_url,
+    }));
 
     console.log("[groupsService] Final result:", result.length);
     return { data: result, error: null };
