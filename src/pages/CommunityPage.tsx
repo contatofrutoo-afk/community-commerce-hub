@@ -183,12 +183,27 @@ export default function CommunityPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-4"></div>
           <p className="text-muted-foreground">Carregando comunidade...</p>
+          <p className="text-xs text-red-500 mt-4">DEBUG: slug = {communitySlug}</p>
         </div>
       </div>
     );
   }
 
   if (error || !tenant) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md px-4">
+          <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Comunidade não encontrada</h1>
+          <p className="text-muted-foreground mb-6">{error || "Esta comunidade não existe ou foi removida."}</p>
+          <p className="text-xs text-red-500 mb-4">DEBUG: slug = {communitySlug}</p>
+          <Button asChild>
+            <a href="/">Ir para página inicial</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md px-4">
@@ -348,6 +363,7 @@ export default function CommunityPage() {
             )}
           </div>
           <h1 className="text-3xl font-display font-bold mb-2">{tenant.name}</h1>
+          <p className="text-xs text-red-500 mb-2">DEBUG: slug={communitySlug} | tenant.slug={tenant.slug}</p>
           {tenant.bio && <p className="text-muted-foreground mb-2">{tenant.bio}</p>}
           {tenant.city && <p className="text-sm text-muted-foreground">{tenant.city}</p>}
         </div>
