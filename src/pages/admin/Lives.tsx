@@ -101,7 +101,7 @@ export default function Lives() {
       if (ctaRow) {
         let cfg = ctaRow.config_json ?? {};
         if (typeof cfg === "string") {
-          try { cfg = JSON.parse(cfg); } catch {}
+          try { cfg = JSON.parse(cfg); } catch { /* ignore */ }
         }
         cfg.is_live = start;
         await supabase
@@ -121,7 +121,7 @@ export default function Lives() {
         for (const ctaRow of allLiveCtas) {
           let cfg = ctaRow.config_json ?? {};
           if (typeof cfg === "string") {
-            try { cfg = JSON.parse(cfg); } catch {}
+            try { cfg = JSON.parse(cfg); } catch { /* ignore */ }
           }
           if (cfg.external_url === live.external_url) {
             cfg.is_live = start;

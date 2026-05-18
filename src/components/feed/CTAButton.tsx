@@ -43,7 +43,7 @@ export default function CTAButton({ cta, postId, tenantId, className }: { cta: C
   if (cta.type === "register") {
     let c = cta.config_json;
     if (typeof c === "string") {
-      try { c = JSON.parse(c); } catch {}
+      try { c = JSON.parse(c); } catch { /* ignore */ }
     }
     const ed = c?.event_data;
     if (ed && ed.max_participants) {
