@@ -139,13 +139,38 @@ export default function CommunityPage() {
     })();
   }, [communitySlug, isB2B, user]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!loading && accessStatus === "approved" && tenant && user) {
-      selectTenant(tenant.id);
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      navigate("/feed", { replace: true });
+      (async () => {
+        localStorage.setItem("weaze:active_tenant", tenant.id);
+        localStorage.setItem("weaze:last_active_tenant", tenant.id);
+        localStorage.removeItem("weaze:pending_invite_slug");
+        sessionStorage.removeItem("weaze:pending_invite_slug");
+        
+        // Wait for TenantContext to fully reload and set the correct tenant
+        await refresh();
+        selectTenant(tenant.id, true);
+        
+        // Wait for TenantContext loading to complete
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            const currentTenant = localStorage.getItem("weaze:active_tenant");
+            if (currentTenant === tenant.id) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50);
+          
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 3000);
+        });
+        
+        navigate("/feed", { replace: true });
+      })();
     }
-  }, [loading, accessStatus, tenant, user, navigate, selectTenant]);
+  }, [loading, accessStatus, tenant, user, navigate, selectTenant, refresh]);
 
   const handleRequestAccess = async () => {
     if (!communitySlug || !user || !tenant) {

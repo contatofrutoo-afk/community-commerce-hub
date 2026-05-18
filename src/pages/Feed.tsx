@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,8 +15,6 @@ const PAGE = 8;
 export default function Feed() {
   const { tenant, loading: tLoading, tenants } = useTenant();
   const { user, isB2B } = useAuth();
-  
-  console.log("[Feed] tenant:", tenant?.name, "tLoading:", tLoading, "isB2B:", isB2B, "tenants count:", tenants.length);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -27,9 +25,23 @@ export default function Feed() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [feedReady, setFeedReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!tLoading && tenant && tenants.length > 0) {
+      const isNewJoin = tenants.some(t => t.id === tenant.id);
+      if (isNewJoin) {
+        setFeedReady(true);
+      } else if (initialized.current) {
+        setFeedReady(true);
+      }
+    } else if (tLoading) {
+      setFeedReady(false);
+    }
+  }, [tLoading, tenant, tenants]);
 
   const loadPosts = useCallback(async (offset = 0) => {
     if (!tenant || loading || done) return;
@@ -140,6 +152,10 @@ export default function Feed() {
     })();
   }, [tenant?.id]);
 
+  useEffect(() => {
+    initialized.current = false;
+  }, [tenant?.id]);
+
   // Initial load only
   useEffect(() => {
     if (initialized.current || !tenant) return;
@@ -187,7 +203,7 @@ export default function Feed() {
     return () => io.disconnect();
   }, [posts.length]);
 
-  if (tLoading && !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+  if (tLoading || (!feedReady && !initialLoadDone)) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   // B2B sem tenant → criar marca
   if (!tenant && isB2B) {

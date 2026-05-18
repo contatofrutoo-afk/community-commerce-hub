@@ -35,10 +35,12 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [memRoles, setMemRoles] = useState<TenantRoles>({} as TenantRoles);
+  const [manualSelectionPending, setManualSelectionPending] = useState(false);
+  const [manualSelectedTenantId, setManualSelectedTenantId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     if (!user) {
       setTenants([]);
@@ -124,6 +126,26 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
+    const justJoinedId = sessionStorage.getItem("just_joined_community");
+    if (justJoinedId) {
+      sessionStorage.removeItem("just_joined_community");
+      const justJoinedTenant = list.find(t => t.id === justJoinedId);
+      if (justJoinedTenant) {
+        targetTenant = justJoinedTenant;
+        targetRole = roles[justJoinedTenant.id];
+      }
+    }
+
+    if (manualSelectionPending && manualSelectedTenantId) {
+      const manualTenant = list.find(t => t.id === manualSelectedTenantId);
+      if (manualTenant) {
+        targetTenant = manualTenant;
+        targetRole = roles[manualSelectedTenantId];
+      }
+      setManualSelectionPending(false);
+      setManualSelectedTenantId(null);
+    }
+
 if (targetTenant && targetRole) {
       setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
@@ -140,7 +162,7 @@ if (targetTenant && targetRole) {
 
   useEffect(() => { load(); }, [load]);
 
-  const selectTenant = (id: string) => {
+  const selectTenant = useCallback((id: string, isManual: boolean = false) => {
     const t = tenants.find((x) => x.id === id);
     if (!t) return;
     const role = memRoles[id];
@@ -149,7 +171,11 @@ if (targetTenant && targetRole) {
     setCanManage(role === "owner" || role === "admin");
     localStorage.setItem("weaze:active_tenant", id);
     localStorage.setItem("weaze:last_active_tenant", id);
-  };
+    if (isManual) {
+      setManualSelectionPending(true);
+      setManualSelectedTenantId(id);
+    }
+  }, [tenants, memRoles]);
 
   return (
     <Ctx.Provider value={{ tenant, tenants, isOwner, canManage, loading, selectTenant, refresh: load }}>

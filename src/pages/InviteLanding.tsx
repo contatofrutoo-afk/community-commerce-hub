@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Sparkles, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ export default function InviteLanding() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { refresh, selectTenant } = useTenant();
   
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,10 +83,37 @@ export default function InviteLanding() {
       
       if (existingMembership) {
         localStorage.setItem("weaze:active_tenant", tenant.id);
-        sessionStorage.setItem("just_joined_community", tenant.id);
+        localStorage.setItem("weaze:last_active_tenant", tenant.id);
         localStorage.removeItem("weaze:pending_invite_slug");
         sessionStorage.removeItem("weaze:pending_invite_slug");
-        navigate("/feed");
+        
+        // Wait for TenantContext to fully reload and set the correct tenant
+        await refresh();
+        selectTenant(tenant.id, true);
+        
+        // Wait for TenantContext loading to complete
+        await new Promise<void>((resolve) => {
+          const checkLoading = () => {
+            // Use a small polling mechanism to ensure context has updated
+            const checkInterval = setInterval(() => {
+              // Access the tenant from the hook to check if it's been set
+              const currentTenant = localStorage.getItem("weaze:active_tenant");
+              if (currentTenant === tenant.id) {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 50);
+            
+            // Timeout after 3 seconds to prevent infinite wait
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              resolve();
+            }, 3000);
+          };
+          checkLoading();
+        });
+        
+        navigate("/feed", { replace: true });
         return;
       }
       
@@ -106,15 +135,35 @@ export default function InviteLanding() {
       }
       
       // Success - go to feed
+      localStorage.setItem("weaze:active_tenant", tenant.id);
+      localStorage.setItem("weaze:last_active_tenant", tenant.id);
       localStorage.removeItem("weaze:pending_invite_slug");
       sessionStorage.removeItem("weaze:pending_invite_slug");
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      sessionStorage.setItem("just_joined_community", tenant.id);
+      
+      // Wait for TenantContext to fully reload and set the correct tenant
+      await refresh();
+      selectTenant(tenant.id, true);
+      
+      // Wait for TenantContext loading to complete
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          const currentTenant = localStorage.getItem("weaze:active_tenant");
+          if (currentTenant === tenant.id) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 50);
+        
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve();
+        }, 3000);
+      });
       
       toast.success(`Bem-vindo à ${tenant.name}!`);
       navigate("/feed", { replace: true });
     })();
-  }, [user, tenant, authLoading, processing]);
+  }, [user, tenant, authLoading, processing, refresh, selectTenant, navigate]);
 
   const handleAuth = (isSignUp: boolean) => {
     if (slug) {
