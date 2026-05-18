@@ -121,6 +121,7 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [savingDelete, setSavingDelete] = useState(false);
 
   const isPostAuthor = user && post.author_id === user.id;
+  console.log("[FeedItem] post.author_id:", post.author_id, "user.id:", user?.id, "isPostAuthor:", isPostAuthor);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
