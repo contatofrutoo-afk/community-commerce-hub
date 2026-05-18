@@ -127,11 +127,23 @@ export const groupsService = {
 
     if (error) return { data: [], error: error.message };
 
-    const result = (data || []).map((p: any) => ({
-      user_id: p.user_id,
-      name: p.name || "Usuário",
-      avatar_url: p.avatar_url,
-    }));
+    const existingMemberIds = new Set<string>();
+    const { data: membersData } = await supabase
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", groupId);
+    
+    if (membersData) {
+      membersData.forEach((m: any) => existingMemberIds.add(m.user_id));
+    }
+
+    const result = (data || [])
+      .filter((p: any) => !existingMemberIds.has(p.user_id))
+      .map((p: any) => ({
+        user_id: p.user_id,
+        name: p.name || "Usuário",
+        avatar_url: p.avatar_url,
+      }));
 
     console.log("[groupsService] Final result:", result.length);
     return { data: result, error: null };
