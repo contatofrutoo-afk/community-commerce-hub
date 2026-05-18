@@ -64,6 +64,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     let targetTenant: Tenant | null = null;
     let targetRole: "owner" | "admin" | "member" | null = null;
 
+    console.log("[TenantContext] User:", user?.id);
+    console.log("[TenantContext] Memberships loaded:", list.map(t => t.name));
+    console.log("[TenantContext] Roles:", roles);
+    console.log("[TenantContext] active_tenant:", localStorage.getItem("weaze:active_tenant"));
+    console.log("[TenantContext] last_active_tenant:", localStorage.getItem("weaze:last_active_tenant"));
+    console.log("[TenantContext] pending_slug:", localStorage.getItem("weaze:pending_invite_slug"));
+
     const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
     const pendingTenant = list.find(t => t.slug === pendingSlug);
 
@@ -127,6 +134,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
       localStorage.setItem("weaze:active_tenant", targetTenant.id);
+      console.log("[TenantContext] Selected tenant:", targetTenant.name, targetTenant.id);
     } else {
       setTenant(null);
       setIsOwner(false);
