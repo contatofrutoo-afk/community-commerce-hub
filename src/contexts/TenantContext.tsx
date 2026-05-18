@@ -66,6 +66,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     let targetRole: "owner" | "admin" | "member" | null = null;
 
     const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
+    console.log("[TenantContext] pendingSlug:", pendingSlug, "list:", list.map(t => t.slug));
     const pendingTenant = list.find(t => t.slug === pendingSlug);
 
     if (pendingTenant) {

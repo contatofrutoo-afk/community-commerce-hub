@@ -186,17 +186,9 @@ export default function Feed() {
     return () => io.disconnect();
   }, [posts.length]);
 
-  if (tLoading && !initialLoadDone) return (
-    <div className="grid h-screen place-items-center text-muted-foreground">
-      <div className="text-center">
-        <p>Carregando…</p>
-        <p className="text-xs text-red-500 mt-2">DEBUG: tenant={tenant?.name || 'null'} | isB2B={String(isB2B)} | tenants={tenants.length}</p>
-      </div>
-    </div>
-  );
+  if (tLoading && !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   // B2B sem tenant → criar marca
-  console.log("[Feed] Render - isB2B:", isB2B, "tenant:", tenant?.name, "user:", user?.id);
   if (!tenant && isB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -300,10 +292,6 @@ export default function Feed() {
             <FeedItem post={p} active={i === activeIdx} onDelete={() => setPosts(current => current.filter(post => post.id !== p.id))} />
           </div>
         ))}
-        {/* DEBUG: Sync check */}
-        <div className="fixed bottom-20 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded z-50">
-          🔍 {tenant?.name || 'sem tenant'} | posts: {posts.length} | user: {user?.id?.slice(0,8)}
-        </div>
         {loading && <div className="py-6 text-center text-muted-foreground text-sm">Carregando…</div>}
       </div>
       

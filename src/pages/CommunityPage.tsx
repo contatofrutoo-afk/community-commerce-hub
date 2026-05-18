@@ -44,6 +44,7 @@ export default function CommunityPage() {
   };
 
   const communitySlug = getSlugFromUrl();
+  console.log("[CommunityPage] communitySlug:", communitySlug);
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
