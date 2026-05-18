@@ -15,6 +15,9 @@ const PAGE = 8;
 export default function Feed() {
   const { tenant, loading: tLoading } = useTenant();
   const { user, isB2B } = useAuth();
+  
+  console.log("[Feed] Current tenant:", tenant?.name, tenant?.id);
+  console.log("[Feed] Tenant loading:", tLoading);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);

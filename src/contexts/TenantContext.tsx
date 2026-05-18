@@ -51,7 +51,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
     const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
@@ -84,7 +85,10 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     if (!targetTenant && list.length > 0) {
       const activeTenantId = localStorage.getItem("weaze:active_tenant");
       const lastActiveTenantId = localStorage.getItem("weaze:last_active_tenant");
+      console.log("[TenantContext] Looking for lastActiveTenant:", lastActiveTenantId);
+      console.log("[TenantContext] Available tenants:", list.map(t => ({ id: t.id, name: t.name })));
       const lastActiveTenant = lastActiveTenantId ? list.find(t => t.id === lastActiveTenantId && roles[t.id]) : null;
+      console.log("[TenantContext] Found lastActiveTenant:", lastActiveTenant?.name);
       const activeTenant = activeTenantId ? list.find(t => t.id === activeTenantId && roles[t.id]) : null;
       
       if (lastActiveTenant) {
