@@ -50,6 +50,7 @@ const Loading = () => (
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
+const AuthB2B = lazy(() => import("./pages/AuthB2B"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Communities = lazy(() => import("./pages/Communities"));
 const Feed = lazy(() => import("./pages/Feed"));
@@ -141,6 +142,7 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/auth/b2b" element={<AuthB2B />} />
                     <Route path="/m/:slug" element={<CommunityPage />} />
                     <Route path="/c/:slug" element={<CommunityPage />} />
                     <Route path="/community/:slug" element={<CommunityPage />} />
