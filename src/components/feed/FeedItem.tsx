@@ -121,7 +121,6 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [savingDelete, setSavingDelete] = useState(false);
 
   const isPostAuthor = user && post.author_id === user.id;
-  console.log("[FeedItem] post.author_id:", post.author_id, "user.id:", user?.id, "isPostAuthor:", isPostAuthor);
   
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
@@ -178,27 +177,17 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   };
 
   const handleDeleteConfirm = async () => {
-    console.log("[DELETE] Starting delete, post.id:", post.id, "type:", post.type);
     setSavingDelete(true);
-    
-    await supabase.from("event_registrations").delete().eq("post_id", post.id).then();
-    await supabase.from("budget_requests").delete().eq("post_id", post.id).then();
-    
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
-    console.log("[DELETE] Supabase response, error:", error);
     setSavingDelete(false);
     if (error) { 
       console.error("[DELETE] Delete failed:", error);
       toast.error("Erro ao excluir postagem: " + error.message); 
       return; 
     }
-    console.log("[DELETE] Success, calling onDelete");
     toast.success("Postagem removida");
     setShowDeleteDialog(false);
-    if (onDelete) {
-      console.log("[DELETE] Executing onDelete callback");
-      onDelete();
-    }
+    if (onDelete) onDelete();
   };
 
   // Video progress

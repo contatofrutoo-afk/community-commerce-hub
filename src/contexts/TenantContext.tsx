@@ -65,13 +65,6 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     let targetTenant: Tenant | null = null;
     let targetRole: "owner" | "admin" | "member" | null = null;
 
-    console.log("[TenantContext] User:", user?.id);
-    console.log("[TenantContext] Memberships loaded:", list.map(t => t.name));
-    console.log("[TenantContext] Roles:", roles);
-    console.log("[TenantContext] active_tenant:", localStorage.getItem("weaze:active_tenant"));
-    console.log("[TenantContext] last_active_tenant:", localStorage.getItem("weaze:last_active_tenant"));
-    console.log("[TenantContext] pending_slug:", localStorage.getItem("weaze:pending_invite_slug"));
-
     const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
     const pendingTenant = list.find(t => t.slug === pendingSlug);
 
@@ -85,10 +78,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     if (!targetTenant && list.length > 0) {
       const activeTenantId = localStorage.getItem("weaze:active_tenant");
       const lastActiveTenantId = localStorage.getItem("weaze:last_active_tenant");
-      console.log("[TenantContext] Looking for lastActiveTenant:", lastActiveTenantId);
-      console.log("[TenantContext] Available tenants:", list.map(t => ({ id: t.id, name: t.name })));
       const lastActiveTenant = lastActiveTenantId ? list.find(t => t.id === lastActiveTenantId && roles[t.id]) : null;
-      console.log("[TenantContext] Found lastActiveTenant:", lastActiveTenant?.name);
       const activeTenant = activeTenantId ? list.find(t => t.id === activeTenantId && roles[t.id]) : null;
       
       if (lastActiveTenant) {
@@ -133,7 +123,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    if (targetTenant && targetRole) {
+if (targetTenant && targetRole) {
       setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
       setCanManage(targetRole === "owner" || targetRole === "admin");
