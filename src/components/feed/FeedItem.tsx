@@ -180,6 +180,9 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const handleDeleteConfirm = async () => {
     console.log("[DELETE] Starting delete, post.id:", post.id, "type:", post.type);
     setSavingDelete(true);
+    
+    await supabase.from("event_registrations").delete().eq("post_id", post.id);
+    
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
     console.log("[DELETE] Supabase response, error:", error);
     setSavingDelete(false);
