@@ -196,7 +196,7 @@ export default function Feed() {
   );
 
   // B2B sem tenant → criar marca
-  console.log("[Feed] Render - isB2B:", isB2B, "tenant:", tenant?.name);
+  console.log("[Feed] Render - isB2B:", isB2B, "tenant:", tenant?.name, "user:", user?.id);
   if (!tenant && isB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
@@ -300,6 +300,10 @@ export default function Feed() {
             <FeedItem post={p} active={i === activeIdx} onDelete={() => setPosts(current => current.filter(post => post.id !== p.id))} />
           </div>
         ))}
+        {/* DEBUG: Sync check */}
+        <div className="fixed bottom-20 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded z-50">
+          🔍 {tenant?.name || 'sem tenant'} | posts: {posts.length} | user: {user?.id?.slice(0,8)}
+        </div>
         {loading && <div className="py-6 text-center text-muted-foreground text-sm">Carregando…</div>}
       </div>
       
