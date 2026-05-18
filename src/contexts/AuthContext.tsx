@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userState, setUserState] = useState<UserState | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const [redirected, setRedirected] = useState(false);
+  const tenantLoadingDone = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,8 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAppRole(null);
         setUserState(null);
         setRedirectTo(null);
+        tenantLoadingDone.current = true;
         setLoading(false);
-      } else if (sessionCheckComplete) {
+      } else if (sessionCheckComplete && tenantLoadingDone.current) {
         setLoading(false);
       }
     });
@@ -66,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (!data.session) {
+        tenantLoadingDone.current = true;
         setLoading(false);
       }
     });
@@ -75,6 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) {
       setAppRole(null);
+      tenantLoadingDone.current = true;
       setLoading(false);
       return;
     }
@@ -114,7 +118,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (err) {
         console.error("Error fetching memberships:", err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          tenantLoadingDone.current = true;
+          setLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -180,6 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRedirectTo(null);
     setAppRole(null);
     setUserState(null);
+    tenantLoadingDone.current = false;
     await supabase.auth.signOut();
   };
 
