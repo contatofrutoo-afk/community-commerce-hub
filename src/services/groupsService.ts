@@ -69,12 +69,34 @@ export const groupsService = {
   async getMembers(groupId: string): Promise<{ data: GroupMember[]; error: string | null }> {
     const { data, error } = await supabase
       .from("group_members")
-      .select("*, profiles(name, avatar_url)")
+      .select("*")
       .eq("group_id", groupId)
       .order("created_at", { ascending: true });
 
     if (error) return { data: [], error: error.message };
-    return { data: data || [], error: null };
+    if (!data || data.length === 0) return { data: [], error: null };
+
+    const userIds = data.map((m) => m.user_id);
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("user_id, name, avatar_url")
+      .in("user_id", userIds);
+
+    const profilesMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
+    (profilesData || []).forEach((p) => {
+      profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
+    });
+
+    const members: GroupMember[] = data.map((m) => ({
+      id: m.id,
+      group_id: m.group_id,
+      user_id: m.user_id,
+      added_by: m.added_by,
+      created_at: m.created_at,
+      profiles: profilesMap[m.user_id] || null,
+    }));
+
+    return { data: members, error: null };
   },
 
   async addMember(

@@ -43,7 +43,6 @@ export default function GroupDetail() {
   const {
     searchResults,
     searching,
-    loadMembers,
     addMember,
     searchMembers,
     clearSearch,
@@ -58,33 +57,27 @@ export default function GroupDetail() {
   }, [user, canManage, tenant, groupId, navigate]);
 
   const loadGroup = async () => {
-    if (!groupId || !tenant) return;
+    if (!groupId) return;
     setLoading(true);
 
     const result = await groupsService.getGroup(groupId);
-    setLoading(false);
-
     if (result.error || !result.data) {
+      setLoading(false);
       toast.error("Grupo não encontrado");
       navigate("/groups");
       return;
     }
     setGroup(result.data);
-    loadMembers(groupId);
-  };
 
-  useEffect(() => {
-    if (groupId) {
-      const result = groupsService.getMembers(groupId);
-      result.then((res) => {
-        if (res.error) {
-          toast.error("Erro ao carregar membros: " + res.error);
-        } else {
-          setMembers(res.data);
-        }
-      });
+    const membersResult = await groupsService.getMembers(groupId);
+    setLoading(false);
+
+    if (membersResult.error) {
+      toast.error("Erro ao carregar membros: " + membersResult.error);
+    } else {
+      setMembers(membersResult.data);
     }
-  }, [groupId]);
+  };
 
   const handleAddMember = async (userId: string) => {
     if (!groupId || !user) return;
