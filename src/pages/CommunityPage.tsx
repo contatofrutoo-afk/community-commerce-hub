@@ -24,6 +24,9 @@ export default function CommunityPage() {
   const { user, isB2B } = useAuth();
   const { refresh, selectTenant } = useTenant();
   
+  console.log("[CommunityPage] useParams slug:", slug);
+  console.log("[CommunityPage] location.pathname:", location.pathname);
+  
   const enterCommunity = async () => {
     if (tenant) {
       localStorage.setItem("weaze:pending_invite_slug", tenant.slug);
@@ -60,11 +63,14 @@ export default function CommunityPage() {
     }
 
     (async () => {
+      console.log("[CommunityPage] Querying for slug:", communitySlug);
       const { data: tenantData, error: err } = await supabase
         .from("tenants")
         .select("id, name, slug, logo_url, bio, city")
         .eq("slug", communitySlug)
         .maybeSingle();
+
+      console.log("[CommunityPage] Query result:", { tenantData, error: err });
 
       if (err || !tenantData) {
         setError("Comunidade não encontrada");
