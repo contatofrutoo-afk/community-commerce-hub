@@ -83,6 +83,8 @@ export default function Topics() {
   const [mentionUsers, setMentionUsers] = useState<{id: string; name: string; avatar_url?: string}[]>([]);
   const [replyToMsg, setReplyToMsg] = useState<{id: string; name: string; content: string} | null>(null);
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState<TopicMessage | null>(null);
+  const [deleteConfirmTopic, setDeleteConfirmTopic] = useState<Topic | null>(null);
+  const [deletingTopic, setDeletingTopic] = useState(false);
 
   const loadTopics = async () => {
     if (!tenant) return;
@@ -306,6 +308,33 @@ export default function Topics() {
     setDeleteConfirmMsg(null);
   };
 
+  const confirmDeleteTopic = (topic: Topic) => {
+    setDeleteConfirmTopic(topic);
+  };
+
+  const executeDeleteTopic = async () => {
+    if (!deleteConfirmTopic) return;
+    setDeletingTopic(true);
+    
+    const { error } = await supabase
+      .from("topics")
+      .delete()
+      .eq("id", deleteConfirmTopic.id);
+    
+    setDeletingTopic(false);
+    
+    if (error) {
+      console.error("Error deleting topic:", error);
+      toast.error(`Erro ao excluir conversa: ${error.message}`);
+      setDeleteConfirmTopic(null);
+      return;
+    }
+    
+    setTopics(topics.filter(t => t.id !== deleteConfirmTopic.id));
+    toast.success("Conversa excluída!");
+    setDeleteConfirmTopic(null);
+  };
+
   const replyToMessage = (msg: TopicMessage) => {
     setReplyToMsg({ id: msg.id, name: msg.profiles?.name || "Usuário", content: msg.content });
   };
@@ -422,8 +451,11 @@ export default function Topics() {
         ) : (
           <div className="bg-white">
             {topics.map((topic) => (
-              <div key={topic.id} onClick={() => openTopic(topic)} className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                <div className="flex-1 pr-4">
+              <div key={topic.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
+                <div 
+                  onClick={() => openTopic(topic)} 
+                  className="flex-1 pr-4 cursor-pointer"
+                >
                   <p className="text-sm font-medium text-gray-900 line-clamp-1">
                     {topic.is_pinned && <span className="text-amber-600 mr-1">📌</span>}
                     {topic.title || "Sem título"}
@@ -439,6 +471,18 @@ export default function Topics() {
                       {topic.last_activity_at && new Date(topic.last_activity_at).getTime() > Date.now() - 60000 ? "● Ativo agora" : `Última: ${formatTime(topic.last_activity_at)}`}
                     </p>
                   </div>
+                  {canManage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmDeleteTopic(topic);
+                      }}
+                      className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
+                      title="Excluir conversa"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={topic.profiles?.avatar_url || ""} />
                     <AvatarFallback className="text-xs bg-gray-200 text-gray-600">{topic.profiles?.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
@@ -596,6 +640,31 @@ export default function Topics() {
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={() => setDeleteConfirmMsg(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={executeDeleteMessage} className="bg-red-500 hover:bg-red-600">Excluir</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirmTopic} onOpenChange={() => setDeleteConfirmTopic(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Excluir conversa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">Tem certeza que deseja excluir esta conversa e todas as suas mensagens? Esta ação não pode ser desfeita.</p>
+            {deleteConfirmTopic && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-500 line-clamp-2">
+                "{deleteConfirmTopic.title}"
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setDeleteConfirmTopic(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={executeDeleteTopic} disabled={deletingTopic} className="bg-red-500 hover:bg-red-600">
+              {deletingTopic ? "Excluindo..." : "Excluir"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
