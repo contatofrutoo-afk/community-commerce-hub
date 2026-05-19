@@ -101,7 +101,7 @@ export default function CreatePost() {
   const [usage, setUsage] = useState<{ posts: number; max: number } | null>(null);
 
   // File upload state
-  const [mediaMode, setMediaMode] = useState<"url" | "upload">("url");
+  const [mediaMode, setMediaMode] = useState<"url" | "upload">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
