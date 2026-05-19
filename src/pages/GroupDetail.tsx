@@ -75,13 +75,16 @@ export default function GroupDetail() {
   }, [user, tenant, groupId, navigate]);
 
   useEffect(() => {
-    if (!groupLoaded || !members.length || !user) return;
+    if (!groupLoaded || !members.length || !user || !group) return;
+    
+    const isCreator = group.created_by === user.id;
     const isMember = members.some(m => m.user_id === user.id);
-    if (!isMember) {
+    
+    if (!isCreator && !isMember) {
       toast.error("Você não é membro deste grupo");
       navigate("/groups");
     }
-  }, [groupLoaded, members, user, navigate]);
+  }, [groupLoaded, members, user, group, navigate]);
 
   const loadGroup = async () => {
     if (!groupId) return;
@@ -96,7 +99,15 @@ export default function GroupDetail() {
     }
     setGroup(result.data);
 
-    const membersResult = await groupsService.getMembers(groupId);
+    let membersResult = await groupsService.getMembers(groupId);
+    
+    if (membersResult.data && membersResult.data.length === 0 && user) {
+      const addResult = await groupsService.addMember(groupId, user.id, user.id);
+      if (!addResult.error) {
+        membersResult = await groupsService.getMembers(groupId);
+      }
+    }
+    
     if (membersResult.error) {
       toast.error("Erro ao carregar membros: " + membersResult.error);
     } else {

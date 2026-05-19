@@ -94,6 +94,15 @@ export const groupsService = {
       .single();
 
     if (error) return { data: null, error: error.message };
+
+    if (data) {
+      await supabase.from("group_members").insert({
+        group_id: data.id,
+        user_id: userId,
+        added_by: userId,
+      });
+    }
+
     return { data, error: null };
   },
 
