@@ -316,10 +316,8 @@ export default function Topics() {
     if (!deleteConfirmTopic || !tenant) return;
     
     const topicId = deleteConfirmTopic.id;
-    const topicTitle = deleteConfirmTopic.title;
     
     setDeletingTopic(true);
-    console.log("[Topics] Deleting topic:", topicId, topicTitle);
     
     try {
       // First delete all messages in the topic
@@ -332,12 +330,12 @@ export default function Topics() {
         console.error("Error deleting messages:", messagesError);
       }
       
-      // Then delete the topic
-      const { error: topicError } = await supabase
-        .from("topics")
-        .delete()
-        .eq("id", topicId)
-        .eq("tenant_id", tenant.id);
+      // Then delete the topic using RPC to bypass RLS
+      const { data: deleteResult, error: topicError } = await supabase
+        .rpc("delete_topic", {
+          p_topic_id: topicId,
+          p_tenant_id: tenant.id
+        });
       
       setDeletingTopic(false);
       
@@ -348,16 +346,9 @@ export default function Topics() {
         return;
       }
       
-      console.log("[Topics] Topic deleted, updating state. Current topics count:", topics.length);
-      
-      // Update state to remove the topic
-      setTopics(prev => {
-        console.log("[Topics] Filtering topics. prev.length:", prev.length, "removing:", topicId);
-        return prev.filter(t => t.id !== topicId);
-      });
-      
-      // Reload topics to ensure consistency
-      setTimeout(() => loadTopics(), 100);
+      // Force clear and reload topics
+      setTopics([]);
+      setTimeout(() => loadTopics(), 50);
       
       toast.success("Conversa excluída!");
       setDeleteConfirmTopic(null);
