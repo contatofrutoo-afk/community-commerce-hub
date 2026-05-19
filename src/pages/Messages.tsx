@@ -282,11 +282,9 @@ export default function Messages() {
                     const isDeleted = m.deleted_at || m.content === "Mensagem removida";
                     
                     return (
-                      <div 
+<div 
                         key={m.id} 
                         style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}
-                        onMouseEnter={(e) => { if (isMine && !isDeleted && editingId !== m.id && deleteConfirmId !== m.id) { const actions = e.currentTarget.querySelector('.msg-actions'); if (actions) (actions as HTMLElement).style.opacity = '1'; } }}
-                        onMouseLeave={(e) => { const actions = e.currentTarget.querySelector('.msg-actions'); if (actions) (actions as HTMLElement).style.opacity = '0'; }}
                       >
                         <div style={{ 
                           maxWidth: "75%", 
@@ -337,14 +335,12 @@ export default function Messages() {
                                 <p style={{ fontSize: 10, color: isMine ? "rgba(255,255,255,0.7)" : "#888" }}>{formatDateTime(m.created_at)}</p>
                                 {isEdited && <span style={{ fontSize: 10, color: isMine ? "rgba(255,255,255,0.5)" : "#aaa" }}>• Editada</span>}
                               </div>
-                            </>
-                          )}
-                          {isMine && !isDeleted && editingId !== m.id && deleteConfirmId !== m.id && (
-                            <div className="msg-actions" style={{ display: "flex", gap: 4, marginTop: 4, opacity: 0, transition: "opacity 0.2s" }}>
-                              <button onClick={() => startEdit(m)} style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Pencil size={10} /> Editar</button>
-                              <button onClick={() => confirmDelete(m.id)} style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Trash2 size={10} /> Excluir</button>
-                            </div>
-                          )}
+                              {isMine && !isDeleted && editingId !== m.id && deleteConfirmId !== m.id && (
+                                <div className="msg-actions" style={{ display: "flex", gap: 4, marginTop: 4, opacity: 1, transition: "opacity 0.2s" }}>
+                                  <button onClick={() => startEdit(m)} style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.25)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Pencil size={10} /> Editar</button>
+                                  <button onClick={() => confirmDelete(m.id)} style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.25)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Trash2 size={10} /> Excluir</button>
+                                </div>
+                              )}
                         </div>
                       </div>
                     );
