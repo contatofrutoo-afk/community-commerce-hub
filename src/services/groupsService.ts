@@ -122,15 +122,17 @@ export const groupsService = {
     if (!data || data.length === 0) return { data: [], error: null };
 
     const userIds = data.map((m) => m.user_id);
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("user_id, name, avatar_url")
-      .in("user_id", userIds);
+    
+    const { data: profilesData } = await supabase.rpc("get_profiles_by_ids", {
+      p_user_ids: userIds,
+    });
 
     const profilesMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
-    (profilesData || []).forEach((p) => {
-      profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
-    });
+    if (profilesData) {
+      profilesData.forEach((p: any) => {
+        profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
+      });
+    }
 
     const members: GroupMember[] = data.map((m) => ({
       id: m.id,
@@ -239,20 +241,16 @@ export const groupsService = {
     if (!data || data.length === 0) return { data: [], error: null };
 
     const authorIds = [...new Set(data.map(p => p.author_id))];
-    console.log("[groupsService] getPosts authorIds:", authorIds);
     
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url")
-      .in("id", authorIds);
-
-    console.log("[groupsService] getPosts profilesData:", profilesData?.length || 0);
+    const { data: profilesData } = await supabase.rpc("get_profiles_by_ids", {
+      p_user_ids: authorIds,
+    });
 
     const profilesMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
     
     if (profilesData) {
-      profilesData.forEach((p) => {
-        profilesMap[p.id] = { name: p.name, avatar_url: p.avatar_url };
+      profilesData.forEach((p: any) => {
+        profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
       });
     }
 
@@ -260,8 +258,6 @@ export const groupsService = {
       ...p,
       profiles: profilesMap[p.author_id] || { name: null, avatar_url: null },
     }));
-
-    console.log("[groupsService] getPosts final posts:", posts.length, posts.map(p => ({ id: p.id, name: p.profiles?.name })));
 
     return { data: posts, error: null };
   },
@@ -338,16 +334,15 @@ export const groupsService = {
 
     const authorIds = [...new Set(data.map(r => r.author_id))];
     
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url")
-      .in("id", authorIds);
+    const { data: profilesData } = await supabase.rpc("get_profiles_by_ids", {
+      p_user_ids: authorIds,
+    });
 
     const profilesMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
     
     if (profilesData) {
-      profilesData.forEach((p) => {
-        profilesMap[p.id] = { name: p.name, avatar_url: p.avatar_url };
+      profilesData.forEach((p: any) => {
+        profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url };
       });
     }
 
