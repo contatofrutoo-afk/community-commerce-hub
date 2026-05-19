@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!isMounted) return;
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
+      // Don't set loading false here - let second effect handle it
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
