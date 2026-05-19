@@ -86,8 +86,9 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
-  if (authLoading || tenantLoading) return <Loading />;
+  if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
+  if (tenantLoading) return <Loading />;
   if (!tenant) return <Navigate to="/communities" replace />;
 
   return children;
