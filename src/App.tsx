@@ -86,9 +86,7 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
-  const isLoading = authLoading || tenantLoading;
-
-  if (isLoading) return <Loading />;
+  if (authLoading || tenantLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (!tenant) return <Navigate to="/communities" replace />;
 
@@ -152,32 +150,32 @@ const App = () => (
                     <Route path="/c" element={<CommunityPage />} />
                     <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
 <Route path="/communities" element={<Protected><B2BOnly><Communities /></B2BOnly></Protected>} />
-                    <Route path="/feed" element={<Protected><NeedsTenant><NeedsAccess><Feed /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/messages" element={<Protected><NeedsTenant><NeedsAccess><Messages /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/feed" element={<Protected><Feed /></Protected>} />
+                    <Route path="/messages" element={<Protected><Messages /></Protected>} />
                     <Route path="/content" element={<Navigate to="/create" replace />} />
-                    <Route path="/content/agenda" element={<Protected><NeedsTenant><NeedsAccess><AdminContent /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/content/services" element={<Protected><NeedsTenant><NeedsAccess><AdminContent /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/content/events" element={<Protected><NeedsTenant><NeedsAccess><AdminContent /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/content/lives" element={<Protected><NeedsTenant><NeedsAccess><Lives /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/admin/*" element={<Protected><NeedsTenant><AdminLayout /></NeedsTenant></Protected>} />
-                    <Route path="/metrics" element={<Protected><NeedsTenant><NeedsAccess><AdminOverview /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/metrics/revenue" element={<Protected><NeedsTenant><NeedsAccess><AdminRevenue /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/metrics/funnel" element={<Protected><NeedsTenant><AdminFunnel /></NeedsTenant></Protected>} />
-                    <Route path="/metrics/users" element={<Protected><NeedsTenant><NeedsAccess><AdminUsers /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/content/agenda" element={<Protected><AdminContent /></Protected>} />
+                    <Route path="/content/services" element={<Protected><AdminContent /></Protected>} />
+                    <Route path="/content/events" element={<Protected><AdminContent /></Protected>} />
+                    <Route path="/content/lives" element={<Protected><Lives /></Protected>} />
+                    <Route path="/admin/*" element={<Protected><AdminLayout /></Protected>} />
+                    <Route path="/metrics" element={<Protected><AdminOverview /></Protected>} />
+                    <Route path="/metrics/revenue" element={<Protected><AdminRevenue /></Protected>} />
+                    <Route path="/metrics/funnel" element={<Protected><AdminFunnel /></Protected>} />
+                    <Route path="/metrics/users" element={<Protected><AdminUsers /></Protected>} />
                     
-                    <Route path="/metrics/tenants" element={<Protected><NeedsTenant><NeedsAccess><AdminTenants /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/metrics/tenants" element={<Protected><AdminTenants /></Protected>} />
                     <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
-                    <Route path="/create" element={<Protected><NeedsTenant><NeedsAccess><CreatePost /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/create" element={<Protected><CreatePost /></Protected>} />
                     
-                    <Route path="/conversas" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/conversas/:topicId" element={<Protected><NeedsTenant><NeedsAccess><Topics /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/conversas" element={<Protected><Topics /></Protected>} />
+                    <Route path="/conversas/:topicId" element={<Protected><Topics /></Protected>} />
                     <Route path="/invite/:slug" element={<InviteLanding />} />
                     <Route path="/waiting" element={<WaitingApproval />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
-                    <Route path="/members" element={<Protected><NeedsTenant><NeedsAccess><Members /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/groups" element={<Protected><NeedsTenant><NeedsAccess><GroupsPage /></NeedsAccess></NeedsTenant></Protected>} />
-                    <Route path="/groups/:groupId" element={<Protected><NeedsTenant><NeedsAccess><GroupDetail /></NeedsAccess></NeedsTenant></Protected>} />
+                    <Route path="/members" element={<Protected><Members /></Protected>} />
+                    <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
+                    <Route path="/groups/:groupId" element={<Protected><GroupDetail /></Protected>} />
                     <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />
