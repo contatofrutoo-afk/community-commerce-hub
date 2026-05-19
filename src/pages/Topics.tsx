@@ -319,7 +319,8 @@ export default function Topics() {
     const { error } = await supabase
       .from("topics")
       .delete()
-      .eq("id", deleteConfirmTopic.id);
+      .eq("id", deleteConfirmTopic.id)
+      .eq("tenant_id", tenant?.id);
     
     setDeletingTopic(false);
     
@@ -330,7 +331,7 @@ export default function Topics() {
       return;
     }
     
-    setTopics(topics.filter(t => t.id !== deleteConfirmTopic.id));
+    setTopics(prev => prev.filter(t => t.id !== deleteConfirmTopic.id));
     toast.success("Conversa excluída!");
     setDeleteConfirmTopic(null);
   };
