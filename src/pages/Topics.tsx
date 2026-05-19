@@ -313,27 +313,61 @@ export default function Topics() {
   };
 
   const executeDeleteTopic = async () => {
-    if (!deleteConfirmTopic) return;
+    if (!deleteConfirmTopic || !tenant) return;
+    
+    const topicId = deleteConfirmTopic.id;
+    const topicTitle = deleteConfirmTopic.title;
+    
     setDeletingTopic(true);
+    console.log("[Topics] Deleting topic:", topicId, topicTitle);
     
-    const { error } = await supabase
-      .from("topics")
-      .delete()
-      .eq("id", deleteConfirmTopic.id)
-      .eq("tenant_id", tenant?.id);
-    
-    setDeletingTopic(false);
-    
-    if (error) {
-      console.error("Error deleting topic:", error);
-      toast.error(`Erro ao excluir conversa: ${error.message}`);
+    try {
+      // First delete all messages in the topic
+      const { error: messagesError } = await supabase
+        .from("topic_messages")
+        .delete()
+        .eq("topic_id", topicId);
+      
+      if (messagesError) {
+        console.error("Error deleting messages:", messagesError);
+      }
+      
+      // Then delete the topic
+      const { error: topicError } = await supabase
+        .from("topics")
+        .delete()
+        .eq("id", topicId)
+        .eq("tenant_id", tenant.id);
+      
+      setDeletingTopic(false);
+      
+      if (topicError) {
+        console.error("Error deleting topic:", topicError);
+        toast.error(`Erro ao excluir conversa: ${topicError.message}`);
+        setDeleteConfirmTopic(null);
+        return;
+      }
+      
+      console.log("[Topics] Topic deleted, updating state. Current topics count:", topics.length);
+      
+      // Update state to remove the topic
+      setTopics(prev => {
+        console.log("[Topics] Filtering topics. prev.length:", prev.length, "removing:", topicId);
+        return prev.filter(t => t.id !== topicId);
+      });
+      
+      // Reload topics to ensure consistency
+      setTimeout(() => loadTopics(), 100);
+      
+      toast.success("Conversa excluída!");
       setDeleteConfirmTopic(null);
-      return;
+      
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setDeletingTopic(false);
+      toast.error("Erro inesperado ao excluir conversa");
+      setDeleteConfirmTopic(null);
     }
-    
-    setTopics(prev => prev.filter(t => t.id !== deleteConfirmTopic.id));
-    toast.success("Conversa excluída!");
-    setDeleteConfirmTopic(null);
   };
 
   const replyToMessage = (msg: TopicMessage) => {
