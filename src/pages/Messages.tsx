@@ -5,10 +5,10 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
-import { Loader2, ArrowLeft, Send } from "lucide-react";
+import { Loader2, ArrowLeft, Send, Pencil, X, Check, Trash2 } from "lucide-react";
 
 type Thread = { id: string; user_id: string; last_message_at: string | null; author_name?: string; author_avatar?: string };
-type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string };
+type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string; updated_at?: string; deleted_at?: string | null };
 
 export default function Messages() {
   const navigate = useNavigate();
@@ -22,6 +22,9 @@ export default function Messages() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -123,6 +126,70 @@ export default function Messages() {
     finally { setSending(false); }
   }
 
+  const startEdit = (msg: Message) => {
+    setEditingId(msg.id);
+    setEditContent(msg.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editContent.trim()) return;
+    
+    const originalMessages = [...messages];
+    setMessages(prev => prev.map(m => m.id === editingId ? { ...m, content: editContent.trim() } : m));
+    setEditingId(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .update({ content: editContent.trim(), updated_at: new Date().toISOString() })
+        .eq("id", editingId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setMessages(prev => prev.map(m => m.id === editingId ? data : m));
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages(originalMessages);
+    }
+    setEditContent("");
+  };
+
+  const confirmDelete = (msgId: string) => {
+    setDeleteConfirmId(msgId);
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteConfirmId) return;
+    
+    const originalMessages = [...messages];
+    setMessages(prev => prev.map(m => m.id === deleteConfirmId ? { ...m, content: "Mensagem removida", deleted_at: new Date().toISOString() } : m));
+    setDeleteConfirmId(null);
+    
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", deleteConfirmId);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      setMessages(originalMessages);
+    }
+  };
+
   const currentThread = threadId ? threads.find(t => t.id === threadId) : null;
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
   
@@ -211,11 +278,19 @@ export default function Messages() {
                 <>
                   {messages.map(m => {
                     const isMine = m.sender_id === user?.id;
+                    const isEdited = m.updated_at && m.updated_at !== m.created_at;
+                    const isDeleted = m.deleted_at || m.content === "Mensagem removida";
+                    
                     return (
-                      <div key={m.id} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}>
+                      <div 
+                        key={m.id} 
+                        style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 8 }}
+                        onMouseEnter={(e) => { if (isMine && !isDeleted && editingId !== m.id && deleteConfirmId !== m.id) { const actions = e.currentTarget.querySelector('.msg-actions'); if (actions) (actions as HTMLElement).style.opacity = '1'; } }}
+                        onMouseLeave={(e) => { const actions = e.currentTarget.querySelector('.msg-actions'); if (actions) (actions as HTMLElement).style.opacity = '0'; }}
+                      >
                         <div style={{ 
                           maxWidth: "75%", 
-                          padding: "12px 16px", 
+                          padding: editingId === m.id ? "8px 12px" : "12px 16px", 
                           borderRadius: 20, 
                           background: isMine ? "#630091" : "#f5f5f5", 
                           color: isMine ? "#fff" : "#333",
@@ -223,8 +298,53 @@ export default function Messages() {
                           borderBottomLeftRadius: isMine ? "20px" : "4px",
                           boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                         }}>
-                          <p style={{ fontSize: 14, wordBreak: "break-word", lineHeight: 1.4 }}>{m.content}</p>
-                          <p style={{ fontSize: 10, marginTop: 6, color: isMine ? "rgba(255,255,255,0.7)" : "#888", textAlign: isMine ? "right" : "left" }}>{formatDateTime(m.created_at)}</p>
+                          {editingId === m.id ? (
+                            <div>
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                style={{ 
+                                  width: "100%", 
+                                  minHeight: 60, 
+                                  padding: 8, 
+                                  borderRadius: 12, 
+                                  border: "none", 
+                                  fontSize: 14, 
+                                  resize: "none",
+                                  background: "rgba(255,255,255,0.2)",
+                                  color: "#fff",
+                                  outline: "none"
+                                }}
+                                autoFocus
+                              />
+                              <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                                <button onClick={cancelEdit} style={{ padding: "4px 8px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", fontSize: 12 }}>Cancelar</button>
+                                <button onClick={saveEdit} style={{ padding: "4px 8px", borderRadius: 8, border: "none", background: "#d81e62", color: "#fff", cursor: "pointer", fontSize: 12 }}>Salvar</button>
+                              </div>
+                            </div>
+                          ) : deleteConfirmId === m.id ? (
+                            <div style={{ textAlign: "center", padding: "8px 0" }}>
+                              <p style={{ fontSize: 13, marginBottom: 8 }}>Excluir mensagem?</p>
+                              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                                <button onClick={cancelDelete} style={{ padding: "4px 12px", borderRadius: 8, border: "none", background: "#ccc", color: "#333", cursor: "pointer", fontSize: 12 }}>Cancelar</button>
+                                <button onClick={executeDelete} style={{ padding: "4px 12px", borderRadius: 8, border: "none", background: "#e53e3e", color: "#fff", cursor: "pointer", fontSize: 12 }}>Excluir</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p style={{ fontSize: 14, wordBreak: "break-word", lineHeight: 1.4 }}>{m.content}</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                                <p style={{ fontSize: 10, color: isMine ? "rgba(255,255,255,0.7)" : "#888" }}>{formatDateTime(m.created_at)}</p>
+                                {isEdited && <span style={{ fontSize: 10, color: isMine ? "rgba(255,255,255,0.5)" : "#aaa" }}>• Editada</span>}
+                              </div>
+                            </>
+                          )}
+                          {isMine && !isDeleted && editingId !== m.id && deleteConfirmId !== m.id && (
+                            <div className="msg-actions" style={{ display: "flex", gap: 4, marginTop: 4, opacity: 0, transition: "opacity 0.2s" }}>
+                              <button onClick={() => startEdit(m)} style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Pencil size={10} /> Editar</button>
+                              <button onClick={() => confirmDelete(m.id)} style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.2)", color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 2 }}><Trash2 size={10} /> Excluir</button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
