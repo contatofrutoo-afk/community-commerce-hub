@@ -148,6 +148,9 @@ export default function CreatePost() {
   };
 
   useEffect(() => {
+    // Force mediaMode to upload on mount
+    setMediaMode("upload");
+    
     if (!tenant) return;
     (async () => {
       const [{ count: c }, { data: tp }] = await Promise.all([
