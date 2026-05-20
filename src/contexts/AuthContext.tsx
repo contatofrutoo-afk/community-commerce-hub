@@ -14,6 +14,7 @@ type AuthCtx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  initializing: boolean;
   appRole: AppRole | null;
   isB2B: boolean;
   isB2C: boolean;
@@ -26,7 +27,7 @@ type AuthCtx = {
 };
 
 const Ctx = createContext<AuthCtx>({
-  user: null, session: null, loading: true,
+  user: null, session: null, loading: true, initializing: true,
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
   userState: null, redirectTo: null,
   signOut: async () => {}, clearRedirect: () => {}, refreshAppRole: () => {},
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [userState, setUserState] = useState<UserState | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (!data.session) {
         setLoading(false);
+        setInitializing(false);
         setInitialized(true);
         return;
       }
@@ -83,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         if (isMounted) {
           setLoading(false);
+          setInitializing(false);
           setInitialized(true);
         }
       }
@@ -176,7 +180,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <Ctx.Provider
       value={{
-        user, session, loading,
+        user, session, loading, initializing,
         appRole,
         isB2B: appRole === "b2b" || appRole === "admin",
         isB2C: appRole === "b2c",

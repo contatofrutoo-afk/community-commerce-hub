@@ -83,9 +83,10 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, initializing } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
+  if (initializing) return null;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (tenantLoading) return <Loading />;
@@ -95,32 +96,37 @@ const Protected = ({ children }: { children: JSX.Element }) => {
 };
 
 const B2BOnly = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, initializing } = useAuth();
   const { isOwner, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading || tenantLoading) return;
+    if (loading || tenantLoading || initializing) return;
     if (!user) return;
     if (!isOwner) {
       navigate("/feed", { replace: true });
     }
-  }, [loading, tenantLoading, isOwner, user, navigate]);
+  }, [loading, tenantLoading, initializing, isOwner, user, navigate]);
 
+  if (initializing) return null;
   if (loading || tenantLoading) return <Loading />;
   if (!isOwner) return null;
   return children;
 };
 
 const NeedsTenant = ({ children }: { children: JSX.Element }) => {
+  const { user, loading: authLoading, initializing } = useAuth();
   const { loading, tenant } = useTenant();
-  if (loading) return <Loading />;
+
+  if (initializing) return null;
+  if (authLoading || loading) return <Loading />;
   return children;
 };
 
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, initializing } = useAuth();
 
+  if (initializing) return null;
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
 
