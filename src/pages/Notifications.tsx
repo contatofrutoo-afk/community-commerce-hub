@@ -774,18 +774,24 @@ export default function Notifications() {
             ) : [...notifications].reverse().map(n => {
               const isJoinRequest = n.type === "join_request";
               const isTopicReply = n.type === "topic_reply";
+              const isGroupInvite = n.type === "group_invite";
               return (
               <div
                 key={n.id}
-                onClick={() => isTopicReply && n.data?.topic_id && navigate(`/conversas/${n.data.topic_id}`)}
-                className={`bg-card border rounded-2xl p-4 ${isJoinRequest ? "border-purple-200" : isTopicReply ? "border-blue-200 hover:bg-blue-50 cursor-pointer" : "border-border"}`}
+                onClick={() => {
+                  if (isTopicReply && n.data?.topic_id) navigate(`/conversas/${n.data.topic_id}`);
+                  if (isGroupInvite && n.data?.group_id) navigate(`/groups/member/${n.data.group_id}`);
+                }}
+                className={`bg-card border rounded-2xl p-4 ${isJoinRequest ? "border-purple-200" : isTopicReply ? "border-blue-200 hover:bg-blue-50 cursor-pointer" : isGroupInvite ? "border-green-200 hover:bg-green-50 cursor-pointer" : "border-border"}`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isJoinRequest ? "bg-purple-100" : isTopicReply ? "bg-blue-100" : "bg-brand/10"}`}>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isJoinRequest ? "bg-purple-100" : isTopicReply ? "bg-blue-100" : isGroupInvite ? "bg-green-100" : "bg-brand/10"}`}>
                     {isJoinRequest ? (
                       <Users className="h-4 w-4 text-purple-600" />
                     ) : isTopicReply ? (
                       <MessageSquare className="h-4 w-4 text-blue-600" />
+                    ) : isGroupInvite ? (
+                      <Users className="h-4 w-4 text-green-600" />
                     ) : (
                       <Bell className="h-4 w-4 text-brand" />
                     )}
@@ -795,19 +801,30 @@ export default function Notifications() {
                     {n.content && (
                       <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.content}</p>
                     )}
+                    {!n.content && n.data?.group_name && (
+                      <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.data.group_name}</p>
+                    )}
                     {isTopicReply && n.data?.topic_title && (
                       <p className="text-sm text-blue-700 font-medium mt-0.5">{n.data.topic_title}</p>
                     )}
                     {isTopicReply && n.data?.message_preview && (
                       <p className="text-xs text-muted-foreground mt-1 italic">"{n.data.message_preview}"</p>
                     )}
-                    {n.data?.user_name && !isTopicReply && (
+                    {n.data?.user_name && !isTopicReply && !isGroupInvite && (
                       <p className="text-sm text-muted-foreground mt-1">
                         <span className="font-medium">{n.data.user_name}</span> {n.data.user_email ? `(${n.data.user_email})` : ""}
                       </p>
                     )}
-                    {n.data?.tenant_name && !isTopicReply && (
+                    {n.data?.tenant_name && !isTopicReply && !isGroupInvite && (
                       <p className="text-xs text-purple-600 mt-0.5">{n.data.tenant_name}</p>
+                    )}
+                    {isGroupInvite && n.data?.group_id && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/groups/member/${n.data.group_id}`); }}
+                        style={{ marginTop: 8, padding: "6px 16px", borderRadius: 8, border: "none", background: "#630091", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500 }}
+                      >
+                        Ver grupo
+                      </button>
                     )}
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {formatDate(n.created_at)}
