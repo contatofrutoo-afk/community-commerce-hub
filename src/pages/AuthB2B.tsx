@@ -18,11 +18,11 @@ const signupSchema = z.object({
 
 export default function AuthB2B() {
   const nav = useNavigate();
-  const { loading: authLoading, user } = useAuth();
+  const { loading: authLoading, initializing, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
 
-  if (authLoading) {
+  if (initializing || authLoading) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
         <div className="flex flex-col items-center gap-3">

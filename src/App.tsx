@@ -86,7 +86,7 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
-  if (initializing) return null;
+  if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (tenantLoading) return <Loading />;
@@ -108,7 +108,7 @@ const B2BOnly = ({ children }: { children: JSX.Element }) => {
     }
   }, [loading, tenantLoading, initializing, isOwner, user, navigate]);
 
-  if (initializing) return null;
+  if (initializing) return <Loading />;
   if (loading || tenantLoading) return <Loading />;
   if (!isOwner) return null;
   return children;
@@ -118,7 +118,7 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing } = useAuth();
   const { loading, tenant } = useTenant();
 
-  if (initializing) return null;
+  if (initializing) return <Loading />;
   if (authLoading || loading) return <Loading />;
   return children;
 };
@@ -126,7 +126,7 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const { user, loading, initializing } = useAuth();
 
-  if (initializing) return null;
+  if (initializing) return <Loading />;
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
 
