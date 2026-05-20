@@ -328,7 +328,7 @@ export default function Messages() {
                                 <button onClick={executeDelete} style={{ padding: "4px 12px", borderRadius: 8, border: "none", background: "#e53e3e", color: "#fff", cursor: "pointer", fontSize: 12 }}>Excluir</button>
                               </div>
                             </div>
-                          ) : (
+                           ) : (
                             <>
                               <p style={{ fontSize: 14, wordBreak: "break-word", lineHeight: 1.4 }}>{m.content}</p>
                               <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
