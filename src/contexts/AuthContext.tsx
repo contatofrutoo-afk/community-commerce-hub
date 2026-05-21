@@ -98,17 +98,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, s) => {
       if (!isMounted) return;
 
-      if (_evt === "INITIAL_SESSION" || _evt === "TOKEN_REFRESHED") {
-        if (s?.user) {
+      // INITIAL_SESSION: handled exclusively by initAuth above — skip to avoid race
+      if (_evt === "INITIAL_SESSION") return;
+
+      if (_evt === "TOKEN_REFRESHED") {
+        // Only refresh the session token — do NOT call setUser().
+        // The user identity is unchanged; creating a new User object reference
+        // would trigger unnecessary re-renders in TenantContext and other consumers.
+        if (s) {
           setSession(s);
-          setUser(s.user);
         } else {
           setAppRole(null);
           setUserState(null);
+          setLoading(false);
+          setInitializing(false);
         }
-        setLoading(false);
-        setInitializing(false);
-        setInitialized(true);
         return;
       }
 
