@@ -63,6 +63,8 @@ registerServiceWorker();
 let swRegistration: ServiceWorkerRegistration | null = null;
 function triggerUpdate(registration: ServiceWorkerRegistration) {
   swRegistration = registration;
+  // Expose the waiting worker globally so the UpdateBanner can message it
+  (window as any).__swWaitingWorker = registration.waiting;
   window.dispatchEvent(new CustomEvent('sw-update-ready'));
 }
 

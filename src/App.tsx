@@ -24,16 +24,27 @@ const UpdateBanner = () => {
     return () => window.removeEventListener('sw-update-ready', handleUpdate);
   }, []);
 
-  useEffect(() => {
-    if (showBanner) {
-      window.location.reload();
-    }
-  }, [showBanner]);
+  // NOTE: No auto-reload here. Silently reloading caused Auth/Tenant to
+  // reinitialize at unpredictable moments, leading to infinite loading states.
+  // User must explicitly click the banner to apply the update.
 
   if (!showBanner) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-purple-700 text-white text-sm text-center py-2 px-4 cursor-pointer" onClick={() => window.location.reload()}>
+    <div
+      className="fixed top-0 left-0 right-0 z-[100] bg-purple-700 text-white text-sm text-center py-2 px-4 cursor-pointer"
+      onClick={() => {
+        // Tell the waiting SW to take control, then reload
+        const waiting = (window as any).__swWaitingWorker;
+        if (waiting) {
+          waiting.postMessage('skipWaiting');
+          // Give the SW a moment to activate before reloading
+          setTimeout(() => window.location.reload(), 300);
+        } else {
+          window.location.reload();
+        }
+      }}
+    >
       Nova versão disponível — clique para atualizar
     </div>
   );

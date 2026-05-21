@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weaze-v50';
+const CACHE_NAME = 'weaze-v51';
 
 const PRECACHE_URLS = [
   '/',
@@ -14,7 +14,11 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
+  // NOTE: Do NOT call self.skipWaiting() here.
+  // Automatically taking control of an active page mid-session was causing
+  // in-flight Supabase requests to be interrupted and Auth/Tenant loading to deadlock.
+  // skipWaiting is only triggered explicitly via the 'skipWaiting' message
+  // sent when the user clicks the update banner.
 });
 
 self.addEventListener('activate', (event) => {
