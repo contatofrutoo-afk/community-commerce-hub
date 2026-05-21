@@ -181,5 +181,16 @@ export async function createGroupPost(groupId: string, authorId: string, content
     .single();
 
   if (error) return { data: null as B2CGroupPost | null, error: error.message };
+
+  if (data) {
+    const { data: profileData } = await supabase.rpc("get_profiles_by_ids", {
+      p_user_ids: [authorId],
+    });
+    const profile = (profileData && profileData.length > 0)
+      ? { name: profileData[0].name, avatar_url: profileData[0].avatar_url }
+      : null;
+    return { data: { ...data, profiles: profile } as B2CGroupPost, error: null };
+  }
+
   return { data: data as unknown as B2CGroupPost, error: null };
 }
