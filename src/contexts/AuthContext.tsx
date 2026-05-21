@@ -97,6 +97,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, s) => {
       if (!isMounted) return;
+
+      if (_evt === "INITIAL_SESSION" || _evt === "TOKEN_REFRESHED") {
+        if (!s?.user) {
+          setAppRole(null);
+          setUserState(null);
+          setLoading(false);
+        }
+        return;
+      }
+
       setSession(s);
       setUser(s?.user ?? null);
       setRedirected(false);
