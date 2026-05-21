@@ -11,15 +11,21 @@ export function useGroups(tenantId: string | null) {
     setLoading(true);
     setError(null);
 
-    const result = await groupsService.list(tenantId);
+    try {
+      const result = await groupsService.list(tenantId);
 
-    setLoading(false);
-
-    if (result.error) {
-      setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        setGroups([]);
+      } else {
+        setGroups(result.data);
+      }
+    } catch (err) {
+      console.error("[useGroups] Error loading groups:", err);
+      setError("Erro inesperado ao carregar grupos");
       setGroups([]);
-    } else {
-      setGroups(result.data);
+    } finally {
+      setLoading(false);
     }
   }, [tenantId]);
 

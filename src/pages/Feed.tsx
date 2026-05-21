@@ -28,55 +28,68 @@ export default function Feed() {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const initialized = useRef(false);
+  const loadingRef = useRef(false);
+  const doneRef = useRef(false);
 
   const loadPosts = useCallback(async (offset = 0) => {
-    if (!tenant || loading || done) return;
+    if (!tenant || loadingRef.current || doneRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
-    
-    // Fetch posts
-    const { data, error } = await supabase
-      .from("posts")
-      .select("id, tenant_id, author_id, type, media_url, thumbnail_url, description, created_at")
-      .eq("tenant_id", tenant.id)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + PAGE - 1);
-    
-    setLoading(false);
-    if (error) return;
-    
-    if (!data || data.length === 0) {
-      setDone(true);
-      setPosts([]);
-      return;
+
+    try {
+      // Fetch posts
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, tenant_id, author_id, type, media_url, thumbnail_url, description, created_at")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + PAGE - 1);
+
+      if (error) return;
+
+      if (!data || data.length === 0) {
+        doneRef.current = true;
+        setDone(true);
+        setPosts([]);
+        return;
+      }
+
+      // Fetch CTAs for all posts
+      const postIds = data.map(p => p.id);
+
+      let ctas: any[] = [];
+      if (postIds.length > 0) {
+        const { data: ctasData } = await supabase
+          .from("post_cta")
+          .select("*")
+          .in("post_id", postIds);
+        ctas = ctasData || [];
+      }
+
+      // Map CTAs to posts
+      const ctaMap: Record<string, any> = {};
+      ctas.forEach((c: any) => {
+        ctaMap[c.post_id] = c;
+      });
+
+      const postsWithCtas = data.map(p => ({
+        ...p,
+        post_cta: ctaMap[p.id] ? [ctaMap[p.id]] : []
+      }));
+
+      if (data.length < PAGE) {
+        doneRef.current = true;
+        setDone(true);
+      }
+      setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
+      console.log("[Feed] Posts loaded:", data.map(p => ({ id: p.id, author_id: p.author_id, user_id: user?.id })));
+    } catch (err) {
+      console.error("[Feed] Error loading posts:", err);
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
     }
-    
-    // Fetch CTAs for all posts (including pagination)
-    const postIds = data.map(p => p.id);
-    
-    let ctas: any[] = [];
-    if (postIds.length > 0) {
-      const { data: ctasData } = await supabase
-        .from("post_cta")
-        .select("*")
-        .in("post_id", postIds);
-      ctas = ctasData || [];
-    }
-    
-    // Map CTAs to posts
-    const ctaMap: Record<string, any> = {};
-    ctas.forEach((c: any) => {
-      ctaMap[c.post_id] = c;
-    });
-    
-    const postsWithCtas = data.map(p => ({
-      ...p,
-      post_cta: ctaMap[p.id] ? [ctaMap[p.id]] : []
-    }));
-    
-    if (data.length < PAGE) setDone(true);
-    setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
-    console.log("[Feed] Posts loaded:", data.map(p => ({ id: p.id, author_id: p.author_id, user_id: user?.id })));
-  }, [tenant?.id, loading, done]);
+  }, [tenant?.id]);
 
   // Track view when post becomes active
   const trackView = useCallback(async (postId: string) => {
@@ -93,48 +106,52 @@ export default function Feed() {
   useEffect(() => {
     if (!tenant) return;
     (async () => {
-      // First check the lives table for active lives
-      const { data: liveData } = await supabase
-        .from("lives")
-        .select("id, title, external_url, is_live")
-        .eq("tenant_id", tenant.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      
-      // Check for live CTA in posts
-      const { data: liveCta } = await supabase
-        .from("post_cta")
-        .select("post_id, config_json")
-        .eq("tenant_id", tenant.id)
-        .eq("type", "live")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      
-      let liveUrl = null;
-      
-      // Priority 1: Check for active live in lives table
-      const activeLive = (liveData || []).find(l => l.is_live);
-      if (activeLive) {
-        liveUrl = activeLive.external_url;
-      }
-      
-      // Priority 2: Check for any live CTA (show even if not marked as live)
-      if (!liveUrl && liveCta && liveCta.length > 0) {
-        for (const cta of liveCta) {
-          try {
-            const config = typeof cta.config_json === 'string' ? JSON.parse(cta.config_json) : cta.config_json;
-            if (config?.external_url) {
-              liveUrl = config.external_url;
-              break;
+      try {
+        // First check the lives table for active lives
+        const { data: liveData } = await supabase
+          .from("lives")
+          .select("id, title, external_url, is_live")
+          .eq("tenant_id", tenant.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        // Check for live CTA in posts
+        const { data: liveCta } = await supabase
+          .from("post_cta")
+          .select("post_id, config_json")
+          .eq("tenant_id", tenant.id)
+          .eq("type", "live")
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        let liveUrl = null;
+
+        // Priority 1: Check for active live in lives table
+        const activeLive = (liveData || []).find(l => l.is_live);
+        if (activeLive) {
+          liveUrl = activeLive.external_url;
+        }
+
+        // Priority 2: Check for any live CTA
+        if (!liveUrl && liveCta && liveCta.length > 0) {
+          for (const cta of liveCta) {
+            try {
+              const config = typeof cta.config_json === 'string' ? JSON.parse(cta.config_json) : cta.config_json;
+              if (config?.external_url) {
+                liveUrl = config.external_url;
+                break;
+              }
+            } catch (e) {
+              console.error("Error parsing CTA config:", e);
             }
-          } catch (e) {
-            console.error("Error parsing CTA config:", e);
           }
         }
+
+        console.log("Live check - tenant:", tenant.name, "has live:", !!liveUrl);
+        setActiveLiveUrl(liveUrl);
+      } catch (err) {
+        console.error("[Feed] Error checking live:", err);
       }
-      
-      console.log("Live check - tenant:", tenant.name, "has live:", !!liveUrl);
-      setActiveLiveUrl(liveUrl);
     })();
   }, [tenant?.id]);
 
@@ -150,21 +167,25 @@ export default function Feed() {
       return;
     }
     initialized.current = true;
+    doneRef.current = false;
+    loadingRef.current = false;
     setPosts([]); setDone(false); setActiveIdx(0);
     setInitialLoadDone(false);
     loadPosts(0).finally(() => {
       setInitialLoadDone(true);
     });
-  }, [tenant?.id]); // Only run once when tenant changes
+  }, [tenant?.id, loadPosts]);
 
   // Refresh on query param
   useEffect(() => {
     const t = searchParams.get("t");
     if (t && tenant) {
+      doneRef.current = false;
+      loadingRef.current = false;
       setPosts([]); setDone(false);
       loadPosts(0);
     }
-  }, [searchParams.get("t"), tenant?.id]);
+  }, [searchParams.get("t"), tenant?.id, loadPosts]);
 
   // Re-observe items when posts change
   useEffect(() => {
