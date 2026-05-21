@@ -30,7 +30,7 @@ const Ctx = createContext<TenantCtx>({
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, initializing } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -43,6 +43,9 @@ const [loading, setLoading] = useState(true);
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     if (!user) {
+      if (initializing) {
+        return;
+      }
       setTenants([]);
       setTenant(null);
       setIsOwner(false);
