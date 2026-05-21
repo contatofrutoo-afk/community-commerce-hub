@@ -83,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       } catch (err) {
         console.error("Error fetching memberships:", err);
+        if (isMounted) setAppRole("b2c");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -124,6 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         } catch (err) {
           console.error("Error fetching memberships on auth change:", err);
+          if (isMounted) setAppRole("b2c");
         } finally {
           if (isMounted) setLoading(false);
         }

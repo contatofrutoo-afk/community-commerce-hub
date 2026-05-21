@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTenant } from "@/contexts/TenantContext";
 import { Users, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +21,6 @@ const signupSchema = z.object({
 export default function Auth() {
   const nav = useNavigate();
   const { loading: authLoading, initializing, user, appRole } = useAuth();
-  const { loading: tenantLoading } = useTenant();
   const [loading, setLoading] = useState(false);
   const [fromInvite, setFromInvite] = useState(false);
   const [inviteTenantName, setInviteTenantName] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export default function Auth() {
   }, []);
 
   useEffect(() => {
-    if (user && !authLoading && !initializing && loading === false && appRole !== null && !tenantLoading) {
+    if (user && !authLoading && !initializing && loading === false && appRole !== null) {
       const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
       if (pendingSlug) {
         nav(`/c/${pendingSlug}`, { replace: true });
@@ -50,9 +48,9 @@ export default function Auth() {
         nav("/feed", { replace: true });
       }
     }
-  }, [user, authLoading, initializing, loading, appRole, tenantLoading, nav]);
+  }, [user, authLoading, initializing, loading, appRole, nav]);
 
-  if (initializing || authLoading || (user && (appRole === null || tenantLoading))) {
+  if (initializing || authLoading || (user && appRole === null)) {
     return (
       <main className="min-h-screen bg-background grid place-items-center">
         <div className="flex flex-col items-center gap-3">

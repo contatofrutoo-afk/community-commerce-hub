@@ -50,6 +50,7 @@ const [loading, setLoading] = useState(true);
       setLoading(false);
       return;
     }
+    try {
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
@@ -157,7 +158,11 @@ if (targetTenant && targetRole) {
       setIsOwner(false);
       setCanManage(false);
     }
-    setLoading(false);
+    } catch (err) {
+      console.error("[TenantContext] Error loading tenants:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
