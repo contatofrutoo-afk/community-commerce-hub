@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
 
@@ -40,12 +40,16 @@ const [loading, setLoading] = useState(true);
   const [manualSelectionPending, setManualSelectionPending] = useState(false);
   const [manualSelectedTenantId, setManualSelectedTenantId] = useState<string | null>(null);
 
+  const activeLoadRef = useRef(0);
+
   const load = useCallback(async (): Promise<void> => {
+    const loadId = ++activeLoadRef.current;
     setLoading(true);
     if (!user) {
       if (initializing) {
         return;
       }
+      if (loadId !== activeLoadRef.current) return;
       setTenants([]);
       setTenant(null);
       setIsOwner(false);
@@ -53,12 +57,14 @@ const [loading, setLoading] = useState(true);
       setLoading(false);
       return;
     }
+    if (loadId !== activeLoadRef.current) return;
     try {
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, tenants(*)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
+    if (loadId !== activeLoadRef.current) return;
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
     const roles: TenantRoles = {} as TenantRoles;
     (mems ?? []).forEach((m: unknown) => {
@@ -146,10 +152,12 @@ const [loading, setLoading] = useState(true);
         targetTenant = manualTenant;
         targetRole = roles[manualSelectedTenantId];
       }
+      if (loadId !== activeLoadRef.current) return;
       setManualSelectionPending(false);
       setManualSelectedTenantId(null);
     }
 
+    if (loadId !== activeLoadRef.current) return;
 if (targetTenant && targetRole) {
       setTenant(targetTenant);
       setIsOwner(targetRole === "owner");
@@ -164,9 +172,10 @@ if (targetTenant && targetRole) {
     } catch (err) {
       console.error("[TenantContext] Error loading tenants:", err);
     } finally {
+      if (loadId !== activeLoadRef.current) return;
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id, initializing]);
 
   useEffect(() => { load(); }, [load]);
 
