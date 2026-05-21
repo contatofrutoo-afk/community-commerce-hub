@@ -144,11 +144,17 @@ export default function Feed() {
 
   // Initial load only
   useEffect(() => {
-    if (initialized.current || !tenant) return;
+    if (initialized.current) return;
+    if (!tenant) {
+      setInitialLoadDone(true);
+      return;
+    }
     initialized.current = true;
     setPosts([]); setDone(false); setActiveIdx(0);
     setInitialLoadDone(false);
-    loadPosts(0).then(() => setInitialLoadDone(true));
+    loadPosts(0).finally(() => {
+      setInitialLoadDone(true);
+    });
   }, [tenant?.id]); // Only run once when tenant changes
 
   // Refresh on query param

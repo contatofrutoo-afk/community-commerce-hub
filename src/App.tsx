@@ -96,34 +96,39 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading, initializing } = useAuth();
+  const { user, loading: authLoading, initializing, isB2C } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (tenantLoading) return <Loading />;
-  if (!tenant) return <Navigate to="/communities" replace />;
+  if (!tenant) {
+    if (isB2C) {
+      return children;
+    }
+    return <Navigate to="/communities" replace />;
+  }
 
   return children;
 };
 
 const B2BOnly = ({ children }: { children: JSX.Element }) => {
-  const { user, loading, initializing } = useAuth();
+  const { user, loading, initializing, isB2B } = useAuth();
   const { isOwner, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (loading || tenantLoading || initializing) return;
     if (!user) return;
-    if (!isOwner) {
+    if (!isB2B && !isOwner) {
       navigate("/feed", { replace: true });
     }
-  }, [loading, tenantLoading, initializing, isOwner, user, navigate]);
+  }, [loading, tenantLoading, initializing, isOwner, isB2B, user, navigate]);
 
   if (initializing) return <Loading />;
   if (loading || tenantLoading) return <Loading />;
-  if (!isOwner) return null;
+  if (!isB2B && !isOwner) return null;
   return children;
 };
 
