@@ -252,21 +252,13 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    const userName = profile?.name || user.email?.split("@")[0] || "Usuário";
-
     await supabase.from("notifications").insert({
       tenant_id: tenantId,
       user_id: user.id,
       type: "appointment_pending",
-      title: "Nova solicitação de agendamento",
-      content: `${userName} solicitou agendamento para ${serviceName} às ${selectedTime}`,
-      link: `/requests`,
+      title: "Solicitação enviada",
+      content: `Seu agendamento para ${serviceName} no dia ${formatDate(serviceDate)} às ${selectedTime} foi enviado. Aguarde a confirmação.`,
+      link: "/feed",
     });
 
     const { data: owners } = await supabase
@@ -274,6 +266,14 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
       .select("user_id")
       .eq("tenant_id", tenantId)
       .eq("role", "owner");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const userName = profile?.name || user.email?.split("@")[0] || "Usuário";
 
     if (owners && owners.length > 0) {
       for (const o of owners) {

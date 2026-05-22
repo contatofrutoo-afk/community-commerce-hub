@@ -771,7 +771,7 @@ export default function Notifications() {
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma notificação</p>
               </div>
-            ) : [...notifications].reverse().map(n => {
+            ) : notifications.map(n => {
               const isJoinRequest = n.type === "join_request";
               const isTopicReply = n.type === "topic_reply";
               const isGroupInvite = n.type === "group_invite";
@@ -780,7 +780,8 @@ export default function Notifications() {
                 key={n.id}
                 onClick={() => {
                   if (isTopicReply && n.data?.topic_id) navigate(`/conversas/${n.data.topic_id}`);
-                  if (isGroupInvite && n.data?.group_id) navigate(`/groups/member/${n.data.group_id}`);
+                  else if (isGroupInvite && n.data?.group_id) navigate(`/groups/member/${n.data.group_id}`);
+                  else if (n.link) navigate(n.link);
                 }}
                 className={`bg-card border rounded-2xl p-4 ${isJoinRequest ? "border-purple-200" : isTopicReply ? "border-blue-200 hover:bg-blue-50 cursor-pointer" : isGroupInvite ? "border-green-200 hover:bg-green-50 cursor-pointer" : "border-border"}`}
               >
