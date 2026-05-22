@@ -42,7 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userState, setUserState] = useState<UserState | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const [redirected, setRedirected] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +56,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!data.session) {
         setLoading(false);
         setInitializing(false);
-        setInitialized(true);
         return;
       }
       
@@ -88,7 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (isMounted) {
           setLoading(false);
           setInitializing(false);
-          setInitialized(true);
         }
       }
     };

@@ -31,10 +31,8 @@ export default function Feed() {
   const doneRef = useRef(false);
 
   const loadPosts = useCallback(async (offset = 0) => {
-    console.log("[Feed] loadPosts called", { offset, hasTenant: !!tenant, loadingRef: loadingRef.current, doneRef: doneRef.current });
     if (!tenant || loadingRef.current || doneRef.current) return;
     loadingRef.current = true;
-    console.log("[Feed] Setting loading true");
     setLoading(true);
 
     try {
@@ -83,7 +81,6 @@ export default function Feed() {
         setDone(true);
       }
       setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
-      console.log("[Feed] Posts loaded:", data.map(p => ({ id: p.id, author_id: p.author_id, user_id: user?.id })));
     } catch (err) {
       console.error("[Feed] Error loading posts:", err);
     } finally {
@@ -148,8 +145,7 @@ export default function Feed() {
           }
         }
 
-        console.log("Live check - tenant:", tenant.name, "has live:", !!liveUrl);
-        setActiveLiveUrl(liveUrl);
+          setActiveLiveUrl(liveUrl);
       } catch (err) {
         console.error("[Feed] Error checking live:", err);
       }
@@ -185,11 +181,13 @@ export default function Feed() {
   // Re-observe items when posts change
   useEffect(() => {
     const c = containerRef.current;
-    if (!c || posts.length === 0) return;
     
-    // Disconnect existing observer
-    const existingObs = (c as any).__observer as IntersectionObserver | undefined;
+    // Disconnect any existing observer
+    const existingObs = (c as any)?.__observer as IntersectionObserver | undefined;
     if (existingObs) existingObs.disconnect();
+    delete (c as any)?.__observer;
+    
+    if (!c || posts.length === 0) return;
     
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
@@ -208,13 +206,13 @@ export default function Feed() {
       }
     });
     
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      delete (c as any)?.__observer;
+    };
   }, [posts.length]);
 
-  if (tLoading || !initialLoadDone) {
-    console.log("[Feed] Carregando... tLoading:", tLoading, "initialLoadDone:", initialLoadDone);
-    return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
-  }
+  if (tLoading || !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   // B2B sem tenant → criar marca
   if (!tenant && isB2B) {
