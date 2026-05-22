@@ -27,7 +27,6 @@ export default function Feed() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const initialized = useRef(false);
   const loadingRef = useRef(false);
   const doneRef = useRef(false);
 
@@ -155,18 +154,12 @@ export default function Feed() {
     })();
   }, [tenant?.id]);
 
-  useEffect(() => {
-    initialized.current = false;
-  }, [tenant?.id]);
-
   // Initial load only
   useEffect(() => {
-    if (initialized.current) return;
     if (!tenant) {
       setInitialLoadDone(true);
       return;
     }
-    initialized.current = true;
     doneRef.current = false;
     loadingRef.current = false;
     setPosts([]); setDone(false); setActiveIdx(0);
