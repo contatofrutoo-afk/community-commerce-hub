@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useB2CGroupDetail } from "@/hooks/groups/useB2CGroupDetail";
 import { markGroupVisited } from "@/services/groupsB2CService";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Send, Users } from "lucide-react";
+import { Loader2, ArrowLeft, Send, Users, Pencil, Trash2, X, Check } from "lucide-react";
 
 function getOnboardingKey(groupId: string) {
   return `group_onboarding_${groupId}`;
@@ -20,6 +20,8 @@ export default function GroupDetailB2C() {
   const [memberCheckDone, setMemberCheckDone] = useState(false);
   const [removed, setRemoved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   useEffect(() => {
     load();
@@ -68,6 +70,27 @@ export default function GroupDetailB2C() {
       setInputText("");
       if (inputRef.current) inputRef.current.focus();
     }
+  }
+
+  async function handleEditPost(postId: string) {
+    if (!editText.trim()) return;
+    await editPost(postId, editText.trim());
+    setEditingPostId(null);
+    setEditText("");
+  }
+
+  async function handleDeletePost(postId: string) {
+    await removePost(postId);
+  }
+
+  function startEditing(post: { id: string; content: string | null }) {
+    setEditingPostId(post.id);
+    setEditText(post.content || "");
+  }
+
+  function cancelEditing() {
+    setEditingPostId(null);
+    setEditText("");
   }
 
   if (loading && !group) {
@@ -143,22 +166,68 @@ export default function GroupDetailB2C() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {posts.map((post) => (
-              <div key={post.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                    {post.profiles?.avatar_url ? (
-                      <img src={post.profiles.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#630091" }}>{post.profiles?.name?.[0] || "?"}</span>
-                    )}
+            {posts.map((post) => {
+              const isAuthor = post.author_id === user?.id;
+              return (
+                <div key={post.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+                      {post.profiles?.avatar_url ? (
+                        <img src={post.profiles.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#630091" }}>{post.profiles?.name?.[0] || "?"}</span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{post.profiles?.name || "Usuário"}</span>
+                    <span style={{ fontSize: 11, color: "#aaa", marginLeft: "auto" }}>{formatTime(post.created_at)}</span>
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{post.profiles?.name || "Usuário"}</span>
-                  <span style={{ fontSize: 11, color: "#aaa", marginLeft: "auto" }}>{formatTime(post.created_at)}</span>
+
+                  {editingPostId === post.id ? (
+                    <div>
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e0e0e0", fontSize: 14, outline: "none", resize: "vertical", minHeight: 60, fontFamily: "inherit" }}
+                      />
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                        <button
+                          onClick={cancelEditing}
+                          style={{ background: "none", border: "1px solid #e0e0e0", borderRadius: 8, cursor: "pointer", padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#666" }}
+                        >
+                          <X size={14} /> Cancelar
+                        </button>
+                        <button
+                          onClick={() => handleEditPost(post.id)}
+                          disabled={!editText.trim()}
+                          style={{ background: "#630091", border: "none", borderRadius: 8, cursor: "pointer", padding: "6px 12px", display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#fff", opacity: editText.trim() ? 1 : 0.5 }}
+                        >
+                          <Check size={14} /> Salvar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 14, lineHeight: 1.5, color: "#444", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{post.content}</p>
+                  )}
+
+                  {isAuthor && editingPostId !== post.id && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                      <button
+                        onClick={() => startEditing(post)}
+                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#630091" }}
+                      >
+                        <Pencil size={14} /> Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeletePost(post.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#e53e3e" }}
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p style={{ fontSize: 14, lineHeight: 1.5, color: "#444", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{post.content}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

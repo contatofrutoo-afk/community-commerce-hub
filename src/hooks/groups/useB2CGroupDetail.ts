@@ -5,6 +5,8 @@ import {
   getGroupPosts,
   canCreateGroupPost,
   createGroupPost,
+  updateGroupPost,
+  deleteGroupPost,
   B2CGroup,
   B2CGroupPost,
 } from "@/services/groupsB2CService";
@@ -75,5 +77,21 @@ export function useB2CGroupDetail(groupId: string | null) {
     [groupId]
   );
 
-  return { group, membersCount, posts, loading, sending, error, canPost, postError, load, sendPost, checkCanPost };
+  const editPost = useCallback(async (postId: string, content: string) => {
+    const result = await updateGroupPost(postId, content);
+    if (result.error) return { success: false, error: result.error };
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, content } : p))
+    );
+    return { success: true };
+  }, []);
+
+  const removePost = useCallback(async (postId: string) => {
+    const result = await deleteGroupPost(postId);
+    if (result.error) return { success: false, error: result.error };
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    return { success: true };
+  }, []);
+
+  return { group, membersCount, posts, loading, sending, error, canPost, postError, load, sendPost, checkCanPost, editPost, removePost };
 }

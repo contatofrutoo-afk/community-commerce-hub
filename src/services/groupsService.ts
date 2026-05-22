@@ -306,6 +306,15 @@ export const groupsService = {
     return { data: null, error: null };
   },
 
+  async updatePost(postId: string, content: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from("group_posts")
+      .update({ content, updated_at: new Date().toISOString() })
+      .eq("id", postId);
+
+    return { error: error?.message || null };
+  },
+
   async deletePost(postId: string): Promise<{ error: string | null }> {
     const { error } = await supabase
       .from("group_posts")

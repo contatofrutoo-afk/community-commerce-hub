@@ -194,3 +194,24 @@ export async function createGroupPost(groupId: string, authorId: string, content
 
   return { data: data as unknown as B2CGroupPost, error: null };
 }
+
+export async function updateGroupPost(postId: string, content: string) {
+  const { data, error } = await supabase
+    .from("group_posts")
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq("id", postId)
+    .select()
+    .single();
+
+  if (error) return { data: null as B2CGroupPost | null, error: error.message };
+  return { data: data as unknown as B2CGroupPost, error: null };
+}
+
+export async function deleteGroupPost(postId: string) {
+  const { error } = await supabase
+    .from("group_posts")
+    .delete()
+    .eq("id", postId);
+
+  return { error: error?.message || null };
+}

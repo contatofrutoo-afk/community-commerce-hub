@@ -6,7 +6,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, Users, UserPlus, UserMinus, Send, Pin, PinOff, Trash2, MessageCircle, CornerDownRight } from "lucide-react";
+import { Loader2, ArrowLeft, Users, UserPlus, UserMinus, Send, Pin, PinOff, Trash2, MessageCircle, CornerDownRight, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { AddMembersModal } from "@/components/groups/AddMembersModal";
 import { useGroupMembers } from "@/hooks/groups/useGroupMembers";
@@ -55,6 +55,9 @@ export default function GroupDetail() {
   const [repliesLoading, setRepliesLoading] = useState<Record<string, boolean>>({});
   const [newReply, setNewReply] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   const feedEndRef = useRef<HTMLDivElement>(null);
 
@@ -237,6 +240,34 @@ export default function GroupDetail() {
     }
     setFeedItems(prev => prev.filter(item => item.type !== "post" || item.data.id !== postId));
     toast.success("Mensagem excluída");
+  };
+
+  const handleUpdatePost = async (postId: string) => {
+    if (!editText.trim()) return;
+    const result = await groupsService.updatePost(postId, editText.trim());
+    if (result.error) {
+      toast.error("Erro ao editar mensagem");
+      return;
+    }
+    setFeedItems(prev => prev.map(item => {
+      if (item.type === "post" && item.data.id === postId) {
+        return { type: "post" as const, data: { ...item.data, content: editText.trim() } };
+      }
+      return item;
+    }));
+    setEditingPostId(null);
+    setEditText("");
+    toast.success("Mensagem editada");
+  };
+
+  const startEditing = (post: GroupPost) => {
+    setEditingPostId(post.id);
+    setEditText(post.content || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingPostId(null);
+    setEditText("");
   };
 
   const handleTogglePin = async (post: GroupPost) => {
@@ -428,7 +459,26 @@ export default function GroupDetail() {
                           <span className="font-medium text-sm">{post.profiles?.name || "Usuário"}</span>
                           <span className="text-xs text-muted-foreground">{formatTime(post.created_at)}</span>
                         </div>
-                        <p className="text-sm mt-1 whitespace-pre-wrap break-words">{post.content}</p>
+                        {editingPostId === post.id ? (
+                          <div className="mt-1">
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="w-full p-2 rounded-lg border border-border text-sm resize-vertical min-h-[60px] font-inherit"
+                              style={{ outline: "none" }}
+                            />
+                            <div className="flex gap-2 mt-2 justify-end">
+                              <Button size="sm" variant="ghost" onClick={cancelEditing}>
+                                <X className="h-3 w-3 mr-1" /> Cancelar
+                              </Button>
+                              <Button size="sm" onClick={() => handleUpdatePost(post.id)} disabled={!editText.trim()}>
+                                <Check className="h-3 w-3 mr-1" /> Salvar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm mt-1 whitespace-pre-wrap break-words">{post.content}</p>
+                        )}
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => handleOpenReplies(post)}
@@ -438,13 +488,13 @@ export default function GroupDetail() {
                             Responder
                             {postReplies.length > 0 && ` (${postReplies.length})`}
                           </button>
-                          {isGroupOwner && (
+                          {(isAuthor || isGroupOwner) && editingPostId !== post.id && (
                             <>
                               <button
-                                onClick={() => handleTogglePin(post)}
+                                onClick={() => startEditing(post)}
                                 className="text-xs text-muted-foreground hover:text-brand"
                               >
-                                {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                                <Pencil className="h-3 w-3" />
                               </button>
                               <button
                                 onClick={() => handleDeletePost(post.id)}
@@ -453,6 +503,14 @@ export default function GroupDetail() {
                                 <Trash2 className="h-3 w-3" />
                               </button>
                             </>
+                          )}
+                          {isGroupOwner && editingPostId !== post.id && (
+                            <button
+                              onClick={() => handleTogglePin(post)}
+                              className="text-xs text-muted-foreground hover:text-brand"
+                            >
+                              {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                            </button>
                           )}
                         </div>
 
