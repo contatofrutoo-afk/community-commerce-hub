@@ -108,6 +108,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (s) {
           setSession(s);
         } else {
+          // Token refresh failed — session is invalid.
+          // Clear user + session to avoid inconsistent state where user exists
+          // but appRole is null, which causes Protected to make incorrect
+          // tenant redirect decisions (flicker root cause).
+          setUser(null);
+          setSession(null);
           setAppRole(null);
           setUserState(null);
           setLoading(false);

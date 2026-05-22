@@ -96,12 +96,13 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading, initializing, isB2C } = useAuth();
+  const { user, loading: authLoading, initializing, isB2C, appRole } = useAuth();
   const { loading: tenantLoading, tenant } = useTenant();
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
+  if (user && appRole === null) return <Loading />;
   if (tenantLoading) return <Loading />;
   if (!tenant) {
     if (isB2C) {
