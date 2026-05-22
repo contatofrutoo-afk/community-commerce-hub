@@ -14,7 +14,7 @@ export default function GroupDetailB2C() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { group, membersCount, posts, loading, sending, error, canPost, postError, load, sendPost, checkCanPost } = useB2CGroupDetail(groupId || null);
+  const { group, membersCount, posts, loading, sending, error, canPost, postError, load, sendPost, checkCanPost, editPost, removePost } = useB2CGroupDetail(groupId || null);
   const [inputText, setInputText] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [memberCheckDone, setMemberCheckDone] = useState(false);
