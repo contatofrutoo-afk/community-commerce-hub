@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weaze-v70';
+const CACHE_NAME = 'weaze-v71';
 
 const PRECACHE_URLS = [
   '/',
@@ -37,8 +37,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') return;
+  // Handle non-GET requests (mutations: POST, PUT, DELETE, etc.) - network only
+  if (request.method !== 'GET') {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Skip cross-origin requests (fonts, images, etc)
   if (url.origin !== location.origin) {

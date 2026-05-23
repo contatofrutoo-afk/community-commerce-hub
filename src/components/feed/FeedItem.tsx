@@ -182,16 +182,22 @@ export default function FeedItem({ post, active, onDelete, onEdit }: { post: Pos
 
   const handleDeleteConfirm = async () => {
     setSavingDelete(true);
-    const { error } = await supabase.from("posts").delete().eq("id", post.id);
-    setSavingDelete(false);
-    if (error) { 
-      console.error("[DELETE] Delete failed:", error);
-      toast.error("Erro ao excluir postagem: " + error.message); 
-      return; 
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", post.id);
+      if (error) { 
+        console.error("[DELETE] Delete failed:", error);
+        toast.error("Erro ao excluir postagem: " + error.message); 
+        return; 
+      }
+      toast.success("Postagem removida");
+      setShowDeleteDialog(false);
+      if (onDelete) onDelete();
+    } catch (err) {
+      console.error("[DELETE] Unexpected error:", err);
+      toast.error("Erro inesperado ao excluir postagem");
+    } finally {
+      setSavingDelete(false);
     }
-    toast.success("Postagem removida");
-    setShowDeleteDialog(false);
-    if (onDelete) onDelete();
   };
 
   const handleEditConfirm = async () => {
