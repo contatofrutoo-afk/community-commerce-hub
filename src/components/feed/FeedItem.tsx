@@ -252,7 +252,9 @@ export default function FeedItem({ post, active, onDelete, onEdit }: { post: Pos
 
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${window.location.origin}/feed?post=${post.id}`;
+    const url = !showSocialActions
+      ? `${window.location.origin}/compartilhar/${post.tenant_id}/${post.id}`
+      : `${window.location.origin}/feed?post=${post.id}`;
     const title = post.profiles?.name ? `@${post.profiles.name} no Wenity` : "Wenity";
     const shareData: ShareData = { title, text: post.description ?? "", url };
     try {
@@ -462,10 +464,16 @@ export default function FeedItem({ post, active, onDelete, onEdit }: { post: Pos
         )}
         {/* Likes count sempre visível para B2B */}
         {!showSocialActions && (
-          <button onClick={(e) => { e.stopPropagation(); }} className="flex flex-col items-center gap-1" aria-label="Curtidas">
-            <Heart className={cn("h-7 w-7 drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
-            <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
-          </button>
+          <>
+            <button onClick={(e) => { e.stopPropagation(); }} className="flex flex-col items-center gap-1" aria-label="Curtidas">
+              <Heart className={cn("h-7 w-7 drop-shadow-md", liked ? "fill-primary-custom text-primary-custom" : "text-background")} />
+              <span className="text-xs font-semibold drop-shadow-md">{counts.likes}</span>
+            </button>
+            <button onClick={onShare} className="flex flex-col items-center gap-1" aria-label="Compartilhar">
+              <Share2 className="h-7 w-7 drop-shadow-md text-background" />
+              <span className="text-xs font-semibold drop-shadow-md">Compartilhar</span>
+            </button>
+          </>
         )}
         <button onClick={(e) => { e.stopPropagation(); setShowComments(true); }} className="flex flex-col items-center gap-1" aria-label="Comentar">
           <MessageCircle className="h-7 w-7 drop-shadow-md text-background" />

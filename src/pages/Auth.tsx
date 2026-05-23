@@ -42,8 +42,16 @@ export default function Auth() {
   useEffect(() => {
     if (user && !authLoading && !initializing && loading === false && appRole !== null) {
       const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
+      const pendingShare = localStorage.getItem("weaze:pending_share");
       if (pendingSlug) {
         nav(`/c/${pendingSlug}`, { replace: true });
+      } else if (pendingShare) {
+        try {
+          const { tenantId, postId } = JSON.parse(pendingShare);
+          nav(`/compartilhar/${tenantId}/${postId}`, { replace: true });
+        } catch {
+          nav("/feed", { replace: true });
+        }
       } else {
         nav("/feed", { replace: true });
       }

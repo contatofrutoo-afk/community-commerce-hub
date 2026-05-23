@@ -93,6 +93,7 @@ const Lives = lazy(() => import("./pages/admin/Lives"));
 const InviteLinks = lazy(() => import("./pages/admin/InviteLinks"));
 const Offline = lazy(() => import("./pages/Offline"));
 const InviteLanding = lazy(() => import("./pages/InviteLanding"));
+const ShareLanding = lazy(() => import("./pages/ShareLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 const BlockedPage = lazy(() => import("./pages/BlockedPage"));
 
@@ -200,6 +201,7 @@ const App = () => (
                     <Route path="/conversas" element={<Protected><Topics /></Protected>} />
                     <Route path="/conversas/:topicId" element={<Protected><Topics /></Protected>} />
                     <Route path="/invite/:slug" element={<InviteLanding />} />
+                    <Route path="/compartilhar/:tenantId/:postId" element={<ShareLanding />} />
                     <Route path="/waiting" element={<WaitingApproval />} />
                     <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
                     <Route path="/requests" element={<Protected><Requests /></Protected>} />
