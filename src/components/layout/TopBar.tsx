@@ -20,25 +20,23 @@ export default function TopBar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
-      <div className="mx-auto max-w-xl flex items-center justify-between px-3 h-14">
+      <div className="mx-auto max-w-xl flex items-center gap-1 px-3 h-14">
         <button onClick={handleBack} className="p-2 -ml-2 rounded-full hover:bg-secondary transition-colors shrink-0">
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2 min-w-0">
-          <Logo size={28} />
-          {tenant && (
-            <>
-              <div className="h-7 w-7 rounded-full bg-secondary overflow-hidden flex items-center justify-center shrink-0">
-                {tenant.logo_url ? (
-                  <img src={tenant.logo_url} alt={tenant.name} className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-muted-foreground">{tenant.name?.[0]?.toUpperCase()}</span>
-                )}
-              </div>
-              <span className="font-display text-lg leading-none truncate">{tenant.name}</span>
-            </>
-          )}
-        </div>
+        <Logo size={82} />
+        {tenant && (
+          <>
+            <div className="h-7 w-7 rounded-full bg-secondary overflow-hidden flex items-center justify-center shrink-0">
+              {tenant.logo_url ? (
+                <img src={tenant.logo_url} alt={tenant.name} className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-muted-foreground">{tenant.name?.[0]?.toUpperCase()}</span>
+              )}
+            </div>
+            <span className="font-display text-lg leading-none truncate">{tenant.name}</span>
+          </>
+        )}
         {isB2C && <PWAInstallButton />}
       </div>
     </header>
