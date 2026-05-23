@@ -100,12 +100,15 @@ const BlockedPage = lazy(() => import("./pages/BlockedPage"));
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing, isB2C, appRole } = useAuth();
   const { loading: tenantLoading, tenant, blocked } = useTenant();
+  const tenantEverLoaded = useRef(false);
+
+  if (tenant && !tenantLoading) tenantEverLoaded.current = true;
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (user && appRole === null) return <Loading />;
-  if (tenantLoading) return <Loading />;
+  if (tenantLoading && !tenantEverLoaded.current) return <Loading />;
   if (blocked) return <Navigate to="/blocked" replace />;
   if (!tenant) {
     if (isB2C) {
