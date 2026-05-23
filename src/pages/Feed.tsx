@@ -13,7 +13,7 @@ import { Sparkles, Plus, Play, Video } from "lucide-react";
 const PAGE = 8;
 
 export default function Feed() {
-  const { tenant, loading: tLoading } = useTenant();
+  const { tenant } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
@@ -201,7 +201,7 @@ export default function Feed() {
     };
   }, [posts.length]);
 
-  if (tLoading || !initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+  if (!initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   // B2B sem tenant → criar marca
   if (!tenant && isB2B) {

@@ -102,7 +102,7 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { loading: tenantLoading, tenant, blocked } = useTenant();
   const tenantEverLoaded = useRef(false);
 
-  if (tenant && !tenantLoading) tenantEverLoaded.current = true;
+  if (!tenantLoading) tenantEverLoaded.current = true;
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;

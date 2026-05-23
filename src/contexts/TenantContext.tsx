@@ -54,7 +54,16 @@ const [loading, setLoading] = useState(true);
     lastLoadedUserId.current = uid;
     loadingRef.current = true;
     setLoading(true);
+
+    const safetyTimeout = setTimeout(() => {
+      if (loadingRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    }, 20_000);
+
     if (!user) {
+      clearTimeout(safetyTimeout);
       setTenants([]);
       setTenant(null);
       setIsOwner(false);
@@ -181,6 +190,7 @@ if (targetTenant && targetRole) {
     } catch (err) {
       console.error("[TenantContext] Error loading tenants:", err);
     } finally {
+      clearTimeout(safetyTimeout);
       loadingRef.current = false;
       setLoading(false);
     }
