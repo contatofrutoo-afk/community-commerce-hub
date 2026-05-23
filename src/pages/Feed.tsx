@@ -89,17 +89,6 @@ export default function Feed() {
     }
   }, [tenant?.id]);
 
-  // Track view when post becomes active
-  const trackView = useCallback(async (postId: string) => {
-    if (!user || !tenant) return;
-    await supabase.from("interactions").upsert({
-      tenant_id: tenant.id,
-      user_id: user.id,
-      post_id: postId,
-      action_type: "view",
-    }, { onConflict: "tenant_id,user_id,post_id,action_type" });
-  }, [user, tenant]);
-
   // Load pinned post and check for active live
   useEffect(() => {
     if (!tenant) return;
