@@ -1,5 +1,4 @@
 import { useTenant } from "@/contexts/TenantContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
@@ -7,7 +6,6 @@ import PWAInstallButton from "@/components/PWAInstallButton";
 
 export default function TopBar() {
   const { tenant } = useTenant();
-  const { isB2C } = useAuth();
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -37,7 +35,7 @@ export default function TopBar() {
             <span className="font-display text-lg leading-none truncate">{tenant.name}</span>
           </>
         )}
-        {isB2C && <PWAInstallButton />}
+        <PWAInstallButton />
       </div>
     </header>
   );
