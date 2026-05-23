@@ -1,12 +1,13 @@
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChevronLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import PWAInstallButton from "@/components/PWAInstallButton";
 
 export default function TopBar() {
   const { tenant } = useTenant();
+  const { isB2C } = useAuth();
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -20,20 +21,25 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
       <div className="mx-auto max-w-xl flex items-center justify-between px-3 h-14">
-        <button onClick={handleBack} className="p-2 -ml-2 rounded-full hover:bg-secondary transition-colors">
+        <button onClick={handleBack} className="p-2 -ml-2 rounded-full hover:bg-secondary transition-colors shrink-0">
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2">
-          {tenant?.logo_url ? (
+        <div className="flex items-center gap-2 min-w-0">
+          <Logo size={28} />
+          {tenant && (
             <>
-              <img src={tenant.logo_url} alt={tenant.name} className="h-7 w-7 rounded-lg object-cover" />
-              <span className="font-display text-lg leading-none">{tenant.name}</span>
+              <div className="h-7 w-7 rounded-full bg-secondary overflow-hidden flex items-center justify-center shrink-0">
+                {tenant.logo_url ? (
+                  <img src={tenant.logo_url} alt={tenant.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-muted-foreground">{tenant.name?.[0]?.toUpperCase()}</span>
+                )}
+              </div>
+              <span className="font-display text-lg leading-none truncate">{tenant.name}</span>
             </>
-          ) : (
-            <Logo size={82} />
           )}
         </div>
-        <PWAInstallButton />
+        {isB2C && <PWAInstallButton />}
       </div>
     </header>
   );
