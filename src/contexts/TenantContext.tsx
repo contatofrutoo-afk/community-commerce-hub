@@ -43,15 +43,16 @@ const [loading, setLoading] = useState(true);
   const [manualSelectionPending, setManualSelectionPending] = useState(false);
   const [manualSelectedTenantId, setManualSelectedTenantId] = useState<string | null>(null);
   const lastLoadedUserId = useRef<string | null>(null);
+  const loadingRef = useRef(false);
 
   const load = useCallback(async (): Promise<void> => {
     const uid = user?.id ?? null;
     if (uid === lastLoadedUserId.current) {
-      if (!user) setLoading(false);
+      if (!loadingRef.current) setLoading(false);
       return;
     }
     lastLoadedUserId.current = uid;
-
+    loadingRef.current = true;
     setLoading(true);
     if (!user) {
       setTenants([]);
@@ -59,6 +60,7 @@ const [loading, setLoading] = useState(true);
       setIsOwner(false);
       setCanManage(false);
       setBlocked(false);
+      loadingRef.current = false;
       setLoading(false);
       return;
     }
@@ -179,6 +181,7 @@ if (targetTenant && targetRole) {
     } catch (err) {
       console.error("[TenantContext] Error loading tenants:", err);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [user]);
