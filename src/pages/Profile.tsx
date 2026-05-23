@@ -60,19 +60,19 @@ export default function Profile() {
     setTenantLogo(URL.createObjectURL(f));
   };
 
-  const uploadAvatar = async (): Promise<boolean> => {
-    if (!avatarFile || !user) return false;
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return null;
     try {
       const ext = avatarFile.name.split(".").pop();
       const path = `avatars/${user.id}.${ext}`;
       const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
-      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
+      if (error) { toast.error(`Erro ao upload: ${error.message}`); return null; }
       const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
       const avatarUrl = urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
       setAvatar(avatarUrl);
-      return true;
-    } catch (e: any) { toast.error(e.message); return false; }
+      return avatarUrl;
+    } catch (e: any) { toast.error(e.message); return null; }
   };
 
   const uploadTenantLogo = async (): Promise<boolean> => {
@@ -108,11 +108,14 @@ export default function Profile() {
   const save = async () => {
     if (!user) return;
     setLoading(true);
+
+    let uploadedAvatarUrl: string | null = null;
     if (avatarFile) {
-      const ok = await uploadAvatar();
-      if (!ok) { setLoading(false); return; }
+      uploadedAvatarUrl = await uploadAvatar();
+      if (!uploadedAvatarUrl) { setLoading(false); return; }
       setAvatarFile(null);
     }
+
     const { error } = await supabase.from("profiles").update({
       name: name.trim(), 
       phone: phone.trim() || null,
@@ -123,7 +126,9 @@ export default function Profile() {
     if (error) { setLoading(false); toast.error(error.message); return; }
 
     if (tenant && (isOwner || canManage)) {
-      await supabase.from("tenants").update({ name: name.trim() }).eq("id", tenant.id);
+      const tenantUpdate: Record<string, string> = { name: name.trim() };
+      if (uploadedAvatarUrl) tenantUpdate.logo_url = uploadedAvatarUrl;
+      await supabase.from("tenants").update(tenantUpdate).eq("id", tenant.id);
       await refresh();
     }
 
