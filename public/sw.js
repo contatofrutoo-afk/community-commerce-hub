@@ -37,11 +37,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Handle non-GET requests (mutations: POST, PUT, DELETE, etc.) - network only
-  if (request.method !== 'GET') {
-    event.respondWith(fetch(request));
-    return;
-  }
+  // Skip non-GET requests
+  if (request.method !== 'GET') return;
 
   // Skip cross-origin requests (fonts, images, etc)
   if (url.origin !== location.origin) {
