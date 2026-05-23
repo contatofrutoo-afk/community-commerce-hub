@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, MessageSquare, MessageSquareText, Play, Trash2, Pencil } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -95,7 +95,7 @@ function isDirectVideoUrl(url: string | null): boolean {
   );
 }
 
-export default function FeedItem({ post, active, onDelete }: { post: Post; active: boolean; onDelete?: () => void }) {
+export default function FeedItem({ post, active, onDelete, onEdit }: { post: Post; active: boolean; onDelete?: () => void; onEdit?: (postId: string, description: string) => void; }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { user, appRole } = useAuth();
   const { tenant, isOwner, canManage } = useTenant();
@@ -120,10 +120,12 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [savingDelete, setSavingDelete] = useState(false);
 
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const isPostAuthor = user && post.author_id === user.id;
   const canDeletePost = isPostAuthor || canManage;
-  console.log("[FeedItem] canManage:", canManage, "isPostAuthor:", isPostAuthor, "canDelete:", canDeletePost);
-  
   const showSocialActions = appRole !== "b2b" && appRole !== "admin";
 
   useEffect(() => {
@@ -190,6 +192,20 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
     toast.success("Postagem removida");
     setShowDeleteDialog(false);
     if (onDelete) onDelete();
+  };
+
+  const handleEditConfirm = async () => {
+    setSavingEdit(true);
+    const { error } = await supabase.from("posts").update({ description: editDescription }).eq("id", post.id);
+    setSavingEdit(false);
+    if (error) {
+      console.error("[EDIT] Update failed:", error);
+      toast.error("Erro ao editar descrição: " + error.message);
+      return;
+    }
+    toast.success("Descrição atualizada");
+    setShowEditDialog(false);
+    if (onEdit) onEdit(post.id, editDescription);
   };
 
   // Video progress
@@ -457,6 +473,16 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
         </button>
         {canDeletePost && (
           <button 
+            onClick={(e) => { e.stopPropagation(); setEditDescription(post.description ?? ""); setShowEditDialog(true); }} 
+            className="flex flex-col items-center gap-1" 
+            aria-label="Editar"
+          >
+            <Pencil className="h-7 w-7 drop-shadow-md text-background" />
+            <span className="text-xs font-semibold drop-shadow-md">Editar</span>
+          </button>
+        )}
+        {canDeletePost && (
+          <button 
             onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }} 
             className="flex flex-col items-center gap-1" 
             aria-label="Excluir"
@@ -501,6 +527,30 @@ export default function FeedItem({ post, active, onDelete }: { post: Post; activ
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={savingDelete}>
               {savingDelete ? "Excluindo..." : "Excluir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar descrição</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder="Descreva seu post..."
+            maxLength={500}
+            rows={4}
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground text-right">{editDescription.length}/500</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
+            <Button variant="default" onClick={handleEditConfirm} disabled={savingEdit}>
+              {savingEdit ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
