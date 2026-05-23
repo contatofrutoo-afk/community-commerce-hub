@@ -46,44 +46,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
     
-    const initAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!isMounted) return;
-      
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      
-      if (!data.session) {
+    const authTimeout = setTimeout(() => {
+      if (isMounted) {
         setLoading(false);
         setInitializing(false);
-        return;
       }
-      
+    }, 15_000);
+
+    const initAuth = async () => {
       try {
-        const { data: mems } = await supabase
-          .from("memberships")
-          .select("tenant_id, role")
-          .eq("user_id", data.session.user.id);
-        
+        const { data } = await supabase.auth.getSession();
         if (!isMounted) return;
         
-        const roles = (mems ?? []).map((m: any) => m.role);
-        const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
-        const newRole: AppRole | null = isOwnerOrAdmin 
-          ? (roles.includes("admin") ? "admin" : "b2b") 
-          : (mems && mems.length > 0 ? "b2c" : "b2c");
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
         
-        setAppRole(newRole);
-        setUserState({
-          isB2B: newRole === "b2b" || newRole === "admin",
-          hasCommunity: isOwnerOrAdmin,
-          hasJoinedCommunities: mems && mems.length > 0,
-        });
+        if (!data.session) {
+          clearTimeout(authTimeout);
+          setLoading(false);
+          setInitializing(false);
+          return;
+        }
+        
+        try {
+          const { data: mems } = await supabase
+            .from("memberships")
+            .select("tenant_id, role")
+            .eq("user_id", data.session.user.id);
+          
+          if (!isMounted) return;
+          
+          const roles = (mems ?? []).map((m: any) => m.role);
+          const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
+          const newRole: AppRole | null = isOwnerOrAdmin 
+            ? (roles.includes("admin") ? "admin" : "b2b") 
+            : (mems && mems.length > 0 ? "b2c" : "b2c");
+          
+          setAppRole(newRole);
+          setUserState({
+            isB2B: newRole === "b2b" || newRole === "admin",
+            hasCommunity: isOwnerOrAdmin,
+            hasJoinedCommunities: mems && mems.length > 0,
+          });
+        } catch (err) {
+          console.error("Error fetching memberships:", err);
+          if (isMounted) setAppRole("b2c");
+        } finally {
+          if (isMounted) {
+            clearTimeout(authTimeout);
+            setLoading(false);
+            setInitializing(false);
+          }
+        }
       } catch (err) {
-        console.error("Error fetching memberships:", err);
-        if (isMounted) setAppRole("b2c");
-      } finally {
+        console.error("[AuthContext] Fatal error in initAuth:", err);
         if (isMounted) {
+          clearTimeout(authTimeout);
           setLoading(false);
           setInitializing(false);
         }
@@ -126,6 +144,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (s?.user) {
         if (_evt === "SIGNED_IN") {
           setLoading(true);
+          const signInTimeout = setTimeout(() => {
+            if (isMounted) setLoading(false);
+          }, 15_000);
           try {
             const { data: mems } = await supabase
               .from("memberships")
@@ -150,6 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.error("Error fetching memberships on auth change:", err);
             if (isMounted) setAppRole("b2c");
           } finally {
+            clearTimeout(signInTimeout);
             if (isMounted) setLoading(false);
           }
         }
@@ -160,7 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => { isMounted = false; sub.subscription.unsubscribe(); };
+    return () => { isMounted = false; clearTimeout(authTimeout); sub.subscription.unsubscribe(); };
   }, []);
 
   const refreshAppRole = useCallback(async () => {
