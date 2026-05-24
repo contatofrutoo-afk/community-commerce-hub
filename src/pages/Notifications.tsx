@@ -101,381 +101,407 @@ export default function Notifications() {
     }
 
     (async () => {
-      setLoading(true);
-      
-      const { data: mems } = await supabase
-        .from("memberships")
-        .select("tenant_id, role")
-        .eq("user_id", user.id);
-      
-      const ownerMems = (mems || []).filter(m => m.role === "owner" || m.role === "admin");
-      const hasOwnership = ownerMems.length > 0;
-      setIsOwner(hasOwnership);
-      
-      if (!hasOwnership) {
-        const tenantIds = (mems || []).map(m => m.tenant_id).filter(Boolean);
-        const [{ data: notifs }, { data: events }, { data: appts }, { data: budgets }] = await Promise.all([
-          supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
-          tenantIds.length > 0
-            ? supabase.from("event_registrations").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
-            : { data: [] },
-          tenantIds.length > 0
-            ? supabase.from("appointment_requests").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
-            : { data: [] },
-          tenantIds.length > 0
-            ? supabase.from("budget_requests").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
-            : { data: [] },
-        ]);
+      try {
+        setLoading(true);
+
+        const { data: mems } = await supabase
+          .from("memberships")
+          .select("tenant_id, role")
+          .eq("user_id", user.id);
+
+        const ownerMems = (mems || []).filter(m => m.role === "owner" || m.role === "admin");
+        const hasOwnership = ownerMems.length > 0;
+        setIsOwner(hasOwnership);
+
+        if (!hasOwnership) {
+          const tenantIds = (mems || []).map(m => m.tenant_id).filter(Boolean);
+          const [{ data: notifs }, { data: events }, { data: appts }, { data: budgets }] = await Promise.all([
+            supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
+            tenantIds.length > 0
+              ? supabase.from("event_registrations").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
+              : { data: [] },
+            tenantIds.length > 0
+              ? supabase.from("appointment_requests").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
+              : { data: [] },
+            tenantIds.length > 0
+              ? supabase.from("budget_requests").select("*").eq("user_id", user.id).in("tenant_id", tenantIds).order("created_at", { ascending: false })
+              : { data: [] },
+          ]);
+          setNotifications(notifs || []);
+          setEventRegistrations(events || []);
+          setAppointments(appts || []);
+          setBudgetRequests(budgets || []);
+          setLoading(false);
+          return;
+        }
+
+        const tenantIds = ownerMems.map(m => m.tenant_id);
+
+        const { data: reqs } = await supabase
+          .from("community_requests")
+          .select("id, user_id, tenant_id, status, created_at")
+          .in("tenant_id", tenantIds)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+
+        if (reqs && reqs.length > 0) {
+          const reqUserIds = reqs.map(r => r.user_id);
+          const reqTenantIds = reqs.map(r => r.tenant_id);
+
+          const [{ data: profiles }, { data: tenants }] = await Promise.all([
+            supabase.from("profiles").select("user_id, name, email").in("user_id", reqUserIds),
+            supabase.from("tenants").select("id, name").in("id", reqTenantIds),
+          ]);
+
+          const profileMap: Record<string, any> = {};
+          (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+          const tenantMap: Record<string, any> = {};
+          (tenants || []).forEach((t: any) => { tenantMap[t.id] = t; });
+
+          const enriched = reqs.map(r => ({
+            ...r,
+            profile_name: profileMap[r.user_id]?.name || null,
+            profile_email: profileMap[r.user_id]?.email || "",
+            tenant_name: tenantMap[r.tenant_id]?.name || "",
+          }));
+          setRequests(enriched);
+        } else {
+          setRequests([]);
+        }
+
+        const { data: appts } = await supabase
+          .from("appointment_requests")
+          .select("*")
+          .in("tenant_id", tenantIds)
+          .order("created_at", { ascending: false });
+
+        if (appts && appts.length > 0) {
+          const apptUserIds = appts.map(a => a.user_id);
+          const apptIds = appts.map(a => a.appointment_id);
+
+          const [{ data: profiles }, { data: ctas }] = await Promise.all([
+            supabase.from("profiles").select("user_id, name, email").in("user_id", apptUserIds),
+            supabase.from("appointment_cta").select("id, service_name, service_date").in("id", apptIds),
+          ]);
+
+          const profileMap: Record<string, any> = {};
+          (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+
+          const ctaMap: Record<string, any> = {};
+          (ctas || []).forEach((c: any) => { ctaMap[c.id] = c; });
+
+          const enrichedAppts = appts.map(a => ({
+            ...a,
+            profile_name: profileMap[a.user_id]?.name || null,
+            profile_email: profileMap[a.user_id]?.email || "",
+            service_name: ctaMap[a.appointment_id]?.service_name || "Serviço",
+            service_date: ctaMap[a.appointment_id]?.service_date || "",
+          }));
+
+          setAppointments(enrichedAppts);
+        } else {
+          setAppointments([]);
+        }
+
+        const { data: budgets } = await supabase
+          .from("budget_requests")
+          .select("*")
+          .in("tenant_id", tenantIds)
+          .order("created_at", { ascending: false });
+
+        if (budgets && budgets.length > 0) {
+          const budgetUserIds = budgets.map(b => b.user_id);
+          const budgetPostIds = budgets.map(b => b.post_id);
+
+          const [{ data: profiles2 }, { data: posts }] = await Promise.all([
+            supabase.from("profiles").select("user_id, name, email").in("user_id", budgetUserIds),
+            supabase.from("posts").select("id, description").in("id", budgetPostIds),
+          ]);
+
+          const profileMap2: Record<string, any> = {};
+          (profiles2 || []).forEach((p: any) => { profileMap2[p.user_id] = p; });
+
+          const postMap: Record<string, any> = {};
+          (posts || []).forEach((p: any) => { postMap[p.id] = p; });
+
+          const enrichedBudgets = budgets.map(b => ({
+            ...b,
+            profile_name: profileMap2[b.user_id]?.name || b.name,
+            profile_email: profileMap2[b.user_id]?.email || b.email,
+            post_title: postMap[b.post_id]?.description?.substring(0, 50) || "Post",
+          }));
+
+          setBudgetRequests(enrichedBudgets);
+        } else {
+          setBudgetRequests([]);
+        }
+
+        const { data: regsData } = await supabase
+          .from("event_registrations")
+          .select("*")
+          .in("tenant_id", tenantIds)
+          .order("created_at", { ascending: false });
+
+        if (regsData && regsData.length > 0) {
+          setEventRegistrations(regsData);
+        } else {
+          setEventRegistrations([]);
+        }
+
+        const { data: notifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(30);
+
         setNotifications(notifs || []);
-        setEventRegistrations(events || []);
-        setAppointments(appts || []);
-        setBudgetRequests(budgets || []);
         setLoading(false);
-        return;
+      } catch {
+        setLoading(false);
       }
-      
-      const tenantIds = ownerMems.map(m => m.tenant_id);
-      
-      const { data: reqs, error: reqError } = await supabase
-        .from("community_requests")
-        .select("id, user_id, tenant_id, status, created_at")
-        .in("tenant_id", tenantIds)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-      
-      if (reqError) {
-        setRequests([]);
-      } else if (reqs && reqs.length > 0) {
-        const reqUserIds = reqs.map(r => r.user_id);
-        const reqTenantIds = reqs.map(r => r.tenant_id);
-        
-        const [{ data: profiles }, { data: tenants }] = await Promise.all([
-          supabase.from("profiles").select("user_id, name, email").in("user_id", reqUserIds),
-          supabase.from("tenants").select("id, name").in("id", reqTenantIds),
-        ]);
-        
-        const profileMap: Record<string, any> = {};
-        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
-        const tenantMap: Record<string, any> = {};
-        (tenants || []).forEach((t: any) => { tenantMap[t.id] = t; });
-        
-        const enriched = reqs.map(r => ({
-          ...r,
-          profile_name: profileMap[r.user_id]?.name || null,
-          profile_email: profileMap[r.user_id]?.email || "",
-          tenant_name: tenantMap[r.tenant_id]?.name || "",
-        }));
-        setRequests(enriched);
-      } else {
-        setRequests([]);
-      }
-
-      // Load appointments for B2B
-      const { data: appts } = await supabase
-        .from("appointment_requests")
-        .select("*")
-        .in("tenant_id", tenantIds)
-        .order("created_at", { ascending: false });
-
-      if (appts && appts.length > 0) {
-        const apptUserIds = appts.map(a => a.user_id);
-        const apptIds = appts.map(a => a.appointment_id);
-
-        const [{ data: profiles }, { data: ctas }] = await Promise.all([
-          supabase.from("profiles").select("user_id, name, email").in("user_id", apptUserIds),
-          supabase.from("appointment_cta").select("id, service_name, service_date").in("id", apptIds),
-        ]);
-
-        const profileMap: Record<string, any> = {};
-        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
-
-        const ctaMap: Record<string, any> = {};
-        (ctas || []).forEach((c: any) => { ctaMap[c.id] = c; });
-
-        const enrichedAppts = appts.map(a => ({
-          ...a,
-          profile_name: profileMap[a.user_id]?.name || null,
-          profile_email: profileMap[a.user_id]?.email || "",
-          service_name: ctaMap[a.appointment_id]?.service_name || "Serviço",
-          service_date: ctaMap[a.appointment_id]?.service_date || "",
-        }));
-
-        setAppointments(enrichedAppts);
-      } else {
-        setAppointments([]);
-      }
-
-      // Load budget requests for B2B
-      const { data: budgets } = await supabase
-        .from("budget_requests")
-        .select("*")
-        .in("tenant_id", tenantIds)
-        .order("created_at", { ascending: false });
-
-      if (budgets && budgets.length > 0) {
-        const budgetUserIds = budgets.map(b => b.user_id);
-        const budgetPostIds = budgets.map(b => b.post_id);
-
-        const [{ data: profiles2 }, { data: posts }] = await Promise.all([
-          supabase.from("profiles").select("user_id, name, email").in("user_id", budgetUserIds),
-          supabase.from("posts").select("id, description").in("id", budgetPostIds),
-        ]);
-
-        const profileMap2: Record<string, any> = {};
-        (profiles2 || []).forEach((p: any) => { profileMap2[p.user_id] = p; });
-
-        const postMap: Record<string, any> = {};
-        (posts || []).forEach((p: any) => { postMap[p.id] = p; });
-
-        const enrichedBudgets = budgets.map(b => ({
-          ...b,
-          profile_name: profileMap2[b.user_id]?.name || b.name,
-          profile_email: profileMap2[b.user_id]?.email || b.email,
-          post_title: postMap[b.post_id]?.description?.substring(0, 50) || "Post",
-        }));
-
-        setBudgetRequests(enrichedBudgets);
-      } else {
-        setBudgetRequests([]);
-      }
-
-      // Load event registrations for B2B from event_registrations table
-      const { data: regsData, error: regsError } = await supabase
-        .from("event_registrations")
-        .select("*")
-        .in("tenant_id", tenantIds)
-        .order("created_at", { ascending: false });
-
-      if (regsData && regsData.length > 0) {
-        setEventRegistrations(regsData);
-      } else {
-        setEventRegistrations([]);
-      }
-      
-      const { data: notifs } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(30);
-      
-      setNotifications(notifs || []);
-      setLoading(false);
     })();
   }, [user, tenants]);
 
   const handleApprove = async (request: PendingRequest) => {
-    const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
-    if (error) { toast.error("Erro ao aprovar"); return; }
-    
-    await supabase.from("memberships").insert({ tenant_id: request.tenant_id, user_id: request.user_id, role: "member" });
-    toast.success("Membro aprovado!");
-    
-    sessionStorage.setItem("just_joined_community", request.tenant_id);
-    
-    setRequests(prev => prev.filter(r => r.id !== request.id));
+    try {
+      const { error } = await supabase.from("community_requests").update({ status: "approved" }).eq("id", request.id);
+      if (error) { toast.error("Erro ao aprovar"); return; }
+
+      await supabase.from("memberships").insert({ tenant_id: request.tenant_id, user_id: request.user_id, role: "member" });
+      toast.success("Membro aprovado!");
+
+      sessionStorage.setItem("just_joined_community", request.tenant_id);
+
+      setRequests(prev => prev.filter(r => r.id !== request.id));
+    } catch { toast.error("Erro ao aprovar"); }
   };
 
   const handleReject = async (requestId: string) => {
-    const { error } = await supabase.from("community_requests").update({ status: "rejected" }).eq("id", requestId);
-    if (error) { toast.error("Erro ao recusar"); return; }
-    toast.success("Solicitação recusada");
-    setRequests(prev => prev.filter(r => r.id !== requestId));
+    try {
+      const { error } = await supabase.from("community_requests").update({ status: "rejected" }).eq("id", requestId);
+      if (error) { toast.error("Erro ao recusar"); return; }
+      toast.success("Solicitação recusada");
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch { toast.error("Erro ao recusar"); }
   };
 
   const handleApproveAppointment = async (appt: AppointmentRequest) => {
-    const { error } = await supabase.from("appointment_requests").update({ status: "approved" }).eq("id", appt.id);
-    if (error) { toast.error("Erro ao aprovar"); return; }
+    try {
+      const { error } = await supabase.from("appointment_requests").update({ status: "approved" }).eq("id", appt.id);
+      if (error) { toast.error("Erro ao aprovar"); return; }
 
-    // Send notification to B2C user
-    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
-    const serviceName = cta?.service_name || appt.service_name || "Serviço";
-    const serviceDate = cta?.service_date || appt.service_date || "";
+      const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+      const serviceName = cta?.service_name || appt.service_name || "Serviço";
+      const serviceDate = cta?.service_date || appt.service_date || "";
 
-    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+      const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
 
-    await supabase.from("notifications").insert({
-      tenant_id: appt.tenant_id,
-      user_id: appt.user_id,
-      type: "appointment_approved",
-      title: "Agendamento aprovado!",
-      body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi aprovado!`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: appt.tenant_id,
+        user_id: appt.user_id,
+        type: "appointment_approved",
+        title: "Agendamento aprovado!",
+        body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi aprovado!`,
+        data: { link: "/feed" },
+      });
 
-    toast.success("Agendamento aprovado!");
-    setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "approved" } : a));
+      toast.success("Agendamento aprovado!");
+      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "approved" } : a));
+    } catch { toast.error("Erro ao aprovar"); }
   };
 
   const handleCompleteAppointment = async (appt: AppointmentRequest) => {
-    const { error } = await supabase.from("appointment_requests").update({ status: "completed" }).eq("id", appt.id);
-    if (error) { toast.error("Erro ao concluir"); return; }
+    try {
+      const { error } = await supabase.from("appointment_requests").update({ status: "completed" }).eq("id", appt.id);
+      if (error) { toast.error("Erro ao concluir"); return; }
 
-    // Send notification to B2C user
-    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
-    const serviceName = cta?.service_name || appt.service_name || "Serviço";
-    const serviceDate = cta?.service_date || appt.service_date || "";
+      const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+      const serviceName = cta?.service_name || appt.service_name || "Serviço";
+      const serviceDate = cta?.service_date || appt.service_date || "";
 
-    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+      const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
 
-    await supabase.from("notifications").insert({
-      tenant_id: appt.tenant_id,
-      user_id: appt.user_id,
-      type: "appointment_completed",
-      title: "Agendamento concluído!",
-      body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi concluído.`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: appt.tenant_id,
+        user_id: appt.user_id,
+        type: "appointment_completed",
+        title: "Agendamento concluído!",
+        body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi concluído.`,
+        data: { link: "/feed" },
+      });
 
-    toast.success("Agendamento concluído!");
-    setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "completed" } : a));
+      toast.success("Agendamento concluído!");
+      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "completed" } : a));
+    } catch { toast.error("Erro ao concluir"); }
   };
 
   const handleCancelAppointment = async (appt: AppointmentRequest) => {
-    const { error } = await supabase.from("appointment_requests").update({ status: "cancelled" }).eq("id", appt.id);
-    if (error) { toast.error("Erro ao cancelar"); return; }
+    try {
+      const { error } = await supabase.from("appointment_requests").update({ status: "cancelled" }).eq("id", appt.id);
+      if (error) { toast.error("Erro ao cancelar"); return; }
 
-    // Send notification to B2C user
-    const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
-    const serviceName = cta?.service_name || appt.service_name || "Serviço";
-    const serviceDate = cta?.service_date || appt.service_date || "";
+      const { data: cta } = await supabase.from("appointment_cta").select("service_name, service_date").eq("id", appt.appointment_id).maybeSingle();
+      const serviceName = cta?.service_name || appt.service_name || "Serviço";
+      const serviceDate = cta?.service_date || appt.service_date || "";
 
-    const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
+      const formattedDate = serviceDate ? new Date(serviceDate).toLocaleDateString("pt-BR") : "";
 
-    await supabase.from("notifications").insert({
-      tenant_id: appt.tenant_id,
-      user_id: appt.user_id,
-      type: "appointment_cancelled",
-      title: "Agendamento cancelado",
-      body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi cancelado.`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: appt.tenant_id,
+        user_id: appt.user_id,
+        type: "appointment_cancelled",
+        title: "Agendamento cancelado",
+        body: `Seu agendamento para: ${serviceName} no dia ${formattedDate} às ${appt.selected_time} foi cancelado.`,
+        data: { link: "/feed" },
+      });
 
-    toast.success("Agendamento cancelado!");
-    setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "cancelled" } : a));
+      toast.success("Agendamento cancelado!");
+      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: "cancelled" } : a));
+    } catch { toast.error("Erro ao cancelar"); }
   };
 
   const handleContactBudget = async (budget: BudgetRequest) => {
-    const { error } = await supabase.from("budget_requests").update({ status: "contacted" }).eq("id", budget.id);
-    if (error) { toast.error("Erro ao atualizar"); return; }
+    try {
+      const { error } = await supabase.from("budget_requests").update({ status: "contacted" }).eq("id", budget.id);
+      if (error) { toast.error("Erro ao atualizar"); return; }
 
-    await supabase.from("notifications").insert({
-      tenant_id: budget.tenant_id,
-      user_id: budget.user_id,
-      type: "budget_contacted",
-      title: "Estamos entrando em contato",
-      body: "Estamos entrando em contato com você.",
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: budget.tenant_id,
+        user_id: budget.user_id,
+        type: "budget_contacted",
+        title: "Estamos entrando em contato",
+        body: "Estamos entrando em contato com você.",
+        data: { link: "/feed" },
+      });
 
-    toast.success("Marcado como contactado!");
-    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "contacted" } : b));
+      toast.success("Marcado como contactado!");
+      setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "contacted" } : b));
+    } catch { toast.error("Erro ao atualizar"); }
   };
 
   const handleCompleteBudget = async (budget: BudgetRequest) => {
-    const { error } = await supabase.from("budget_requests").update({ status: "completed" }).eq("id", budget.id);
-    if (error) { toast.error("Erro ao concluir"); return; }
+    try {
+      const { error } = await supabase.from("budget_requests").update({ status: "completed" }).eq("id", budget.id);
+      if (error) { toast.error("Erro ao concluir"); return; }
 
-    await supabase.from("notifications").insert({
-      tenant_id: budget.tenant_id,
-      user_id: budget.user_id,
-      type: "budget_completed",
-      title: "Solicitação concluída",
-      body: "Sua solicitação foi concluída.",
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: budget.tenant_id,
+        user_id: budget.user_id,
+        type: "budget_completed",
+        title: "Solicitação concluída",
+        body: "Sua solicitação foi concluída.",
+        data: { link: "/feed" },
+      });
 
-    toast.success("Orçamento concluído!");
-    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "completed" } : b));
+      toast.success("Orçamento concluído!");
+      setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "completed" } : b));
+    } catch { toast.error("Erro ao concluir"); }
   };
 
   const handleCancelBudget = async (budget: BudgetRequest) => {
-    const { error } = await supabase.from("budget_requests").update({ status: "cancelled" }).eq("id", budget.id);
-    if (error) { toast.error("Erro ao cancelar"); return; }
+    try {
+      const { error } = await supabase.from("budget_requests").update({ status: "cancelled" }).eq("id", budget.id);
+      if (error) { toast.error("Erro ao cancelar"); return; }
 
-    await supabase.from("notifications").insert({
-      tenant_id: budget.tenant_id,
-      user_id: budget.user_id,
-      type: "budget_cancelled",
-      title: "Solicitação encerrada",
-      body: "Sua solicitação foi encerrada.",
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: budget.tenant_id,
+        user_id: budget.user_id,
+        type: "budget_cancelled",
+        title: "Solicitação encerrada",
+        body: "Sua solicitação foi encerrada.",
+        data: { link: "/feed" },
+      });
 
-    toast.success("Orçamento cancelado!");
-    setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "cancelled" } : b));
+      toast.success("Orçamento cancelado!");
+      setBudgetRequests(prev => prev.map(b => b.id === budget.id ? { ...b, status: "cancelled" } : b));
+    } catch { toast.error("Erro ao cancelar"); }
   };
 
   const handleConfirmEventRegistration = async (registration: EventRegistration) => {
-    const { error } = await supabase.from("event_registrations").update({ status: "confirmed" }).eq("id", registration.id);
-    if (error) { toast.error("Erro ao confirmar"); return; }
+    try {
+      const { error } = await supabase.from("event_registrations").update({ status: "confirmed" }).eq("id", registration.id);
+      if (error) { toast.error("Erro ao confirmar"); return; }
 
-    await supabase.from("notifications").insert({
-      tenant_id: registration.tenant_id,
-      user_id: registration.user_id,
-      type: "event_registration_confirmed",
-      title: "Inscrição confirmada",
-      body: `Sua inscrição no evento "${registration.event_name}" foi confirmada!`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: registration.tenant_id,
+        user_id: registration.user_id,
+        type: "event_registration_confirmed",
+        title: "Inscrição confirmada",
+        body: `Sua inscrição no evento "${registration.event_name}" foi confirmada!`,
+        data: { link: "/feed" },
+      });
 
-    toast.success("Inscrição confirmada!");
-    setEventRegistrations(prev => prev.map(r => r.id === registration.id ? { ...r, status: "confirmed" } : r));
+      toast.success("Inscrição confirmada!");
+      setEventRegistrations(prev => prev.map(r => r.id === registration.id ? { ...r, status: "confirmed" } : r));
+    } catch { toast.error("Erro ao confirmar"); }
   };
 
   const handleCancelEventRegistration = async (registration: EventRegistration) => {
-    const { error } = await supabase.from("event_registrations").update({ status: "cancelled" }).eq("id", registration.id);
-    if (error) { toast.error("Erro ao cancelar"); return; }
+    try {
+      const { error } = await supabase.from("event_registrations").update({ status: "cancelled" }).eq("id", registration.id);
+      if (error) { toast.error("Erro ao cancelar"); return; }
 
-    await supabase.from("notifications").insert({
-      tenant_id: registration.tenant_id,
-      user_id: registration.user_id,
-      type: "event_registration_cancelled",
-      title: "Inscrição cancelada",
-      body: `Sua inscrição no evento "${registration.event_name}" foi cancelada.`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: registration.tenant_id,
+        user_id: registration.user_id,
+        type: "event_registration_cancelled",
+        title: "Inscrição cancelada",
+        body: `Sua inscrição no evento "${registration.event_name}" foi cancelada.`,
+        data: { link: "/feed" },
+      });
 
-    toast.success("Inscrição cancelada!");
-    setEventRegistrations(prev => prev.map(r => r.id === registration.id ? { ...r, status: "cancelled" } : r));
+      toast.success("Inscrição cancelada!");
+      setEventRegistrations(prev => prev.map(r => r.id === registration.id ? { ...r, status: "cancelled" } : r));
+    } catch { toast.error("Erro ao cancelar"); }
   };
 
   const handleDeleteEventRegistration = async (registrationId: string) => {
-    const { error } = await supabase.from("event_registrations").delete().eq("id", registrationId);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Inscrição excluída!");
-    setEventRegistrations(prev => prev.filter(r => r.id !== registrationId));
+    try {
+      const { error } = await supabase.from("event_registrations").delete().eq("id", registrationId);
+      if (error) { toast.error("Erro ao excluir"); return; }
+      toast.success("Inscrição excluída!");
+      setEventRegistrations(prev => prev.filter(r => r.id !== registrationId));
+    } catch { toast.error("Erro ao excluir"); }
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-
   const handleDeleteNotification = async (notificationId: string) => {
-    const { error } = await supabase.from("notifications").delete().eq("id", notificationId);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Notificação excluída");
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    try {
+      const { error } = await supabase.from("notifications").delete().eq("id", notificationId);
+      if (error) { toast.error("Erro ao excluir"); return; }
+      toast.success("Notificação excluída");
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch { toast.error("Erro ao excluir"); }
   };
 
   const handleDeleteRequest = async (requestId: string) => {
-    const { error } = await supabase.from("community_requests").delete().eq("id", requestId);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Solicitação excluída");
-    setRequests(prev => prev.filter(r => r.id !== requestId));
+    try {
+      const { error } = await supabase.from("community_requests").delete().eq("id", requestId);
+      if (error) { toast.error("Erro ao excluir"); return; }
+      toast.success("Solicitação excluída");
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch { toast.error("Erro ao excluir"); }
   };
 
   const handleDeleteAppointment = async (appointmentId: string) => {
-    const { error } = await supabase.from("appointment_requests").delete().eq("id", appointmentId);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Agendamento excluído");
-    setAppointments(prev => prev.filter(a => a.id !== appointmentId));
+    try {
+      const { error } = await supabase.from("appointment_requests").delete().eq("id", appointmentId);
+      if (error) { toast.error("Erro ao excluir"); return; }
+      toast.success("Agendamento excluído");
+      setAppointments(prev => prev.filter(a => a.id !== appointmentId));
+    } catch { toast.error("Erro ao excluir"); }
   };
 
   const handleDeleteBudget = async (budgetId: string) => {
-    const { error } = await supabase.from("budget_requests").delete().eq("id", budgetId);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Orçamento excluído");
-    setBudgetRequests(prev => prev.filter(b => b.id !== budgetId));
+    try {
+      const { error } = await supabase.from("budget_requests").delete().eq("id", budgetId);
+      if (error) { toast.error("Erro ao excluir"); return; }
+      toast.success("Orçamento excluído");
+      setBudgetRequests(prev => prev.filter(b => b.id !== budgetId));
+    } catch { toast.error("Erro ao excluir"); }
   };
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" /></div>;
 

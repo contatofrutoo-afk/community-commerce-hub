@@ -33,14 +33,12 @@ export function usePWAInstall() {
       installEvent.preventDefault();
       cachedPromptEvent = installEvent;
       setPromptEvent(installEvent);
-      console.log("PWA pronto para instalação");
     };
 
     const onInstalled = () => {
       cachedPromptEvent = null;
       setPromptEvent(null);
       setInstalled(true);
-      console.log("PWA instalado com sucesso");
     };
 
     window.addEventListener("beforeinstallprompt", handler);

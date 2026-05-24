@@ -37,7 +37,6 @@ export function AddMembersModal({
 
   const handleSearch = useCallback(
     (value: string) => {
-      console.log("[AddMembersModal] handleSearch called:", value);
       setQuery(value);
 
       if (debounceTimer) {
@@ -45,13 +44,11 @@ export function AddMembersModal({
       }
 
       if (value.length < 3) {
-        console.log("[AddMembersModal] Too short, clearing search");
         onClearSearch();
         return;
       }
 
       const timer = setTimeout(() => {
-        console.log("[AddMembersModal] Executing search for:", value);
         onSearch(value);
       }, 300);
 

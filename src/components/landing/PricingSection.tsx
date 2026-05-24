@@ -3,7 +3,6 @@ import { Check, DollarSign, Sparkles } from "lucide-react";
 
 const handlePaymentClick = () => {
   // TODO: adicionar link Mercado Pago
-  console.log("Assinar agora - conectar com Mercado Pago");
 };
 
 export default function PricingSection() {

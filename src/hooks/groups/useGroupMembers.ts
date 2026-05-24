@@ -65,25 +65,20 @@ export function useGroupMembers() {
       groupId: string,
       query: string
     ) => {
-      console.log("[useGroupMembers] searchMembers called:", { tenantId, groupId, query });
       if (query.length < 3) {
         setSearchResults([]);
         return;
       }
 
       setSearching(true);
-      console.log("[useGroupMembers] Setting searching=true");
 
       const result = await groupsService.searchMembers(tenantId, groupId, query);
-      console.log("[useGroupMembers] Result from service:", result);
 
       setSearching(false);
 
       if (result.error) {
-        console.log("[useGroupMembers] Error:", result.error);
         setSearchResults([]);
       } else {
-        console.log("[useGroupMembers] Setting searchResults:", result.data.length);
         setSearchResults(result.data);
       }
     },

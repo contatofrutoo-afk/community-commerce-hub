@@ -179,10 +179,8 @@ export const groupsService = {
     query: string,
     limit: number = 15
   ): Promise<{ data: MemberSearchResult[]; error: string | null }> {
-    console.log("[groupsService] searchMembers called:", { tenantId, groupId, query, length: query.length });
     
     if (query.length < 3) {
-      console.log("[groupsService] Query too short, skipping");
       return { data: [], error: null };
     }
 
@@ -191,8 +189,6 @@ export const groupsService = {
       p_group_id: groupId,
       p_search_query: query
     });
-
-    console.log("[groupsService] RPC result:", data?.length || 0, error);
 
     if (error) return { data: [], error: error.message };
 
@@ -214,7 +210,6 @@ export const groupsService = {
         avatar_url: p.avatar_url,
       }));
 
-    console.log("[groupsService] Final result:", result.length);
     return { data: result, error: null };
   },
 

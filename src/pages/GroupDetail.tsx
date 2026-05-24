@@ -93,31 +93,35 @@ export default function GroupDetail() {
     if (!groupId) return;
     setLoading(true);
 
-    const result = await groupsService.getGroup(groupId);
-    if (result.error || !result.data) {
-      setLoading(false);
-      toast.error("Grupo não encontrado");
-      navigate("/groups");
-      return;
-    }
-    setGroup(result.data);
-
-    let membersResult = await groupsService.getMembers(groupId);
-    
-    if (membersResult.data && membersResult.data.length === 0 && user) {
-      const addResult = await groupsService.addMember(groupId, user.id, user.id);
-      if (!addResult.error) {
-        membersResult = await groupsService.getMembers(groupId);
+    try {
+      const result = await groupsService.getGroup(groupId);
+      if (result.error || !result.data) {
+        setLoading(false);
+        toast.error("Grupo não encontrado");
+        navigate("/groups");
+        return;
       }
-    }
-    
-    if (membersResult.error) {
-      toast.error("Erro ao carregar membros: " + membersResult.error);
-    } else {
-      setMembers(membersResult.data);
-    }
+      setGroup(result.data);
 
-    await loadFeed();
+      let membersResult = await groupsService.getMembers(groupId);
+
+      if (membersResult.data && membersResult.data.length === 0 && user) {
+        const addResult = await groupsService.addMember(groupId, user.id, user.id);
+        if (!addResult.error) {
+          membersResult = await groupsService.getMembers(groupId);
+        }
+      }
+
+      if (membersResult.error) {
+        toast.error("Erro ao carregar membros: " + membersResult.error);
+      } else {
+        setMembers(membersResult.data);
+      }
+
+      await loadFeed();
+    } catch {
+      toast.error("Erro ao carregar grupo");
+    }
     setLoading(false);
     setGroupLoaded(true);
   };
@@ -126,32 +130,34 @@ export default function GroupDetail() {
     if (!groupId) return;
     setFeedLoading(true);
 
-    const [postsResult, systemResult] = await Promise.all([
-      groupsService.getPosts(groupId),
-      groupsService.getSystemMessages(groupId),
-    ]);
+    try {
+      const [postsResult, systemResult] = await Promise.all([
+        groupsService.getPosts(groupId),
+        groupsService.getSystemMessages(groupId),
+      ]);
 
-    const items: FeedItem[] = [];
+      const items: FeedItem[] = [];
 
-    if (!postsResult.error && postsResult.data) {
-      postsResult.data.forEach(post => {
-        items.push({ type: "post", data: post });
+      if (!postsResult.error && postsResult.data) {
+        postsResult.data.forEach(post => {
+          items.push({ type: "post", data: post });
+        });
+      }
+
+      if (!systemResult.error && systemResult.data) {
+        systemResult.data.forEach(msg => {
+          items.push({ type: "system", data: msg });
+        });
+      }
+
+      items.sort((a, b) => {
+        const dateA = a.type === "post" ? a.data.created_at : a.data.created_at;
+        const dateB = b.type === "post" ? b.data.created_at : b.data.created_at;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
       });
-    }
 
-    if (!systemResult.error && systemResult.data) {
-      systemResult.data.forEach(msg => {
-        items.push({ type: "system", data: msg });
-      });
-    }
-
-    items.sort((a, b) => {
-      const dateA = a.type === "post" ? a.data.created_at : a.data.created_at;
-      const dateB = b.type === "post" ? b.data.created_at : b.data.created_at;
-      return new Date(dateA).getTime() - new Date(dateB).getTime();
-    });
-
-    setFeedItems(items);
+      setFeedItems(items);
+    } catch { /* ignore */ }
     setFeedLoading(false);
 
     setTimeout(() => {
@@ -163,30 +169,31 @@ export default function GroupDetail() {
     if (!newMessage.trim() || !user || !groupId || !group) return;
     setSendingMessage(true);
 
-    const result = await groupsService.createPost(groupId, user.id, newMessage.trim());
-    
-    if (result.error) {
-      toast.error("Erro ao enviar mensagem");
-      setSendingMessage(false);
-      return;
-    }
+    try {
+      const result = await groupsService.createPost(groupId, user.id, newMessage.trim());
 
-    if (result.data) {
-      setFeedItems(prev => [...prev, { type: "post", data: result.data! }]);
-      setNewMessage("");
-      
-      if (tenant?.id) {
-        await groupsService.createActivityNotification(
-          tenant.id,
-          groupId,
-          group.name,
-          user.name || "Usuário"
-        );
+      if (result.error) {
+        toast.error("Erro ao enviar mensagem");
+        setSendingMessage(false);
+        return;
       }
-    }
 
+      if (result.data) {
+        setFeedItems(prev => [...prev, { type: "post", data: result.data! }]);
+        setNewMessage("");
+
+        if (tenant?.id) {
+          await groupsService.createActivityNotification(
+            tenant.id,
+            groupId,
+            group.name,
+            user.name || "Usuário"
+          );
+        }
+      }
+    } catch { toast.error("Erro ao enviar mensagem"); }
     setSendingMessage(false);
-    
+
     setTimeout(() => {
       feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -201,11 +208,12 @@ export default function GroupDetail() {
     setRepliesLoading(prev => ({ ...prev, [post.id]: true }));
     setReplyingTo(post);
 
-    const result = await groupsService.getReplies(post.id);
-    if (!result.error && result.data) {
-      setReplies(prev => ({ ...prev, [post.id]: result.data }));
-    }
-
+    try {
+      const result = await groupsService.getReplies(post.id);
+      if (!result.error && result.data) {
+        setReplies(prev => ({ ...prev, [post.id]: result.data }));
+      }
+    } catch { /* ignore */ }
     setRepliesLoading(prev => ({ ...prev, [post.id]: false }));
   };
 
@@ -213,88 +221,87 @@ export default function GroupDetail() {
     if (!newReply.trim() || !user || !replyingTo) return;
     setSendingReply(true);
 
-    const result = await groupsService.createReply(replyingTo.id, user.id, newReply.trim());
-    
-    if (result.error) {
-      toast.error("Erro ao enviar resposta");
-      setSendingReply(false);
-      return;
-    }
+    try {
+      const result = await groupsService.createReply(replyingTo.id, user.id, newReply.trim());
 
-    if (result.data) {
-      setReplies(prev => ({
-        ...prev,
-        [replyingTo.id]: [...(prev[replyingTo.id] || []), result.data!],
-      }));
-      setNewReply("");
-    }
+      if (result.error) {
+        toast.error("Erro ao enviar resposta");
+        setSendingReply(false);
+        return;
+      }
 
+      if (result.data) {
+        setReplies(prev => ({
+          ...prev,
+          [replyingTo.id]: [...(prev[replyingTo.id] || []), result.data!],
+        }));
+        setNewReply("");
+      }
+    } catch { toast.error("Erro ao enviar resposta"); }
     setSendingReply(false);
   };
 
   const handleDeletePost = async (postId: string) => {
-    const result = await groupsService.deletePost(postId);
-    if (result.error) {
-      toast.error("Erro ao excluir mensagem");
-      return;
-    }
-    setFeedItems(prev => prev.filter(item => item.type !== "post" || item.data.id !== postId));
-    toast.success("Mensagem excluída");
+    try {
+      const result = await groupsService.deletePost(postId);
+      if (result.error) {
+        toast.error("Erro ao excluir mensagem");
+        return;
+      }
+      setFeedItems(prev => prev.filter(item => item.type !== "post" || item.data.id !== postId));
+      toast.success("Mensagem excluída");
+    } catch { toast.error("Erro ao excluir mensagem"); }
   };
 
   const handleUpdatePost = async (postId: string) => {
     if (!editText.trim()) return;
-    const result = await groupsService.updatePost(postId, editText.trim());
-    if (result.error) {
-      toast.error("Erro ao editar mensagem");
-      return;
-    }
-    setFeedItems(prev => prev.map(item => {
-      if (item.type === "post" && item.data.id === postId) {
-        return { type: "post" as const, data: { ...item.data, content: editText.trim() } };
+    try {
+      const result = await groupsService.updatePost(postId, editText.trim());
+      if (result.error) {
+        toast.error("Erro ao editar mensagem");
+        return;
       }
-      return item;
-    }));
-    setEditingPostId(null);
-    setEditText("");
-    toast.success("Mensagem editada");
-  };
-
-  const startEditing = (post: GroupPost) => {
-    setEditingPostId(post.id);
-    setEditText(post.content || "");
-  };
-
-  const cancelEditing = () => {
-    setEditingPostId(null);
-    setEditText("");
+      setFeedItems(prev => prev.map(item => {
+        if (item.type === "post" && item.data.id === postId) {
+          return { type: "post" as const, data: { ...item.data, content: editText.trim() } };
+        }
+        return item;
+      }));
+      setEditingPostId(null);
+      setEditText("");
+      toast.success("Mensagem editada");
+    } catch { toast.error("Erro ao editar mensagem"); }
   };
 
   const handleTogglePin = async (post: GroupPost) => {
-    const result = await groupsService.togglePinPost(post.id, post.is_pinned);
-    if (result.error) {
-      toast.error("Erro ao fixar mensagem");
-      return;
-    }
-    setFeedItems(prev => prev.map(item => {
-      if (item.type === "post" && item.data.id === post.id) {
-        return { type: "post", data: { ...item.data, is_pinned: !post.is_pinned } };
+    try {
+      const result = await groupsService.togglePinPost(post.id, post.is_pinned);
+      if (result.error) {
+        toast.error("Erro ao fixar mensagem");
+        return;
       }
-      return item;
-    }));
-    toast.success(post.is_pinned ? "Mensagem desafixada" : "Mensagem fixada");
+      setFeedItems(prev => prev.map(item => {
+        if (item.type === "post" && item.data.id === post.id) {
+          return { type: "post", data: { ...item.data, is_pinned: !post.is_pinned } };
+        }
+        return item;
+      }));
+      toast.success(post.is_pinned ? "Mensagem desafixada" : "Mensagem fixada");
+    } catch { toast.error("Erro ao fixar mensagem"); }
   };
 
   const handleAddMember = async (userId: string) => {
     if (!groupId || !user || !group) return;
-    const result = await addMember(groupId, userId, user.id);
-    if (!result.success) {
-      toast.error(result.error || "Erro ao adicionar membro");
-    } else {
+    try {
+      const result = await addMember(groupId, userId, user.id);
+      if (!result.success) {
+        toast.error(result.error || "Erro ao adicionar membro");
+        return;
+      }
       toast.success("Membro adicionado!");
       setShowAddMembers(false);
       clearSearch();
-      
+
       const membersRes = await groupsService.getMembers(groupId);
       if (!membersRes.error) setMembers(membersRes.data);
 
@@ -303,30 +310,26 @@ export default function GroupDetail() {
         await groupsService.createSystemMessage(groupId, "member_joined", memberInfo.profiles.name);
         await loadFeed();
       }
-    }
-  };
-
-  const handleSearchMembers = (query: string) => {
-    if (!tenant?.id || !groupId) return;
-    searchMembers(tenant.id, groupId, query);
+    } catch { toast.error("Erro ao adicionar membro"); }
   };
 
   const handleRemoveMember = async (memberId: string, memberUserId: string, memberName: string | null) => {
     if (!groupId) return;
     setRemovingId(memberId);
 
-    const result = await groupsService.removeMember(memberId);
+    try {
+      const result = await groupsService.removeMember(memberId);
 
+      if (result.error) {
+        toast.error("Erro ao remover membro");
+      } else {
+        toast.success("Membro removido");
+        setMembers(prev => prev.filter(m => m.id !== memberId));
+        await groupsService.createSystemMessage(groupId, "member_left", memberName || "Membro");
+        await loadFeed();
+      }
+    } catch { toast.error("Erro ao remover membro"); }
     setRemovingId(null);
-
-    if (result.error) {
-      toast.error("Erro ao remover membro");
-    } else {
-      toast.success("Membro removido");
-      setMembers(prev => prev.filter(m => m.id !== memberId));
-      await groupsService.createSystemMessage(groupId, "member_left", memberName || "Membro");
-      await loadFeed();
-    }
   };
 
   const isGroupOwner = group?.created_by === user?.id;

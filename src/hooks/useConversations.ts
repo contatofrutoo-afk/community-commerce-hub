@@ -22,7 +22,6 @@ function getOrCreateConversationsListChannel() {
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "conversations" },
       () => {
-        console.log("[Realtime] New conversation inserted");
         convListListeners.forEach((l) => l());
       }
     )
@@ -30,12 +29,11 @@ function getOrCreateConversationsListChannel() {
       "postgres_changes",
       { event: "UPDATE", schema: "public", table: "conversations" },
       () => {
-        console.log("[Realtime] Conversation updated");
         convListListeners.forEach((l) => l());
       }
     )
     .subscribe((status) => {
-      console.log("[Realtime] Channel status:", status);
+      // status logged if needed
     });
 
   return conversationsListChannel;
@@ -46,18 +44,14 @@ export function useConversations(tenantId: string, userId: string) {
 
   const isReady = !!tenantId && tenantId.length > 0 && !!userId && userId.length > 0;
   
-  console.log("[useConversations] Hook called with:", { tenantId, userId, isReady });
 
   const conversationsQuery = useQuery({
     queryKey: ["conversations", tenantId],
     queryFn: async () => {
-      console.log("[useConversations] Query executing for:", { tenantId, userId });
       if (!tenantId || !userId) {
-        console.log("[useConversations] SKIP - missing params");
         return [];
       }
       const result = await conv.getMyConversationsWithRole(tenantId, userId);
-      console.log("[useConversations] Query result:", result?.length ?? 0, "items");
       return result;
     },
     enabled: isReady,
@@ -71,12 +65,10 @@ export function useConversations(tenantId: string, userId: string) {
   useEffect(() => {
     if (!tenantId || !userId || channelCreated.current) return;
 
-    console.log("[useConversations] Creating realtime channel");
     getOrCreateConversationsListChannel();
     channelCreated.current = true;
 
     const listener = () => {
-      console.log("[useConversations] Invalidating conversations cache");
       queryClient.invalidateQueries({ queryKey: ["conversations", tenantId] });
     };
     convListListeners.add(listener);
@@ -88,13 +80,10 @@ export function useConversations(tenantId: string, userId: string) {
 
   const createMutation = useMutation({
     mutationFn: async (params: { title: string; description?: string; visibility: ConversationVisibility }) => {
-      console.log("[useConversations] Creating conversation - START:", Date.now(), params);
       const result = await conv.createConversation({ tenantId, title: params.title, description: params.description, visibility: params.visibility, createdBy: userId });
-      console.log("[useConversations] Creating conversation - END:", Date.now(), result);
       return result;
     },
     onSuccess: () => {
-      console.log("[useConversations] onSuccess - invalidating queries for tenant:", tenantId);
       queryClient.invalidateQueries({ queryKey: ["conversations", tenantId] });
     },
     onError: (error) => {
@@ -185,7 +174,6 @@ export function useConversation(id: string | null, userId: string) {
     }
 
     const handleRealtimeMessage = (msg: ConversationMessage) => {
-      console.log("[useConversation] Realtime message received:", msg.id);
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) {
           return prev.map((m) => (m.id === msg.id ? msg : m));
@@ -209,7 +197,6 @@ export function useConversation(id: string | null, userId: string) {
         (payload) => {
           const msg = payload.new as ConversationMessage;
           if (msg.deleted === false) {
-            console.log("[useConversation] New message via realtime:", msg.id);
             listenersRef.current.forEach((l) => l(msg));
           }
         }
@@ -225,7 +212,6 @@ export function useConversation(id: string | null, userId: string) {
         (payload) => {
           const msg = payload.new as ConversationMessage;
           if (msg.deleted === false) {
-            console.log("[useConversation] Updated message via realtime:", msg.id);
             listenersRef.current.forEach((l) => l(msg));
           }
         }
@@ -257,7 +243,6 @@ export function useConversation(id: string | null, userId: string) {
       return conv.sendMessage({ conversationId: id, userId, content: params.content, replyTo: params.replyTo });
     },
     onSuccess: (data) => {
-      console.log("[useConversation] Message sent:", data.id);
       setMessages((prev) => {
         if (prev.some((m) => m.id === data.id)) return prev;
         return [...prev, data];

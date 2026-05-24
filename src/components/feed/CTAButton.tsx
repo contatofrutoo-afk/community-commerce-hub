@@ -29,12 +29,14 @@ export default function CTAButton({ cta, postId, tenantId, className }: { cta: C
   useEffect(() => {
     if (cta.type === "register" && cta.id) {
       (async () => {
-        const { count } = await supabase
-          .from("event_registrations")
-          .select("*", { count: "exact", head: true })
-          .eq("event_id", cta.id);
-        
-        if (count !== null) setRealRegCount(count);
+        try {
+          const { count } = await supabase
+            .from("event_registrations")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", cta.id);
+
+          if (count !== null) setRealRegCount(count);
+        } catch { /* ignore */ }
       })();
     }
   }, [cta]);
@@ -54,7 +56,9 @@ export default function CTAButton({ cta, postId, tenantId, className }: { cta: C
 
   const handleClick = async () => {
     if (isFull) return;
-    await track({ tenantId, postId, ctaId: cta.id, action: "click_cta" });
+    try {
+      await track({ tenantId, postId, ctaId: cta.id, action: "click_cta" });
+    } catch { /* ignore */ }
     setOpen(true);
   };
 
@@ -89,7 +93,9 @@ function BuyDialog({ cta, postId, tenantId, open, onClose }: any) {
   const c = cta.config_json ?? {};
   const go = async () => {
     if (c.checkout_url) {
-      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "buy" } });
+      try {
+        await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "buy" } });
+      } catch { /* ignore */ }
       window.location.href = c.checkout_url;
     }
     onClose();
@@ -138,29 +144,29 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
   const [submitted, setSubmitted] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
-  console.log("[NewAppointmentDialog] cta:", cta, "postId:", postId);
-
   useEffect(() => {
     if (!open || !postId) return;
     (async () => {
-      const { data: appointmentCta } = await supabase
-        .from("appointment_cta")
-        .select("id")
-        .eq("post_id", postId)
-        .maybeSingle();
+      try {
+        const { data: appointmentCta } = await supabase
+          .from("appointment_cta")
+          .select("id")
+          .eq("post_id", postId)
+          .maybeSingle();
 
-      if (!appointmentCta) return;
+        if (!appointmentCta) return;
 
-      const { data: approvedAppts } = await supabase
-        .from("appointment_requests")
-        .select("selected_time")
-        .eq("appointment_id", appointmentCta.id)
-        .eq("status", "approved");
+        const { data: approvedAppts } = await supabase
+          .from("appointment_requests")
+          .select("selected_time")
+          .eq("appointment_id", appointmentCta.id)
+          .eq("status", "approved");
 
-      if (approvedAppts && approvedAppts.length > 0) {
-        const times = approvedAppts.map((a: any) => a.selected_time);
-        setBookedTimes(times);
-      }
+        if (approvedAppts && approvedAppts.length > 0) {
+          const times = approvedAppts.map((a: any) => a.selected_time);
+          setBookedTimes(times);
+        }
+      } catch { /* ignore */ }
     })();
   }, [open, postId]);
 
@@ -181,118 +187,115 @@ function NewAppointmentDialog({ cta, postId, tenantId, open, onClose }: any) {
     if (!selectedTime || !user) return;
     setLoading(true);
 
-    console.log("[Appointment] postId:", postId, "ctaId:", cta.id, "config:", c);
+    try {
+      let appointmentCtaId = null;
 
-    let appointmentCtaId = null;
-
-    // Try to find existing appointment_cta
-    const { data: existingAppointment } = await supabase
-      .from("appointment_cta")
-      .select("id")
-      .eq("post_id", postId)
-      .maybeSingle();
-
-    // If not found, create it based on config
-    if (!existingAppointment && c?.service_name) {
-      console.log("[Appointment] Creating new appointment_cta from config");
-      const { data: newAppointment, error: createError } = await supabase
+      const { data: existingAppointment } = await supabase
         .from("appointment_cta")
-        .insert({
-          post_id: postId,
-          tenant_id: tenantId,
-          service_name: c.service_name,
-          duration_minutes: c.duration_minutes || 60,
-          service_date: c.service_date,
-          available_times: c.available_times || [],
-          notes: c.notes || null,
-          max_bookings: c.max_bookings || 1,
-          created_by: user.id,
-        })
         .select("id")
-        .single();
+        .eq("post_id", postId)
+        .maybeSingle();
 
-      if (createError) {
-        console.log("[Appointment] Create error:", createError);
-        toast.error("Erro ao criar agendamento");
+      if (!existingAppointment && c?.service_name) {
+        const { data: newAppointment, error: createError } = await supabase
+          .from("appointment_cta")
+          .insert({
+            post_id: postId,
+            tenant_id: tenantId,
+            service_name: c.service_name,
+            duration_minutes: c.duration_minutes || 60,
+            service_date: c.service_date,
+            available_times: c.available_times || [],
+            notes: c.notes || null,
+            max_bookings: c.max_bookings || 1,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+
+        if (createError) {
+          toast.error("Erro ao criar agendamento");
+          setLoading(false);
+          return;
+        }
+
+        appointmentCtaId = newAppointment?.id;
+      } else {
+        appointmentCtaId = existingAppointment?.id;
+      }
+
+      if (!appointmentCtaId) {
+        toast.error("Erro: agendamento não encontrado");
         setLoading(false);
         return;
       }
 
-      appointmentCtaId = newAppointment?.id;
-    } else {
-      appointmentCtaId = existingAppointment?.id;
-    }
+      const { error } = await supabase.from("appointment_requests").insert({
+        appointment_id: appointmentCtaId,
+        post_id: postId,
+        tenant_id: tenantId,
+        user_id: user.id,
+        selected_time: selectedTime,
+        message: message.trim() || null,
+        status: "pending",
+      });
 
-    if (!appointmentCtaId) {
-      console.log("[Appointment] No appointment ID found");
-      toast.error("Erro: agendamento não encontrado");
-      setLoading(false);
-      return;
-    }
-
-    console.log("[Appointment] Using appointment ID:", appointmentCtaId);
-
-    const { error } = await supabase.from("appointment_requests").insert({
-      appointment_id: appointmentCtaId,
-      post_id: postId,
-      tenant_id: tenantId,
-      user_id: user.id,
-      selected_time: selectedTime,
-      message: message.trim() || null,
-      status: "pending",
-    });
-
-    setLoading(false);
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("Você já agendou neste horário");
-      } else {
-        toast.error(error.message);
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("Você já agendou neste horário");
+        } else {
+          toast.error(error.message);
+        }
+        setLoading(false);
+        return;
       }
-      return;
-    }
 
-    await supabase.from("notifications").insert({
-      tenant_id: tenantId,
-      user_id: user.id,
-      type: "appointment_pending",
-      title: "Solicitação enviada",
-      body: `Seu agendamento para ${serviceName} no dia ${formatDate(serviceDate)} às ${selectedTime} foi enviado. Aguarde a confirmação.`,
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: "appointment_pending",
+        title: "Solicitação enviada",
+        body: `Seu agendamento para ${serviceName} no dia ${formatDate(serviceDate)} às ${selectedTime} foi enviado. Aguarde a confirmação.`,
+        data: { link: "/feed" },
+      });
 
-    const { data: owners } = await supabase
-      .from("memberships")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner");
+      const { data: owners } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("role", "owner");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    const userName = profile?.name || user.email?.split("@")[0] || "Usuário";
+      const userName = profile?.name || user.email?.split("@")[0] || "Usuário";
 
-    if (owners && owners.length > 0) {
-      for (const o of owners) {
-        if (o.user_id !== user.id) {
-          await supabase.from("notifications").insert({
-            tenant_id: tenantId,
-            user_id: o.user_id,
-            type: "appointment_pending",
-            title: "Nova solicitação de agendamento",
-            body: `${userName} solicitou agendamento para ${serviceName} às ${selectedTime}`,
-            data: { link: "/requests" },
-          });
+      if (owners && owners.length > 0) {
+        for (const o of owners) {
+          if (o.user_id !== user.id) {
+            await supabase.from("notifications").insert({
+              tenant_id: tenantId,
+              user_id: o.user_id,
+              type: "appointment_pending",
+              title: "Nova solicitação de agendamento",
+              body: `${userName} solicitou agendamento para ${serviceName} às ${selectedTime}`,
+              data: { link: "/requests" },
+            });
+          }
         }
       }
+
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "schedule" } });
+      setSubmitted(true);
+      toast.success("Solicitação de agendamento enviada!");
+    } catch {
+      toast.error("Erro ao processar agendamento");
     }
 
-    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "schedule" } });
-    setSubmitted(true);
-    toast.success("Solicitação de agendamento enviada!");
+    setLoading(false);
   };
 
   if (submitted) {
@@ -411,46 +414,50 @@ function LegacyScheduleDialog({ cta, postId, tenantId, open, onClose }: any) {
   const loadSlots = async (d: Date) => {
     if (!serviceId) return;
     setSlots([]); setSlot(null);
-    const dow = d.getDay();
-    const iso = d.toISOString().slice(0, 10);
-    const [{ data: rules }, { data: blocked }, { data: appts }, { data: svc }] = await Promise.all([
-      supabase.from("availability_rules").select("*").eq("service_id", serviceId).eq("weekday", dow),
-      supabase.from("blocked_dates").select("date").eq("service_id", serviceId).eq("date", iso),
-      supabase.from("appointments").select("time").eq("service_id", serviceId).eq("date", iso),
-      supabase.from("services").select("duration_minutes").eq("id", serviceId).maybeSingle(),
-    ]);
-    if (blocked && blocked.length > 0) return;
-    const dur = svc?.duration_minutes ?? 60;
-    const taken = new Set((appts ?? []).map((a: any) => a.time.slice(0, 5)));
-    const out: string[] = [];
-    for (const r of rules ?? []) {
-      const [sh, sm] = r.start_time.split(":").map(Number);
-      const [eh, em] = r.end_time.split(":").map(Number);
-      let cur = sh * 60 + sm;
-      const end = eh * 60 + em;
-      while (cur + dur <= end) {
-        const t = `${String(Math.floor(cur / 60)).padStart(2, "0")}:${String(cur % 60).padStart(2, "0")}`;
-        if (!taken.has(t)) out.push(t);
-        cur += dur;
+    try {
+      const dow = d.getDay();
+      const iso = d.toISOString().slice(0, 10);
+      const [{ data: rules }, { data: blocked }, { data: appts }, { data: svc }] = await Promise.all([
+        supabase.from("availability_rules").select("*").eq("service_id", serviceId).eq("weekday", dow),
+        supabase.from("blocked_dates").select("date").eq("service_id", serviceId).eq("date", iso),
+        supabase.from("appointments").select("time").eq("service_id", serviceId).eq("date", iso),
+        supabase.from("services").select("duration_minutes").eq("id", serviceId).maybeSingle(),
+      ]);
+      if (blocked && blocked.length > 0) return;
+      const dur = svc?.duration_minutes ?? 60;
+      const taken = new Set((appts ?? []).map((a: any) => a.time.slice(0, 5)));
+      const out: string[] = [];
+      for (const r of rules ?? []) {
+        const [sh, sm] = r.start_time.split(":").map(Number);
+        const [eh, em] = r.end_time.split(":").map(Number);
+        let cur = sh * 60 + sm;
+        const end = eh * 60 + em;
+        while (cur + dur <= end) {
+          const t = `${String(Math.floor(cur / 60)).padStart(2, "0")}:${String(cur % 60).padStart(2, "0")}`;
+          if (!taken.has(t)) out.push(t);
+          cur += dur;
+        }
       }
-    }
-    setSlots(out);
+      setSlots(out);
+    } catch { /* ignore */ }
   };
 
   const confirm = async () => {
     if (!date || !slot || !serviceId) return;
     if (name.trim().length < 2) { toast.error("Informe seu nome"); return; }
     setLoading(true);
-    const { error } = await supabase.from("appointments").insert({
-      tenant_id: tenantId, service_id: serviceId, user_id: user?.id ?? null,
-      date: date.toISOString().slice(0, 10), time: slot,
-      customer_name: name.trim(), customer_phone: phone.trim() || null, notes: notes.trim() || null,
-    });
+    try {
+      const { error } = await supabase.from("appointments").insert({
+        tenant_id: tenantId, service_id: serviceId, user_id: user?.id ?? null,
+        date: date.toISOString().slice(0, 10), time: slot,
+        customer_name: name.trim(), customer_phone: phone.trim() || null, notes: notes.trim() || null,
+      });
+      if (error) { toast.error(error.message); setLoading(false); return; }
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "schedule" } });
+      toast.success("Agendamento confirmado");
+      onClose();
+    } catch { toast.error("Erro ao confirmar agendamento"); }
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "schedule" } });
-    toast.success("Agendamento confirmado");
-    onClose();
   };
 
   if (!serviceId) {
@@ -535,18 +542,20 @@ function QuoteDialog({ cta, postId, tenantId, open, onClose }: any) {
   useEffect(() => {
     if (!user || !open || profileLoaded) return;
     (async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name, email, phone")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (profile) {
-        setName(profile.name || "");
-        setEmail(profile.email || "");
-        setPhone(profile.phone || "");
-      }
-      setProfileLoaded(true);
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email, phone")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (profile) {
+          setName(profile.name || "");
+          setEmail(profile.email || "");
+          setPhone(profile.phone || "");
+        }
+        setProfileLoaded(true);
+      } catch { /* ignore */ }
     })();
   }, [user, open, profileLoaded]);
 
@@ -554,66 +563,66 @@ function QuoteDialog({ cta, postId, tenantId, open, onClose }: any) {
     if (!name.trim()) { toast.error("Nome obrigatório"); return; }
     if (!message.trim()) { toast.error("Mensagem obrigatória"); return; }
     if (!user) return;
-    
+
     setLoading(true);
-    
-    const { error } = await supabase.from("budget_requests").insert({
-      tenant_id: tenantId,
-      post_id: postId,
-      user_id: user.id,
-      name: name.trim(),
-      email: email.trim() || null,
-      phone: phone.trim() || null,
-      message: message.trim(),
-      status: "pending",
-    });
 
-    setLoading(false);
-    
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("Você já enviou uma solicitação para este post");
-      } else {
-        toast.error(error.message);
+    try {
+      const { error } = await supabase.from("budget_requests").insert({
+        tenant_id: tenantId,
+        post_id: postId,
+        user_id: user.id,
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        message: message.trim(),
+        status: "pending",
+      });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("Você já enviou uma solicitação para este post");
+        } else {
+          toast.error(error.message);
+        }
+        setLoading(false);
+        return;
       }
-      return;
-    }
 
-    // Notify B2B owner
-    const { data: owners } = await supabase
-      .from("memberships")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner");
+      const { data: owners } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("role", "owner");
 
-    if (owners && owners.length > 0) {
-      for (const o of owners) {
-        if (o.user_id !== user.id) {
-          await supabase.from("notifications").insert({
-            tenant_id: tenantId,
-            user_id: o.user_id,
-            type: "budget_pending",
-            title: "Nova solicitação de orçamento",
-            body: `${name.trim()} enviou uma solicitação de orçamento.\n\nServiço: ${cta.label || "Serviço"}\n\nMensagem: ${message.trim()}\n\nTelefone: ${phone.trim() || "Não informado"}`,
-            data: { link: "/notifications" },
-          });
+      if (owners && owners.length > 0) {
+        for (const o of owners) {
+          if (o.user_id !== user.id) {
+            await supabase.from("notifications").insert({
+              tenant_id: tenantId,
+              user_id: o.user_id,
+              type: "budget_pending",
+              title: "Nova solicitação de orçamento",
+              body: `${name.trim()} enviou uma solicitação de orçamento.\n\nServiço: ${cta.label || "Serviço"}\n\nMensagem: ${message.trim()}\n\nTelefone: ${phone.trim() || "Não informado"}`,
+              data: { link: "/notifications" },
+            });
+          }
         }
       }
-    }
 
-    // Notify B2C user
-    await supabase.from("notifications").insert({
-      tenant_id: tenantId,
-      user_id: user.id,
-      type: "budget_received",
-      title: "Solicitação recebida",
-      body: "Sua solicitação de orçamento foi recebida. Em breve entraremos em contato.",
-      data: { link: "/feed" },
-    });
+      await supabase.from("notifications").insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: "budget_received",
+        title: "Solicitação recebida",
+        body: "Sua solicitação de orçamento foi recebida. Em breve entraremos em contato.",
+        data: { link: "/feed" },
+      });
 
-    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "quote" } });
-    toast.success("Solicitação enviada!");
-    onClose();
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "quote" } });
+      toast.success("Solicitação enviada!");
+      onClose();
+    } catch { toast.error("Erro ao enviar solicitação"); }
+    setLoading(false);
   };
 
   return (
@@ -655,12 +664,14 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
   useEffect(() => {
     if (cta.id && open) {
       (async () => {
-        const { count } = await supabase
-          .from("event_registrations")
-          .select("*", { count: "exact", head: true })
-          .eq("event_id", cta.id);
-        
-        if (count !== null) setRealRegCount(count);
+        try {
+          const { count } = await supabase
+            .from("event_registrations")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", cta.id);
+
+          if (count !== null) setRealRegCount(count);
+        } catch { /* ignore */ }
       })();
     }
   }, [cta.id, open]);
@@ -678,125 +689,126 @@ function RegisterDialog({ cta, postId, tenantId, open, onClose }: any) {
     }
     setLoading(true);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("user_id", user?.id)
-      .maybeSingle();
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", user?.id)
+        .maybeSingle();
 
-    const userName = values.name || profile?.name || user?.email?.split("@")[0] || "Usuário";
-    const now = new Date().toISOString();
+      const userName = values.name || profile?.name || user?.email?.split("@")[0] || "Usuário";
+      const now = new Date().toISOString();
 
-    const registration = {
-      user_id: user?.id,
-      user_name: values.name || userName,
-      user_email: values.email ?? null,
-      user_phone: values.phone ?? null,
-      notes: values.notes ?? null,
-      custom_answers: customFields.reduce((acc: any, cf: any) => {
-        if (values[cf.name]) acc[cf.name] = values[cf.name];
-        return acc;
-      }, {}),
-      created_at: now,
-    };
+      const registration = {
+        user_id: user?.id,
+        user_name: values.name || userName,
+        user_email: values.email ?? null,
+        user_phone: values.phone ?? null,
+        notes: values.notes ?? null,
+        custom_answers: customFields.reduce((acc: any, cf: any) => {
+          if (values[cf.name]) acc[cf.name] = values[cf.name];
+          return acc;
+        }, {}),
+        created_at: now,
+      };
 
-    const currentRegistrations = eventData.registrations ?? [];
-    
-    // Check if user is already registered in the DB
-    const { data: existingDbReg } = await supabase
-      .from("event_registrations")
-      .select("id")
-      .eq("event_id", cta.id)
-      .eq("user_id", user?.id)
-      .maybeSingle();
+      const currentRegistrations = eventData.registrations ?? [];
 
-    if (existingDbReg) {
-      setLoading(false);
-      toast.error("Você já está inscrito neste evento");
-      return;
-    }
+      const { data: existingDbReg } = await supabase
+        .from("event_registrations")
+        .select("id")
+        .eq("event_id", cta.id)
+        .eq("user_id", user?.id)
+        .maybeSingle();
 
-    if (eventData.max_participants && realRegCount >= eventData.max_participants) {
-      setLoading(false);
-      toast.error("Inscrições esgotadas");
-      return;
-    }
+      if (existingDbReg) {
+        setLoading(false);
+        toast.error("Você já está inscrito neste evento");
+        return;
+      }
 
-    // We no longer update post_cta.config_json since we rely on the event_registrations table.
+      if (eventData.max_participants && realRegCount >= eventData.max_participants) {
+        setLoading(false);
+        toast.error("Inscrições esgotadas");
+        return;
+      }
 
-    const answers: Record<string, any> = {};
-    if (values.name) answers["Nome"] = values.name;
-    if (values.phone) answers["Telefone"] = values.phone;
-    if (values.email) answers["Email"] = values.email;
-    customFields.forEach((cf: any) => {
-      if (values[cf.name]) answers[cf.name] = values[cf.name];
-    });
-    if (values.notes) answers["Observação"] = values.notes;
-
-    const { error: regError } = await supabase.from("event_registrations").insert({
-      event_id: cta.id,
-      post_id: postId,
-      tenant_id: tenantId,
-      user_id: user?.id,
-      name: values.name || null,
-      email: values.email || null,
-      phone: values.phone || null,
-      notes: values.notes || null,
-      answers: answers,
-      status: "pending",
-      event_name: eventData.event_name,
-      event_date: eventData.event_date || null,
-      event_time: eventData.event_time || null,
-      location: eventData.location || null,
-    });
-
-    if (regError) {
-      console.error("[RegisterDialog] Registration save error:", regError);
-    }
-
-    await supabase.from("notifications").insert({
-      tenant_id: tenantId,
-      user_id: user?.id,
-      type: "event_registration_received",
-      title: "Inscrição recebida",
-      body: "Sua inscrição foi recebida. Em breve entraremos em contato.",
-      data: { link: "/feed" },
-    });
-
-    const { data: owners } = await supabase
-      .from("memberships")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner");
-
-    if (owners && owners.length > 0) {
-      let notificationContent = `Nova inscrição para: ${eventData.event_name}`;
-      notificationContent += `\nNome: ${values.name || "-"}`;
-      if (values.phone) notificationContent += `\nTelefone: ${values.phone}`;
-      if (values.email) notificationContent += `\nEmail: ${values.email}`;
-      
+      const answers: Record<string, any> = {};
+      if (values.name) answers["Nome"] = values.name;
+      if (values.phone) answers["Telefone"] = values.phone;
+      if (values.email) answers["Email"] = values.email;
       customFields.forEach((cf: any) => {
-        if (values[cf.name]) notificationContent += `\n${cf.name}: ${values[cf.name]}`;
+        if (values[cf.name]) answers[cf.name] = values[cf.name];
+      });
+      if (values.notes) answers["Observação"] = values.notes;
+
+      const { error: regError } = await supabase.from("event_registrations").insert({
+        event_id: cta.id,
+        post_id: postId,
+        tenant_id: tenantId,
+        user_id: user?.id,
+        name: values.name || null,
+        email: values.email || null,
+        phone: values.phone || null,
+        notes: values.notes || null,
+        answers: answers,
+        status: "pending",
+        event_name: eventData.event_name,
+        event_date: eventData.event_date || null,
+        event_time: eventData.event_time || null,
+        location: eventData.location || null,
       });
 
-      for (const o of owners) {
-        if (o.user_id !== user?.id) {
-          await supabase.from("notifications").insert({
-            tenant_id: tenantId,
-            user_id: o.user_id,
-            type: "event_registration_pending",
-            title: "Nova inscrição recebida",
-            body: notificationContent,
-            data: { link: "/notifications" },
-          });
+      if (regError) {
+        toast.error("Erro ao realizar inscrição");
+        setLoading(false);
+        return;
+      }
+
+      await supabase.from("notifications").insert({
+        tenant_id: tenantId,
+        user_id: user?.id,
+        type: "event_registration_received",
+        title: "Inscrição recebida",
+        body: "Sua inscrição foi recebida. Em breve entraremos em contato.",
+        data: { link: "/feed" },
+      });
+
+      const { data: owners } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("role", "owner");
+
+      if (owners && owners.length > 0) {
+        let notificationContent = `Nova inscrição para: ${eventData.event_name}`;
+        notificationContent += `\nNome: ${values.name || "-"}`;
+        if (values.phone) notificationContent += `\nTelefone: ${values.phone}`;
+        if (values.email) notificationContent += `\nEmail: ${values.email}`;
+
+        customFields.forEach((cf: any) => {
+          if (values[cf.name]) notificationContent += `\n${cf.name}: ${values[cf.name]}`;
+        });
+
+        for (const o of owners) {
+          if (o.user_id !== user?.id) {
+            await supabase.from("notifications").insert({
+              tenant_id: tenantId,
+              user_id: o.user_id,
+              type: "event_registration_pending",
+              title: "Nova inscrição recebida",
+              body: notificationContent,
+              data: { link: "/notifications" },
+            });
+          }
         }
       }
-    }
 
-    await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "register" } });
+      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "register" } });
+      toast.success("Inscrição recebida. Em breve entraremos em contato.");
+      onClose();
+    } catch { toast.error("Erro ao realizar inscrição"); }
     setLoading(false);
-    toast.success("Inscrição recebida. Em breve entraremos em contato.");
-    onClose();
   };
 
   return (
@@ -858,7 +870,9 @@ function InfoDialog({ cta, postId, tenantId, open, onClose }: any) {
   const c = cta.config_json ?? {};
   const goExternal = async () => {
     if (c.url) {
-      await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "info_external" } });
+      try {
+        await track({ tenantId, postId, ctaId: cta.id, action: "conversion", metadata: { intent: "info_external" } });
+      } catch { /* ignore */ }
       window.location.href = c.url;
     }
     onClose();
@@ -891,7 +905,9 @@ function LiveDialog({ cta, postId, tenantId, open, onClose }: any) {
   const c = cta.config_json ?? {};
   const goLive = async () => {
     if (c.external_url) {
-      await track({ tenantId, postId, ctaId: cta.id, action: "click_cta", metadata: { intent: "live" } });
+      try {
+        await track({ tenantId, postId, ctaId: cta.id, action: "click_cta", metadata: { intent: "live" } });
+      } catch { /* ignore */ }
       window.location.href = c.external_url;
     }
     onClose();

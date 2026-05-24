@@ -282,7 +282,6 @@ export default function CreatePost() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("SUBMIT - tenant:", !!tenant, "user:", !!user, "type:", type, "mediaUrl:", !!mediaUrl, "file:", !!file);
     if (!tenant) { toast.error("Tenant não carregou. Recarregue a página."); return; }
     if (!user) { toast.error("Você precisa estar logado."); return; }
     if (type !== "text" && !mediaUrl && !file) { toast.error("Adicione uma mídia (URL ou upload)"); return; }
@@ -323,7 +322,6 @@ export default function CreatePost() {
       description: desc || null,
     }).select().single();
     if (error) { console.error("Post insert error:", error); toast.error(error.message); setLoading(false); return; }
-    console.log("Post created:", post);
 
 if (ctaType !== "none") {
       const { error: ctaErr } = await supabase.from("post_cta").insert({
@@ -346,7 +344,6 @@ if (ctaType !== "none") {
 
       // Create appointment CTA if type is "schedule" with new system
       if (ctaType === "schedule" && ctaConfig?.type === "appointment") {
-        console.log("[CreatePost] Creating appointment_cta with config:", ctaConfig);
         const { data: appointmentData, error: appointmentErr } = await supabase.from("appointment_cta").insert({
           post_id: post.id,
           tenant_id: tenant.id,
@@ -358,7 +355,6 @@ if (ctaType !== "none") {
           max_bookings: ctaConfig.max_bookings,
           created_by: user.id,
         }).select();
-        console.log("[CreatePost] appointment_cta result:", appointmentData, "error:", appointmentErr);
         if (appointmentErr) { toast.error(`Agendamento: ${appointmentErr.message}`); setLoading(false); return; }
       }
 
