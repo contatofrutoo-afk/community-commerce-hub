@@ -146,7 +146,7 @@ const Protected = ({ children }: { children: JSX.Element }) => {
     if (isB2C) {
       return children;
     }
-    return <Navigate to="/communities" replace />;
+    return children;
   }
 
   return children;

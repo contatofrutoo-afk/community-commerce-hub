@@ -20,7 +20,7 @@ type TenantCard = {
 };
 
 export default function Communities() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isB2B } = useAuth();
   const { tenants, selectTenant, isOwner: hasOwnedCommunities } = useTenant();
   const nav = useNavigate();
   const [discover, setDiscover] = useState<TenantCard[]>([]);
@@ -102,11 +102,11 @@ export default function Communities() {
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                {hasOwnedCommunities
+                {hasOwnedCommunities || isB2B
                   ? "Você ainda não tem uma marca. Crie a sua e comece a publicar."
                   : "Você ainda não participa de nenhuma comunidade. Explore abaixo para entrar."}
               </p>
-              {hasOwnedCommunities ? (
+              {hasOwnedCommunities || isB2B ? (
                 <Button asChild className="bg-brand text-primary-foreground hover:opacity-90">
                   <Link to="/onboarding">Criar minha marca</Link>
                 </Button>
