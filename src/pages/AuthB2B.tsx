@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,13 @@ export default function AuthB2B() {
     );
   }
 
-  if (user) {
-    nav("/feed", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      nav("/feed", { replace: true });
+    }
+  }, [user, nav]);
+
+  if (user) return null;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
