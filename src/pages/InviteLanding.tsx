@@ -71,98 +71,76 @@ export default function InviteLanding() {
   // If user is authenticated, check membership and redirect accordingly
   useEffect(() => {
     if (!user || !tenant || authLoading || processing) return;
-    
+
+    let cancelled = false;
+
     (async () => {
-      // Check if already a member
-      const { data: existingMembership } = await supabase
-        .from("memberships")
-        .select("id")
-        .eq("tenant_id", tenant.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (existingMembership) {
+      try {
+        const { data: existingMembership } = await supabase
+          .from("memberships")
+          .select("id")
+          .eq("tenant_id", tenant.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingMembership) {
+          localStorage.setItem("weaze:active_tenant", tenant.id);
+          localStorage.setItem("weaze:last_active_tenant", tenant.id);
+          localStorage.removeItem("weaze:pending_invite_slug");
+          sessionStorage.removeItem("weaze:pending_invite_slug");
+
+          await refresh();
+          if (cancelled) return;
+          selectTenant(tenant.id, true);
+
+          await new Promise(r => setTimeout(r, 0));
+
+          if (!cancelled) navigate("/feed", { replace: true });
+          return;
+        }
+
+        setProcessing(true);
+        const { error: membershipError } = await supabase
+          .from("memberships")
+          .insert({
+            tenant_id: tenant.id,
+            user_id: user.id,
+            role: "member"
+          });
+
+        if (cancelled) return;
+
+        if (membershipError) {
+          console.error("Error creating membership:", membershipError);
+          toast.error("Erro ao entrar na comunidade");
+          setProcessing(false);
+          return;
+        }
+
         localStorage.setItem("weaze:active_tenant", tenant.id);
         localStorage.setItem("weaze:last_active_tenant", tenant.id);
         localStorage.removeItem("weaze:pending_invite_slug");
         sessionStorage.removeItem("weaze:pending_invite_slug");
-        
-        // Wait for TenantContext to fully reload and set the correct tenant
+
         await refresh();
+        if (cancelled) return;
         selectTenant(tenant.id, true);
-        
-        // Wait for TenantContext loading to complete
-        await new Promise<void>((resolve) => {
-          const checkLoading = () => {
-            // Use a small polling mechanism to ensure context has updated
-            const checkInterval = setInterval(() => {
-              // Access the tenant from the hook to check if it's been set
-              const currentTenant = localStorage.getItem("weaze:active_tenant");
-              if (currentTenant === tenant.id) {
-                clearInterval(checkInterval);
-                resolve();
-              }
-            }, 50);
-            
-            // Timeout after 3 seconds to prevent infinite wait
-            setTimeout(() => {
-              clearInterval(checkInterval);
-              resolve();
-            }, 3000);
-          };
-          checkLoading();
-        });
-        
-        navigate("/feed", { replace: true });
-        return;
+
+        await new Promise(r => setTimeout(r, 0));
+
+        if (!cancelled) {
+          toast.success(`Bem-vindo à ${tenant.name}!`);
+          navigate("/feed", { replace: true });
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error("Erro ao processar entrada");
+          setProcessing(false);
+        }
       }
-      
-      // Create membership automatically
-      setProcessing(true);
-      const { error: membershipError } = await supabase
-        .from("memberships")
-        .insert({
-          tenant_id: tenant.id,
-          user_id: user.id,
-          role: "member"
-        });
-      
-      if (membershipError) {
-        console.error("Error creating membership:", membershipError);
-        toast.error("Erro ao entrar na comunidade");
-        setProcessing(false);
-        return;
-      }
-      
-      // Success - go to feed
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      localStorage.setItem("weaze:last_active_tenant", tenant.id);
-      localStorage.removeItem("weaze:pending_invite_slug");
-      sessionStorage.removeItem("weaze:pending_invite_slug");
-      
-      // Wait for TenantContext to fully reload and set the correct tenant
-      await refresh();
-      selectTenant(tenant.id, true);
-      
-      // Wait for TenantContext loading to complete
-      await new Promise<void>((resolve) => {
-        const checkInterval = setInterval(() => {
-          const currentTenant = localStorage.getItem("weaze:active_tenant");
-          if (currentTenant === tenant.id) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 50);
-        
-        setTimeout(() => {
-          clearInterval(checkInterval);
-          resolve();
-        }, 3000);
-      });
-      
-      toast.success(`Bem-vindo à ${tenant.name}!`);
-      navigate("/feed", { replace: true });
     })();
+
+    return () => { cancelled = true; };
   }, [user, tenant, authLoading, processing, refresh, selectTenant, navigate]);
 
   const handleAuth = (isSignUp: boolean) => {

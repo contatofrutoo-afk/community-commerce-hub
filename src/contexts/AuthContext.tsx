@@ -137,6 +137,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      if (_evt === "SIGNED_OUT") {
+        setUser(null);
+        setSession(null);
+        setAppRole(null);
+        setUserState(null);
+        setLoading(false);
+        setInitializing(false);
+        return;
+      }
+
       setSession(s);
       setUser(s?.user ?? null);
       setRedirected(false);

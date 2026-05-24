@@ -12,6 +12,7 @@ import AppEntrance from "@/components/AppEntrance";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,27 @@ const UpdateBanner = () => {
       Nova versão disponível — clique para atualizar
     </div>
   );
+};
+
+const VisibilityGuard = () => {
+  const hiddenSinceRef = useRef<number>(0);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        hiddenSinceRef.current = Date.now();
+      } else {
+        if (hiddenSinceRef.current > 0 && Date.now() - hiddenSinceRef.current > 60_000) {
+          supabase.auth.getSession();
+        }
+        hiddenSinceRef.current = 0;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  return null;
 };
 
 const Loading = () => (
@@ -101,13 +123,23 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing, isB2C, appRole } = useAuth();
   const { loading: tenantLoading, tenant, blocked } = useTenant();
   const tenantEverLoaded = useRef(false);
+  const appRoleStuckRef = useRef<number>(0);
 
   if (!tenantLoading) tenantEverLoaded.current = true;
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
-  if (user && appRole === null) return <Loading />;
+  if (user && appRole === null) {
+    if (appRoleStuckRef.current === 0) {
+      appRoleStuckRef.current = Date.now();
+    } else if (Date.now() - appRoleStuckRef.current > 10_000) {
+      appRoleStuckRef.current = 0;
+      return <Navigate to="/auth" replace />;
+    }
+    return <Loading />;
+  }
+  appRoleStuckRef.current = 0;
   if (tenantLoading && !tenantEverLoaded.current) return <Loading />;
   if (blocked) return <Navigate to="/blocked" replace />;
   if (!tenant) {
@@ -165,6 +197,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <UpdateBanner />
+        <VisibilityGuard />
         <BrowserRouter>
           <Suspense fallback={<Loading />}>
             <AuthProvider>

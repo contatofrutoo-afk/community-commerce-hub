@@ -47,11 +47,13 @@ const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (): Promise<void> => {
     const uid = user?.id ?? null;
-    if (uid === lastLoadedUserId.current) {
-      if (!loadingRef.current) setLoading(false);
+    if (uid === lastLoadedUserId.current) return;
+    lastLoadedUserId.current = uid;
+    if (!uid) {
+      setLoading(false);
+      loadingRef.current = false;
       return;
     }
-    lastLoadedUserId.current = uid;
     loadingRef.current = true;
     setLoading(true);
 
@@ -62,17 +64,6 @@ const [loading, setLoading] = useState(true);
       }
     }, 20_000);
 
-    if (!user) {
-      clearTimeout(safetyTimeout);
-      setTenants([]);
-      setTenant(null);
-      setIsOwner(false);
-      setCanManage(false);
-      setBlocked(false);
-      loadingRef.current = false;
-      setLoading(false);
-      return;
-    }
     try {
     const { data: mems } = await supabase
       .from("memberships")
@@ -194,7 +185,7 @@ if (targetTenant && targetRole) {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => { load(); }, [load]);
 

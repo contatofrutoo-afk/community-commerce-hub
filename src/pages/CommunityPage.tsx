@@ -25,14 +25,18 @@ export default function CommunityPage() {
   const { refresh, selectTenant } = useTenant();
   
   const enterCommunity = async () => {
-    if (tenant) {
-      localStorage.setItem("weaze:pending_invite_slug", tenant.slug);
-      sessionStorage.setItem("weaze:pending_invite_slug", tenant.slug);
-      await refresh();
-      selectTenant(tenant.id);
-      localStorage.setItem("weaze:active_tenant", tenant.id);
-      navigate("/feed", { replace: true });
-    } else {
+    try {
+      if (tenant) {
+        localStorage.setItem("weaze:pending_invite_slug", tenant.slug);
+        sessionStorage.setItem("weaze:pending_invite_slug", tenant.slug);
+        await refresh();
+        selectTenant(tenant.id);
+        localStorage.setItem("weaze:active_tenant", tenant.id);
+        navigate("/feed", { replace: true });
+      } else {
+        navigate("/feed");
+      }
+    } catch {
       navigate("/feed");
     }
   };
@@ -44,7 +48,6 @@ export default function CommunityPage() {
   };
 
   const communitySlug = getSlugFromUrl();
-  console.log("[CommunityPage] communitySlug:", communitySlug);
   const [tenant, setTenant] = useState<PublicTenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,116 +62,115 @@ export default function CommunityPage() {
     }
 
     (async () => {
-      const { data: tenantData, error: err } = await supabase
-        .from("tenants")
-        .select("id, name, slug, logo_url, bio, city")
-        .eq("slug", communitySlug)
-        .maybeSingle();
+      try {
+        const { data: tenantData, error: err } = await supabase
+          .from("tenants")
+          .select("id, name, slug, logo_url, bio, city")
+          .eq("slug", communitySlug)
+          .maybeSingle();
 
-      if (err || !tenantData) {
-        setError("Comunidade não encontrada");
+        if (err || !tenantData) {
+          setError("Comunidade não encontrada");
+          setLoading(false);
+          return;
+        }
+
+        setTenant(tenantData);
+
+        localStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
+        sessionStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
+
+        if (isB2B) {
+          setAccessStatus("approved");
+          setLoading(false);
+          return;
+        }
+
+        if (!user) {
+          setAccessStatus("none");
+          setLoading(false);
+          return;
+        }
+
+        const status = await getAccessStatus(tenantData.id, user.id);
+        setAccessStatus(status);
+
+        if (status === "approved") {
+          setLoading(false);
+          return;
+        }
+
+        if (status === "blocked") {
+          setLoading(false);
+          return;
+        }
+
+        const { data: mem } = await supabase
+          .from("memberships")
+          .select("id")
+          .eq("tenant_id", tenantData.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (mem) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: existingRequest } = await supabase
+          .from("community_requests")
+          .select("status")
+          .eq("tenant_id", tenantData.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingRequest?.status === "rejected") {
+          setLoading(false);
+          return;
+        }
+
+        if (!existingRequest || existingRequest.status === "pending") {
+          await supabase.from("memberships").insert({
+            tenant_id: tenantData.id,
+            user_id: user.id,
+            role: "member",
+          });
+          setAccessStatus("approved");
+        }
+
         setLoading(false);
-        return;
-      }
-
-      setTenant(tenantData);
-
-      // Sempre atualiza o pending invite slug para garantir que o login/Auth saiba qual comunidade o usuário está tentando acessar
-      localStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
-      sessionStorage.setItem("weaze:pending_invite_slug", tenantData.slug);
-
-      if (isB2B) {
-        setAccessStatus("approved");
+      } catch {
+        setError("Erro ao carregar comunidade");
         setLoading(false);
-        return;
       }
-
-      if (!user) {
-        setAccessStatus("none");
-        setLoading(false);
-        return;
-      }
-
-      const status = await getAccessStatus(tenantData.id, user.id);
-      setAccessStatus(status);
-
-      if (status === "approved") {
-        setLoading(false);
-        return;
-      }
-
-      if (status === "blocked") {
-        setLoading(false);
-        return;
-      }
-
-      const { data: mem } = await supabase
-        .from("memberships")
-        .select("id")
-        .eq("tenant_id", tenantData.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (mem) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: existingRequest } = await supabase
-        .from("community_requests")
-        .select("status")
-        .eq("tenant_id", tenantData.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (existingRequest?.status === "rejected") {
-        setLoading(false);
-        return;
-      }
-
-      if (!existingRequest || existingRequest.status === "pending") {
-        await supabase.from("memberships").insert({
-          tenant_id: tenantData.id,
-          user_id: user.id,
-          role: "member",
-        });
-        setAccessStatus("approved");
-      }
-
-      setLoading(false);
     })();
   }, [communitySlug, isB2B, user]);
 
 useEffect(() => {
     if (!loading && accessStatus === "approved" && tenant && user) {
+      let cancelled = false;
+
       (async () => {
-        localStorage.setItem("weaze:active_tenant", tenant.id);
-        localStorage.setItem("weaze:last_active_tenant", tenant.id);
-        localStorage.removeItem("weaze:pending_invite_slug");
-        sessionStorage.removeItem("weaze:pending_invite_slug");
-        
-        // Wait for TenantContext to fully reload and set the correct tenant
-        await refresh();
-        selectTenant(tenant.id, true);
-        
-        // Wait for TenantContext loading to complete
-        await new Promise<void>((resolve) => {
-          const checkInterval = setInterval(() => {
-            const currentTenant = localStorage.getItem("weaze:active_tenant");
-            if (currentTenant === tenant.id) {
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 50);
-          
-          setTimeout(() => {
-            clearInterval(checkInterval);
-            resolve();
-          }, 3000);
-        });
-        
-        navigate("/feed", { replace: true });
+        try {
+          localStorage.setItem("weaze:active_tenant", tenant.id);
+          localStorage.setItem("weaze:last_active_tenant", tenant.id);
+          localStorage.removeItem("weaze:pending_invite_slug");
+          sessionStorage.removeItem("weaze:pending_invite_slug");
+
+          await refresh();
+          if (cancelled) return;
+          selectTenant(tenant.id, true);
+
+          // Give React one tick to propagate the tenant change
+          await new Promise(r => setTimeout(r, 0));
+
+          if (!cancelled) navigate("/feed", { replace: true });
+        } catch {
+          if (!cancelled) navigate("/feed", { replace: true });
+        }
       })();
+
+      return () => { cancelled = true; };
     }
   }, [loading, accessStatus, tenant, user, navigate, selectTenant, refresh]);
 
@@ -179,16 +181,20 @@ useEffect(() => {
 
     setRequesting(true);
 
-    const result = await requestAccess(
-      tenant.id,
-      user.id,
-    );
+    try {
+      const result = await requestAccess(
+        tenant.id,
+        user.id,
+      );
 
-    if (result.success) {
-      setAccessStatus("pending");
-      toast.success("Solicitação enviada! Aguarde aprovação da marca.");
-    } else {
-      toast.error(result.error || "Erro ao enviar solicitação");
+      if (result.success) {
+        setAccessStatus("pending");
+        toast.success("Solicitação enviada! Aguarde aprovação da marca.");
+      } else {
+        toast.error(result.error || "Erro ao enviar solicitação");
+      }
+    } catch {
+      toast.error("Erro ao enviar solicitação");
     }
 
     setRequesting(false);
