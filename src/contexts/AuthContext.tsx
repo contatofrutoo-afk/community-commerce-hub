@@ -117,13 +117,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (_evt === "INITIAL_SESSION") return;
 
       if (_evt === "TOKEN_REFRESHED") {
+        // Only refresh the session token — do NOT call setUser().
+        // The user identity is unchanged; creating a new User object reference
+        // would trigger unnecessary re-renders in TenantContext and other consumers.
         if (s) {
           setSession(s);
+        } else {
+          // Token refresh failed — session is invalid.
+          // Clear user + session to avoid inconsistent state where user exists
+          // but appRole is null, which causes Protected to make incorrect
+          // tenant redirect decisions (flicker root cause).
+          setUser(null);
+          setSession(null);
+          setAppRole(null);
+          setUserState(null);
+          setLoading(false);
+          setInitializing(false);
         }
-        // Token refresh failure is handled by SIGNED_OUT (gotrue fires it
-        // right after TOKEN_REFRESHED null). Do NOT clear user/session here —
-        // that causes a brief flicker where Protected shows Loading before
-        // SIGNED_OUT completes the cleanup.
         return;
       }
 
