@@ -18,7 +18,7 @@ type Props = {
 
 export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Props) {
   const { user, refreshAppRole } = useAuth();
-  const { selectTenant, refresh } = useTenant();
+  const { refresh } = useTenant();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
@@ -94,8 +94,10 @@ export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Pro
       role: "owner",
     });
 
+    // Set localStorage BEFORE refresh so load() auto-selects the new brand
+    localStorage.setItem("weaze:active_tenant", data.id);
+    localStorage.setItem("weaze:last_active_tenant", data.id);
     await refresh();
-    selectTenant(data.id);
     await refreshAppRole();
     toast.success("Marca criada");
     setLoading(false);

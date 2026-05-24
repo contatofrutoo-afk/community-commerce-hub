@@ -26,7 +26,7 @@ export default function AuthB2B() {
 
   useEffect(() => {
     if (user) {
-      nav("/feed", { replace: true });
+      nav("/communities", { replace: true });
     }
   }, [user, nav]);
 
