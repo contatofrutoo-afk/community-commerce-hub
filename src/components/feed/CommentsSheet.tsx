@@ -112,6 +112,10 @@ export default function CommentsSheet({
         
         setList(itemsWithProfiles);
         setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[CommentsSheet] Error loading comments:", err);
+        setLoading(false);
       });
   }, [open, postId]);
 

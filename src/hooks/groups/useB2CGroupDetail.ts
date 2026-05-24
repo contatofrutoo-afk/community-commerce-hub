@@ -37,30 +37,35 @@ export function useB2CGroupDetail(groupId: string | null) {
     setLoading(true);
     setError(null);
 
-    const [groupResult, countResult, postsResult] = await Promise.all([
-      getGroupDetail(groupId),
-      getGroupMembersCount(groupId),
-      getGroupPosts(groupId),
-    ]);
+    try {
+      const [groupResult, countResult, postsResult] = await Promise.all([
+        getGroupDetail(groupId),
+        getGroupMembersCount(groupId),
+        getGroupPosts(groupId),
+      ]);
 
-    setLoading(false);
+      if (groupResult.error) {
+        setError(groupResult.error);
+        return;
+      }
+      if (countResult.error) {
+        setError(countResult.error);
+        return;
+      }
+      if (postsResult.error) {
+        setError(postsResult.error);
+        return;
+      }
 
-    if (groupResult.error) {
-      setError(groupResult.error);
-      return;
+      setGroup(groupResult.data);
+      setMembersCount(countResult.count);
+      setPosts(postsResult.data || []);
+    } catch (err) {
+      console.error("[useB2CGroupDetail] Error loading group:", err);
+      setError("Erro ao carregar grupo");
+    } finally {
+      setLoading(false);
     }
-    if (countResult.error) {
-      setError(countResult.error);
-      return;
-    }
-    if (postsResult.error) {
-      setError(postsResult.error);
-      return;
-    }
-
-    setGroup(groupResult.data);
-    setMembersCount(countResult.count);
-    setPosts(postsResult.data || []);
   }, [groupId]);
 
   const checkCanPost = useCallback(async (userId: string) => {

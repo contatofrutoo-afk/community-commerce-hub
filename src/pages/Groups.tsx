@@ -101,17 +101,24 @@ export default function Groups() {
   const loadGroups = async () => {
     if (!user || !tenant) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("tenant_id", tenant.id)
-      .order("created_at", { ascending: false });
-    setLoading(false);
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        toast.error("Erro ao carregar grupos");
+        setGroups([]);
+      } else {
+        setGroups(data || []);
+      }
+    } catch (err) {
+      console.error("[Groups] Error loading groups:", err);
       toast.error("Erro ao carregar grupos");
       setGroups([]);
-    } else {
-      setGroups(data || []);
+    } finally {
+      setLoading(false);
     }
   };
 
