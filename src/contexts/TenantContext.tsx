@@ -47,17 +47,9 @@ const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (): Promise<void> => {
     const uid = user?.id ?? null;
-    if (uid === lastLoadedUserId.current) {
-      if (!loadingRef.current) setLoading(false);
-      return;
-    }
+    if (uid === lastLoadedUserId.current) return;
     lastLoadedUserId.current = uid;
     if (!uid) {
-      setTenants([]);
-      setTenant(null);
-      setIsOwner(false);
-      setCanManage(false);
-      setBlocked(false);
       setLoading(false);
       loadingRef.current = false;
       return;
