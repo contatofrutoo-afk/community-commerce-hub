@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { z } from "zod";
 import Logo from "@/components/Logo";
@@ -21,6 +22,7 @@ export default function AuthB2B() {
   const { loading: authLoading, initializing, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
+  const [login, setLogin] = useState({ email: "", password: "" });
 
   if (initializing || authLoading) {
     return (
@@ -74,7 +76,7 @@ export default function AuthB2B() {
       email: z.string().trim().email("Email inválido"),
       password: z.string().min(1, "Senha obrigatória"),
     });
-    const { email, password } = { email: signup.email, password: signup.password };
+    const { email, password } = { email: login.email, password: login.password };
     const parsed = loginSchema.safeParse({ email, password });
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
@@ -100,94 +102,61 @@ export default function AuthB2B() {
         </Link>
 
         <div className="bg-card rounded-2xl shadow-elevated p-6 border border-border">
-          <div className="flex items-center gap-2 mb-4 text-primary">
-            <Building2 className="h-5 w-5" />
-            <span className="font-semibold text-lg">Criar minha marca</span>
-          </div>
+          <Tabs defaultValue="signup">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="login">Entrar</TabsTrigger>
+              <TabsTrigger value="signup">Criar conta</TabsTrigger>
+            </TabsList>
 
-          <p className="text-sm text-muted-foreground mb-4">
-            Crie uma conta de marca para gerenciar sua comunidade, métricas e membros.
-          </p>
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="li-email">Email</Label>
+                  <Input id="li-email" type="email" autoComplete="email" value={login.email}
+                    onChange={(e) => setLogin({ ...login, email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="li-pw">Senha</Label>
+                  <Input id="li-pw" type="password" autoComplete="current-password" value={login.password}
+                    onChange={(e) => setLogin({ ...login, password: e.target.value })} />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
+                  {loading ? "Entrando…" : "Entrar"}
+                </Button>
+              </form>
+            </TabsContent>
 
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="su-name">Nome da marca / responsável</Label>
-              <Input 
-                id="su-name" 
-                maxLength={80} 
-                value={signup.name} 
-                placeholder="Nome da sua marca"
-                onChange={(e) => setSignup({ ...signup, name: e.target.value })} 
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="su-email">Email</Label>
-              <Input 
-                id="su-email" 
-                type="email" 
-                autoComplete="email" 
-                value={signup.email}
-                onChange={(e) => setSignup({ ...signup, email: e.target.value })} 
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="su-pw">Senha</Label>
-              <Input 
-                id="su-pw" 
-                type="password" 
-                autoComplete="new-password" 
-                value={signup.password}
-                onChange={(e) => setSignup({ ...signup, password: e.target.value })} 
-              />
-            </div>
-            <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
-              {loading ? "Criando…" : "Criar conta da marca"}
-            </Button>
-          </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">ou</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="li-email">Email</Label>
-              <Input 
-                id="li-email" 
-                type="email" 
-                autoComplete="email" 
-                value={signup.email}
-                placeholder="Já tenho conta"
-                onChange={(e) => setSignup({ ...signup, email: e.target.value })} 
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="li-pw">Senha</Label>
-              <Input 
-                id="li-pw" 
-                type="password" 
-                autoComplete="current-password" 
-                value={signup.password}
-                onChange={(e) => setSignup({ ...signup, password: e.target.value })} 
-              />
-            </div>
-            <Button type="submit" variant="outline" disabled={loading} className="w-full">
-              Entrar com minha marca
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            <Link to="/auth" className="underline">Voltar para login</Link>
-          </p>
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4 mt-4">
+                <div className="flex items-center gap-2 mb-2 text-primary">
+                  <Building2 className="h-5 w-5" />
+                  <span className="font-semibold text-sm">Criar conta de marca</span>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="su-name">Nome da marca / responsável</Label>
+                  <Input id="su-name" maxLength={80} value={signup.name} placeholder="Nome da sua marca"
+                    onChange={(e) => setSignup({ ...signup, name: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="su-email">Email</Label>
+                  <Input id="su-email" type="email" autoComplete="email" value={signup.email}
+                    onChange={(e) => setSignup({ ...signup, email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="su-pw">Senha</Label>
+                  <Input id="su-pw" type="password" autoComplete="new-password" value={signup.password}
+                    onChange={(e) => setSignup({ ...signup, password: e.target.value })} />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full bg-brand text-primary-foreground hover:opacity-90">
+                  {loading ? "Criando…" : "Criar conta da marca"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Acesso imediato. Sem confirmação por email.
+          <Link to="/auth" className="underline">Voltar para login</Link>
         </p>
       </div>
     </main>
