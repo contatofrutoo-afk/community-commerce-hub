@@ -26,7 +26,6 @@ function slugify(text: string): string {
 
 export default function CommunityCreate() {
   const nav = useNavigate();
-  const { refreshAppRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ communityName: "", email: "", password: "" });
 
