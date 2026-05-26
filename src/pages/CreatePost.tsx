@@ -26,7 +26,6 @@ const REGISTER_FIELDS = [
 ];
 
 const MAX_VIDEO_DURATION = 180; // 3 minutes in seconds
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const VIDEO_ASPECT_RATIO = "9:16";
 const VIDEO_RESOLUTION = "1080x1920";
 const IMAGE_ASPECT_RATIO = "4:5";
@@ -111,12 +110,6 @@ export default function CreatePost() {
     const f = e.target.files?.[0];
     if (!f) return;
 
-    if (f.size > MAX_FILE_SIZE) {
-      toast.error(`Arquivo muito grande. Máximo permitido: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
-      e.target.value = "";
-      return;
-    }
-    
     // Validate video duration
     if (type === "video") {
       const video = document.createElement("video");
