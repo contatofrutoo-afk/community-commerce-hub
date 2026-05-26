@@ -59,19 +59,12 @@ export default function CommunityCreate() {
       });
       if (profileError) { setLoading(false); toast.error(profileError.message); return; }
 
-      const { data: tenantData, error: tenantError } = await supabase.from("tenants").insert({
+      const { error: tenantError } = await supabase.from("tenants").insert({
         name: parsed.data.communityName,
         slug,
-      }).select().single();
-      if (tenantError) { setLoading(false); toast.error(tenantError.message); return; }
-
-      const { error: membershipError } = await supabase.from("memberships").insert({
-        user_id: authData.user.id,
-        tenant_id: tenantData.id,
-        role: "owner",
-        is_active: true,
+        created_by: authData.user.id,
       });
-      if (membershipError) { setLoading(false); toast.error(membershipError.message); return; }
+      if (tenantError) { setLoading(false); toast.error(tenantError.message); return; }
 
       toast.success("Comunidade criada com sucesso!");
       nav("/feed/community", { replace: true });
