@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 import Logo from "@/components/Logo";
 import { Building2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 
 const signupSchema = z.object({
   communityName: z.string().trim().min(2, "Nome muito curto").max(80),
@@ -26,6 +28,8 @@ function slugify(text: string): string {
 
 export default function CommunityCreate() {
   const nav = useNavigate();
+  const { refreshAppRole } = useAuth();
+  const { refresh } = useTenant();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ communityName: "", email: "", password: "" });
 
@@ -59,6 +63,7 @@ export default function CommunityCreate() {
       });
       if (tenantError) { setLoading(false); toast.error(tenantError.message); return; }
 
+      await Promise.all([refresh(), refreshAppRole()]);
       toast.success("Comunidade criada com sucesso!");
       nav("/feed/community", { replace: true });
     } catch (err: any) {
