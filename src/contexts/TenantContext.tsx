@@ -23,12 +23,12 @@ type TenantCtx = {
   loading: boolean;
   realLoadDone: boolean;
   selectTenant: (id: string) => void;
-  refresh: () => Promise<void>;
+  refresh: (overrideUserId?: string) => Promise<void>;
 };
 
 const Ctx = createContext<TenantCtx>({
   tenant: null, tenants: [], isOwner: false, canManage: false, blocked: false, loading: true, realLoadDone: false,
-  selectTenant: () => {}, refresh: async () => {},
+  selectTenant: () => {}, refresh: async (_uid?: string) => {},
 });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
@@ -47,8 +47,8 @@ const [loading, setLoading] = useState(true);
   const loadingRef = useRef(false);
   const realLoadDoneRef = useRef(false);
 
-  const load = useCallback(async (): Promise<void> => {
-    const uid = user?.id ?? null;
+  const load = useCallback(async (overrideUserId?: string): Promise<void> => {
+    const uid = overrideUserId ?? user?.id ?? null;
     if (uid === lastLoadedUserId.current) {
       if (uid === null) {
         loadingRef.current = false;
@@ -76,7 +76,7 @@ const [loading, setLoading] = useState(true);
     const { data: mems } = await supabase
       .from("memberships")
       .select("tenant_id, role, is_active, tenants(*)")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("created_at", { ascending: true });
     const list = (mems ?? []).map((m: unknown) => (m as { tenants: Tenant })?.tenants).filter(Boolean) as Tenant[];
     const roles: TenantRoles = {} as TenantRoles;
@@ -198,9 +198,9 @@ if (targetTenant && targetRole) {
 
   useEffect(() => { load(); }, [load]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (overrideUserId?: string) => {
     lastLoadedUserId.current = null;
-    return load();
+    return load(overrideUserId);
   }, [load]);
 
   const selectTenant = useCallback((id: string, isManual: boolean = false) => {

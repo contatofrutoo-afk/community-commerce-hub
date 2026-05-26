@@ -99,7 +99,7 @@ export default function CommunityCreate() {
       localStorage.setItem("weaze:active_tenant", tenantData.id);
       localStorage.setItem("weaze:last_active_tenant", tenantData.id);
 
-      await Promise.all([refresh(), refreshAppRole()]);
+      await Promise.all([refresh(userId), refreshAppRole()]);
       toast.success("Comunidade criada com sucesso!");
       nav("/feed/community", { replace: true });
     } catch (err: any) {
