@@ -56,12 +56,22 @@ export default function CommunityCreate() {
       if (signUpError) { setLoading(false); toast.error(signUpError.message); return; }
       if (!authData.user) { setLoading(false); toast.error("Erro ao criar usuário"); return; }
 
-      const { error: tenantError } = await supabase.from("tenants").insert({
+      const { data: tenantData, error: tenantError } = await supabase.from("tenants").insert({
         name: parsed.data.communityName,
         slug,
         created_by: authData.user.id,
+      }).select("id").single();
+      if (tenantError || !tenantData) { setLoading(false); toast.error(tenantError?.message || "Erro ao criar comunidade"); return; }
+
+      const { error: memError } = await supabase.from("memberships").insert({
+        tenant_id: tenantData.id,
+        user_id: authData.user.id,
+        role: "owner",
       });
-      if (tenantError) { setLoading(false); toast.error(tenantError.message); return; }
+      if (memError) { setLoading(false); toast.error(memError.message); return; }
+
+      localStorage.setItem("weaze:active_tenant", tenantData.id);
+      localStorage.setItem("weaze:last_active_tenant", tenantData.id);
 
       await Promise.all([refresh(), refreshAppRole()]);
       toast.success("Comunidade criada com sucesso!");

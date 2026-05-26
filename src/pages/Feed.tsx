@@ -24,7 +24,7 @@ export default function Feed() {
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
-  const [initialLoadDone, setInitialLoadDone] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const loadingRef = useRef(false);
@@ -86,6 +86,7 @@ export default function Feed() {
     } finally {
       loadingRef.current = false;
       setLoading(false);
+      setInitialLoadDone(true);
     }
   }, [tenant?.id]);
 
@@ -141,9 +142,6 @@ export default function Feed() {
     })();
   }, [tenant?.id]);
 
-  // Initial load only — initialLoadDone is set to true SYNCHRONOUSLY
-  // so "Carregando..." never gets stuck waiting on loadPosts.
-  // Posts populate asynchronously in the background.
   useEffect(() => {
     if (!tenant) {
       setInitialLoadDone(true);
@@ -152,7 +150,6 @@ export default function Feed() {
     doneRef.current = false;
     loadingRef.current = false;
     setPosts([]); setDone(false); setActiveIdx(0);
-    setInitialLoadDone(true);
     loadPosts(0);
   }, [tenant?.id, loadPosts]);
 
