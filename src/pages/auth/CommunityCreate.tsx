@@ -52,13 +52,6 @@ export default function CommunityCreate() {
       if (signUpError) { setLoading(false); toast.error(signUpError.message); return; }
       if (!authData.user) { setLoading(false); toast.error("Erro ao criar usuário"); return; }
 
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        user_id: authData.user.id,
-        name: parsed.data.communityName,
-        email: parsed.data.email,
-      });
-      if (profileError) { setLoading(false); toast.error(profileError.message); return; }
-
       const { error: tenantError } = await supabase.from("tenants").insert({
         name: parsed.data.communityName,
         slug,
