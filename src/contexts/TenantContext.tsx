@@ -47,11 +47,17 @@ const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (): Promise<void> => {
     const uid = user?.id ?? null;
-    if (uid === lastLoadedUserId.current) return;
+    if (uid === lastLoadedUserId.current) {
+      if (uid === null) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+      return;
+    }
     lastLoadedUserId.current = uid;
     if (!uid) {
-      setLoading(false);
       loadingRef.current = false;
+      setLoading(false);
       return;
     }
     loadingRef.current = true;

@@ -122,10 +122,11 @@ const CommunityCreate = lazy(() => import("./pages/auth/CommunityCreate"));
 const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading, initializing, isB2C, appRole } = useAuth();
+  const { user, loading: authLoading, initializing, isB2C, appRole, refreshAppRole } = useAuth();
   const { loading: tenantLoading, tenant, blocked } = useTenant();
   const tenantEverLoaded = useRef(false);
   const appRoleStuckRef = useRef<number>(0);
+  const appRoleFallbackRef = useRef(false);
 
   if (!tenantLoading) tenantEverLoaded.current = true;
 
@@ -136,18 +137,19 @@ const Protected = ({ children }: { children: JSX.Element }) => {
     if (appRoleStuckRef.current === 0) {
       appRoleStuckRef.current = Date.now();
     } else if (Date.now() - appRoleStuckRef.current > 10_000) {
-      appRoleStuckRef.current = 0;
-      return <Navigate to="/auth" replace />;
+      if (!appRoleFallbackRef.current) {
+        appRoleFallbackRef.current = true;
+        refreshAppRole();
+      }
+      return children;
     }
     return <Loading />;
   }
   appRoleStuckRef.current = 0;
+  appRoleFallbackRef.current = false;
   if (tenantLoading && !tenantEverLoaded.current) return <Loading />;
   if (blocked) return <Navigate to="/blocked" replace />;
   if (!tenant) {
-    if (isB2C) {
-      return children;
-    }
     return children;
   }
 
