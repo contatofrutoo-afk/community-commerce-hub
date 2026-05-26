@@ -41,6 +41,8 @@ export default function CommunityCreate() {
 
     try {
       const slug = slugify(parsed.data.communityName);
+      let userId: string;
+
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
@@ -53,19 +55,39 @@ export default function CommunityCreate() {
         },
       });
 
-      if (signUpError) { setLoading(false); toast.error(signUpError.message); return; }
-      if (!authData.user) { setLoading(false); toast.error("Erro ao criar usuário"); return; }
+      if (signUpError?.message?.includes("User already registered")) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: parsed.data.email,
+          password: parsed.data.password,
+        });
+        if (signInError) {
+          setLoading(false);
+          toast.error("Este email já possui cadastro. Faça login com sua senha.");
+          return;
+        }
+        userId = signInData.user.id;
+      } else if (signUpError) {
+        setLoading(false);
+        toast.error(signUpError.message);
+        return;
+      } else if (!authData.user) {
+        setLoading(false);
+        toast.error("Erro ao criar usuário");
+        return;
+      } else {
+        userId = authData.user.id;
+      }
 
       const { data: tenantData, error: tenantError } = await supabase.from("tenants").insert({
         name: parsed.data.communityName,
         slug,
-        created_by: authData.user.id,
+        created_by: userId,
       }).select("id").single();
       if (tenantError || !tenantData) { setLoading(false); toast.error(tenantError?.message || "Erro ao criar comunidade"); return; }
 
       const { error: memError } = await supabase.from("memberships").insert({
         tenant_id: tenantData.id,
-        user_id: authData.user.id,
+        user_id: userId,
         role: "owner",
       });
       if (memError) { setLoading(false); toast.error(memError.message); return; }
