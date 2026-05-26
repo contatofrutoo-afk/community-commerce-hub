@@ -53,7 +53,6 @@ export default function CommentsSheet({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setImage(file);
     setImagePreview(URL.createObjectURL(file));
   };

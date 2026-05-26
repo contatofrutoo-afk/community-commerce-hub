@@ -32,7 +32,6 @@ export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Pro
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
-    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setLogoFile(f);
     setLogo(URL.createObjectURL(f));
   };
@@ -136,7 +135,6 @@ export default function CreateBrandDialog({ open, onOpenChange, onCreated }: Pro
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
               <div className="text-sm text-muted-foreground">
                 <p>PNG, JPG ou GIF</p>
-                <p>Máx. 5MB</p>
               </div>
             </div>
           </div>

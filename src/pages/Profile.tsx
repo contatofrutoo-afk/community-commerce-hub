@@ -46,7 +46,6 @@ export default function Profile() {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
-    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setAvatarFile(f);
     setAvatar(URL.createObjectURL(f));
   };
@@ -55,7 +54,6 @@ export default function Profile() {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
-    if (f.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter menos de 5MB"); return; }
     setTenantLogoFile(f);
     setTenantLogo(URL.createObjectURL(f));
   };
