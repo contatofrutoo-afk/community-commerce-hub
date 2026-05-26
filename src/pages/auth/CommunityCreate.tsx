@@ -78,11 +78,22 @@ export default function CommunityCreate() {
         userId = authData.user.id;
       }
 
-      const { data: tenantData, error: tenantError } = await supabase.from("tenants").insert({
-        name: parsed.data.communityName,
-        slug,
-        created_by: userId,
-      }).select("id").single();
+      let finalSlug = slug;
+      let tenantData: { id: string } | null = null;
+      let tenantError: any = null;
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const result = await supabase.from("tenants").insert({
+          name: parsed.data.communityName,
+          slug: attempt === 0 ? finalSlug : `${finalSlug}-${attempt}`,
+          created_by: userId,
+        }).select("id").single();
+        tenantData = result.data;
+        tenantError = result.error;
+
+        if (!tenantError || !tenantError.message?.includes("tenants_slug_key")) break;
+        if (attempt === 0) finalSlug = slug.slice(0, 60);
+      }
       if (tenantError || !tenantData) { setLoading(false); toast.error(tenantError?.message || "Erro ao criar comunidade"); return; }
 
       const { error: memError } = await supabase.from("memberships").insert({
