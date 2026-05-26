@@ -118,6 +118,8 @@ const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const ShareLanding = lazy(() => import("./pages/ShareLanding"));
 const WaitingApproval = lazy(() => import("./pages/WaitingApproval"));
 const BlockedPage = lazy(() => import("./pages/BlockedPage"));
+const CommunityCreate = lazy(() => import("./pages/auth/CommunityCreate"));
+const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing, isB2C, appRole } = useAuth();
@@ -207,6 +209,9 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/auth/community-create" element={<CommunityCreate />} />
+
+                    <Route path="/feed/community" element={<Protected><CommunityFeedEmpty /></Protected>} />
 
                     <Route path="/m/:slug" element={<CommunityPage />} />
                     <Route path="/c/:slug" element={<CommunityPage />} />
