@@ -96,13 +96,6 @@ export default function CommunityCreate() {
       }
       if (tenantError || !tenantData) { setLoading(false); toast.error(tenantError?.message || "Erro ao criar comunidade"); return; }
 
-      const { error: memError } = await supabase.from("memberships").insert({
-        tenant_id: tenantData.id,
-        user_id: userId,
-        role: "owner",
-      });
-      if (memError) { setLoading(false); toast.error(memError.message); return; }
-
       localStorage.setItem("weaze:active_tenant", tenantData.id);
       localStorage.setItem("weaze:last_active_tenant", tenantData.id);
 
