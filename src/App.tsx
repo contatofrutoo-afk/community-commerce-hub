@@ -123,9 +123,8 @@ const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, loading: authLoading, initializing, isB2C, appRole, refreshAppRole } = useAuth();
-  const { loading: tenantLoading, tenant, blocked } = useTenant();
+  const { loading: tenantLoading, tenant, blocked, realLoadDone } = useTenant();
   const [forceRender, setForceRender] = useState(false);
-  const tenantEverLoaded = useRef(false);
   const appRoleStuckRef = useRef<number>(0);
   const appRoleFallbackRef = useRef(false);
 
@@ -135,8 +134,6 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   }, []);
 
   if (forceRender) return children;
-
-  if (!tenantLoading) tenantEverLoaded.current = true;
 
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
@@ -155,7 +152,8 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   }
   appRoleStuckRef.current = 0;
   appRoleFallbackRef.current = false;
-  if (tenantLoading && !tenantEverLoaded.current) return <Loading />;
+  if (user && !realLoadDone && !tenantLoading && !tenant) return <Loading />;
+  if (tenantLoading && !realLoadDone) return <Loading />;
   if (blocked) return <Navigate to="/blocked" replace />;
   if (!tenant) {
     return children;

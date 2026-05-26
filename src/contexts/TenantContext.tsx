@@ -21,12 +21,13 @@ type TenantCtx = {
   canManage: boolean;
   blocked: boolean;
   loading: boolean;
+  realLoadDone: boolean;
   selectTenant: (id: string) => void;
   refresh: () => Promise<void>;
 };
 
 const Ctx = createContext<TenantCtx>({
-  tenant: null, tenants: [], isOwner: false, canManage: false, blocked: false, loading: true,
+  tenant: null, tenants: [], isOwner: false, canManage: false, blocked: false, loading: true, realLoadDone: false,
   selectTenant: () => {}, refresh: async () => {},
 });
 
@@ -44,6 +45,7 @@ const [loading, setLoading] = useState(true);
   const [manualSelectedTenantId, setManualSelectedTenantId] = useState<string | null>(null);
   const lastLoadedUserId = useRef<string | null>(null);
   const loadingRef = useRef(false);
+  const realLoadDoneRef = useRef(false);
 
   const load = useCallback(async (): Promise<void> => {
     const uid = user?.id ?? null;
@@ -184,6 +186,7 @@ if (targetTenant && targetRole) {
       setCanManage(false);
       setBlocked(false);
     }
+      realLoadDoneRef.current = true;
     } catch (err) {
       console.error("[TenantContext] Error loading tenants:", err);
     } finally {
@@ -218,7 +221,7 @@ if (targetTenant && targetRole) {
   }, [tenants, memRoles, memActive]);
 
   return (
-      <Ctx.Provider value={{ tenant, tenants, isOwner, canManage, blocked, loading, selectTenant, refresh }}>
+      <Ctx.Provider value={{ tenant, tenants, isOwner, canManage, blocked, loading, realLoadDone: realLoadDoneRef.current, selectTenant, refresh }}>
       {children}
     </Ctx.Provider>
   );
