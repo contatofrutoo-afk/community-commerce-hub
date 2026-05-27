@@ -7,7 +7,6 @@ import {
   HeroSection,
   ProblemSection,
   ConnectionSection,
-  SolutionSection,
   HowItWorksSection,
   ProductSection,
   WhoSection,
@@ -40,9 +39,7 @@ export default function Landing() {
       <HeroSection />
       <ProblemSection />
       <ConnectionSection />
-      <SolutionSection />
-      <section id="como-funciona">
-        <HowItWorksSection />
+      <HowItWorksSection />
       </section>
       <ProductSection />
       <WhoSection />
