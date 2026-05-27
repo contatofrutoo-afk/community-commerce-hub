@@ -50,86 +50,14 @@ export default function PricingSection() {
           </p>
         </motion.div>
 
-        {/* Mobile: anual first, monthly second */}
-        <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 items-stretch">
-          {/* MONTHLY CARD — left on desktop, bottom on mobile */}
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-stretch">
+          {/* ANNUAL CARD — left on desktop, top on mobile */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="flex-1 flex flex-col bg-white rounded-3xl border border-[#1a1a1a]/10 shadow-xl overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-6 pt-8 pb-4 text-center border-b border-[#1a1a1a]/5">
-              <h3 className="font-display text-xl text-[#1a1a1a] mb-1">
-                Plano Mensal
-              </h3>
-              <p className="text-xs text-[#6a6a6a]">Sem compromisso</p>
-            </div>
-
-            {/* Price */}
-            <div className="px-6 py-6 text-center">
-              <div className="flex items-baseline justify-center gap-0.5">
-                <span className="text-lg text-[#6a6a6a]">R$</span>
-                <span className="font-display text-5xl font-bold text-[#1a1a1a]">
-                  127
-                </span>
-                <span className="text-base text-[#6a6a6a]">/mês</span>
-              </div>
-              <p className="text-sm text-[#6a6a6a] mt-2">
-                Mesmo acesso completo. Sem compromisso.
-              </p>
-            </div>
-
-            {/* Features */}
-            <div className="px-6 pb-2 flex-1">
-              <ul className="space-y-3">
-                {features.map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-[#630091]/10 flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-[#630091]" />
-                    </div>
-                    <span className="text-sm text-[#1a1a1a]">{item}</span>
-                  </li>
-                ))}
-                <li className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#630091]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="h-3 w-3 text-[#630091]" />
-                  </div>
-                  <span className="text-sm text-[#1a1a1a]">Cancele quando quiser</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Footer text */}
-            <div className="px-6 pt-4">
-              <p className="text-xs text-[#6a6a6a] text-center">
-                Ideal para quem deseja começar sem compromisso.
-              </p>
-            </div>
-
-            {/* CTA */}
-            <div className="px-6 pb-8 pt-6">
-              <motion.button
-                onClick={() => handlePaymentClick("monthly")}
-                className="w-full inline-flex items-center justify-center gap-2 bg-white text-[#1a1a1a] border-2 border-[#1a1a1a]/10 hover:border-[#630091]/30 px-8 py-4 rounded-full font-semibold text-base transition-colors"
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                Começar agora
-                <ArrowRight className="h-4 w-4" />
-              </motion.button>
-            </div>
-          </motion.div>
-
-          {/* ANNUAL CARD — right on desktop, top on mobile (highlighted) */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="flex-1 flex flex-col bg-white rounded-3xl border-2 border-[#630091]/30 shadow-2xl overflow-hidden relative"
+            className="flex-1 flex flex-col bg-white rounded-3xl border-2 border-[#630091]/30 shadow-2xl relative"
             style={{
               boxShadow:
                 "0 20px 60px -15px rgba(99, 0, 145, 0.25), 0 0 0 1px rgba(99, 0, 145, 0.08)",
@@ -163,7 +91,7 @@ export default function PricingSection() {
             </div>
 
             {/* Header */}
-            <div className="px-6 pt-10 pb-4 text-center border-b border-[#630091]/10 bg-gradient-to-r from-[#630091]/5 via-[#d81e62]/5 to-[#630091]/5">
+            <div className="px-6 pt-12 pb-4 text-center border-b border-[#630091]/10 bg-gradient-to-r from-[#630091]/5 via-[#d81e62]/5 to-[#630091]/5 rounded-t-3xl">
               <h3 className="font-display text-xl text-[#1a1a1a] mb-1">
                 Plano Anual
               </h3>
@@ -244,6 +172,77 @@ export default function PricingSection() {
                 whileTap={{ scale: 0.98 }}
               >
                 Escolher plano anual
+                <ArrowRight className="h-4 w-4" />
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* MONTHLY CARD — right on desktop, bottom on mobile */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+            className="flex-1 flex flex-col bg-white rounded-3xl border border-[#1a1a1a]/10 shadow-xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="px-6 pt-8 pb-4 text-center border-b border-[#1a1a1a]/5">
+              <h3 className="font-display text-xl text-[#1a1a1a] mb-1">
+                Plano Mensal
+              </h3>
+              <p className="text-xs text-[#6a6a6a]">Sem compromisso</p>
+            </div>
+
+            {/* Price */}
+            <div className="px-6 py-6 text-center">
+              <div className="flex items-baseline justify-center gap-0.5">
+                <span className="text-lg text-[#6a6a6a]">R$</span>
+                <span className="font-display text-5xl font-bold text-[#1a1a1a]">
+                  127
+                </span>
+                <span className="text-base text-[#6a6a6a]">/mês</span>
+              </div>
+              <p className="text-sm text-[#6a6a6a] mt-2">
+                Mesmo acesso completo. Sem compromisso.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="px-6 pb-2 flex-1">
+              <ul className="space-y-3">
+                {features.map((item) => (
+                  <li key={item} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-[#630091]/10 flex items-center justify-center flex-shrink-0">
+                      <Check className="h-3 w-3 text-[#630091]" />
+                    </div>
+                    <span className="text-sm text-[#1a1a1a]">{item}</span>
+                  </li>
+                ))}
+                <li className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#630091]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="h-3 w-3 text-[#630091]" />
+                  </div>
+                  <span className="text-sm text-[#1a1a1a]">Cancele quando quiser</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Footer text */}
+            <div className="px-6 pt-4">
+              <p className="text-xs text-[#6a6a6a] text-center">
+                Ideal para quem deseja começar sem compromisso.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="px-6 pb-8 pt-6">
+              <motion.button
+                onClick={() => handlePaymentClick("monthly")}
+                className="w-full inline-flex items-center justify-center gap-2 bg-white text-[#1a1a1a] border-2 border-[#1a1a1a]/10 hover:border-[#630091]/30 px-8 py-4 rounded-full font-semibold text-base transition-colors"
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Começar agora
                 <ArrowRight className="h-4 w-4" />
               </motion.button>
             </div>
