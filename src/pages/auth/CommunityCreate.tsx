@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { z } from "zod";
 import Logo from "@/components/Logo";
-import { Building2 } from "lucide-react";
+import { Building2, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -112,6 +112,14 @@ export default function CommunityCreate() {
     <main className="min-h-screen bg-background grid place-items-center px-6 py-10 relative overflow-hidden">
       <div className="absolute inset-0 bg-brand-soft pointer-events-none" />
       <div className="w-full max-w-sm relative">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar para landing
+        </Link>
+
         <Link to="/" className="flex items-center justify-center mb-10">
           <Logo size={160} />
         </Link>
