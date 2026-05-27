@@ -40,7 +40,6 @@ export default function Landing() {
       <ProblemSection />
       <ConnectionSection />
       <HowItWorksSection />
-      </section>
       <ProductSection />
       <WhoSection />
       <ComparisonSection />
