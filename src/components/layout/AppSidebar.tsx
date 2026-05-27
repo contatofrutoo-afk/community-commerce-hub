@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users, Folder, ChevronLeft } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, BarChart3, Bell, Plus, Users, Folder } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
