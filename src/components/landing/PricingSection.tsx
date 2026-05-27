@@ -101,10 +101,11 @@ export default function PricingSection() {
             {/* Price */}
             <div className="px-6 py-6 text-center">
               <div className="flex items-baseline justify-center gap-0.5">
-                <span className="text-lg text-[#6a6a6a]">10x de R$</span>
+                <span className="text-lg text-[#6a6a6a]">R$</span>
                 <span className="font-display text-5xl font-bold text-[#1a1a1a]">
                   87
                 </span>
+                <span className="text-base text-[#6a6a6a]">em 10x</span>
               </div>
               <p className="text-sm text-[#6a6a6a] mt-2">
                 Receba 12 meses de acesso
