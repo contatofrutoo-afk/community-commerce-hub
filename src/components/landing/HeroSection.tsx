@@ -52,16 +52,6 @@ export default function HeroSection() {
         >
           {/* LEFT */}
           <div>
-            <motion.div
-              variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#630091]/10 to-[#d81e62]/10 border border-[#630091]/15 mb-7"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-[#d81e62]" />
-              <span className="text-xs font-medium text-[#630091] tracking-wide">
-                A nova plataforma de comunidades
-              </span>
-            </motion.div>
-
             <motion.h1
               className="font-display text-5xl sm:text-6xl lg:text-[4.25rem] leading-[1.02] tracking-tight text-[#0a0a0a] mb-6"
             >
