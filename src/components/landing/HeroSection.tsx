@@ -19,7 +19,7 @@ const stagger = {
 export default function HeroSection() {
   return (
     <section
-      className="relative min-h-screen flex flex-col justify-center pt-12 pb-8 overflow-hidden bg-white"
+      className="relative min-h-screen flex flex-col justify-center pt-24 pb-8 overflow-hidden bg-white"
     >
       {/* Animated gradient orbs */}
       <motion.div
