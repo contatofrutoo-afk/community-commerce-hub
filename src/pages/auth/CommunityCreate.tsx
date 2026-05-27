@@ -114,10 +114,10 @@ export default function CommunityCreate() {
       <div className="w-full max-w-sm relative">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-sm text-foreground hover:text-brand transition-colors mb-6 font-medium"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar para landing
+          <ArrowLeft className="h-5 w-5" />
+          Voltar
         </Link>
 
         <Link to="/" className="flex items-center justify-center mb-10">
