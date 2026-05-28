@@ -122,9 +122,12 @@ const CommunityCreate = lazy(() => import("./pages/auth/CommunityCreate"));
 const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user } = useAuth();
+  const { user, initializing } = useAuth();
   const { blocked } = useTenant();
 
+  // Aguarda o Supabase restaurar a sessão antes de decidir rota — previne
+  // o redirect prematuro para /auth durante page refresh (causa do flicker).
+  if (initializing) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
   if (blocked) return <Navigate to="/blocked" replace />;
 

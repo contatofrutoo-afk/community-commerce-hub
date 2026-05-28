@@ -9,7 +9,7 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import FeedLayout from "@/components/layout/FeedLayout";
 import CreateBrandDialog from "@/components/CreateBrandDialog";
-import { Sparkles, Plus, Play, Video } from "lucide-react";
+import { Plus, Play, Video } from "lucide-react";
 
 const PAGE = 8;
 
@@ -26,14 +26,17 @@ export default function Feed() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
-  const hasLoadedOnce = useRef(false);
 
-  // Safety timeout: impede "Carregando…" eterno
-  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Safety timeout: impede "Carregando…" eterno. Desliga-se após a primeira
+  // resolução de initialLoadDone, evitando reset não-intencional do estado.
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (initialLoadDone) return;
-    loadTimeoutRef.current = setTimeout(() => setInitialLoadDone(true), 25_000);
-    return () => { if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current); };
+    if (initialLoadDone) {
+      if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+      return;
+    }
+    safetyTimerRef.current = setTimeout(() => setInitialLoadDone(true), 25_000);
+    return () => { if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current); };
   }, [initialLoadDone]);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -94,7 +97,6 @@ export default function Feed() {
         setDone(true);
       }
       setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
-      hasLoadedOnce.current = true;
     } catch (err) {
       console.error("[Feed] Error loading posts:", err);
     } finally {
@@ -211,12 +213,6 @@ export default function Feed() {
       delete (c as any)?.__observer;
     };
   }, [posts.length]);
-
-  useEffect(() => {
-    if (hasLoadedOnce.current && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [initialLoadDone]);
 
   // Loading visualmente idêntico ao de App.tsx e Auth.tsx — zero flash
   if (!initialLoadDone) return (
