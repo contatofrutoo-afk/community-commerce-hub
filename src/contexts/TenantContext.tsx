@@ -53,7 +53,6 @@ const [loading, setLoading] = useState(true);
       if (uid === null) {
         loadingRef.current = false;
         setLoading(false);
-        setRealLoadDone(true);
       }
       return;
     }
@@ -61,7 +60,6 @@ const [loading, setLoading] = useState(true);
     if (!uid) {
       loadingRef.current = false;
       setLoading(false);
-      setRealLoadDone(true);
       return;
     }
     loadingRef.current = true;
@@ -192,6 +190,7 @@ if (targetTenant && targetRole) {
       setRealLoadDone(true);
     } catch (err) {
       console.error("[TenantContext] Error loading tenants:", err);
+      setRealLoadDone(true);
     } finally {
       clearTimeout(safetyTimeout);
       loadingRef.current = false;
