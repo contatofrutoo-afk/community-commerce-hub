@@ -7,10 +7,15 @@ import Logo from "@/components/Logo";
 
 export default function AppSidebar() {
   const { pathname } = useLocation();
-  const { isB2B, isB2C, appRole } = useAuth();
-  const { tenant, isOwner, canManage } = useTenant();
+  const { isB2B, isB2C, appRole, initializing, loading: authLoading } = useAuth();
+  const { tenant, isOwner, canManage, loading: tenantLoading, realLoadDone } = useTenant();
 
-  const showAdminItems = isB2B || appRole === "admin" || isOwner || canManage;
+  // Só decide os itens de nav após auth e tenant estarem resolvidos,
+  // impedindo o flash de itens B2C para usuários B2B.
+  const authResolved = !initializing && !authLoading && realLoadDone;
+  const showAdminItems = authResolved && (isB2B || appRole === "admin" || isOwner || canManage);
+  const isB2CByMetadata = user?.user_metadata?.account_type === "b2c";
+  const showB2CItems  = authResolved && !showAdminItems && (isB2C || isB2CByMetadata);
 
   const items = [
     { to: "/feed", icon: Home, label: "Feed" },
@@ -21,9 +26,9 @@ export default function AppSidebar() {
     ...(showAdminItems ? [{ to: "/metrics", icon: BarChart3, label: "Métricas" }] : []),
     ...(showAdminItems ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
     ...(showAdminItems ? [{ to: "/groups", icon: Folder, label: "Grupos" }] : []),
-    ...(!showAdminItems && isB2C ? [{ to: "/groups/b2c", icon: Folder, label: "Grupos" }] : []),
+    ...(showB2CItems ? [{ to: "/groups/b2c", icon: Folder, label: "Grupos" }] : []),
     ...(showAdminItems && tenant?.slug ? [{ to: `/m/${tenant.slug}`, icon: Building2, label: "Comunidade" }] : []),
-    ...(!showAdminItems ? [{ to: "/profile", icon: User, label: "Perfil" }] : []),
+    ...(showB2CItems ? [{ to: "/profile", icon: User, label: "Perfil" }] : []),
   ];
 
   const isActive = (to: string) =>

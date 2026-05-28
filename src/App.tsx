@@ -166,6 +166,23 @@ const NeedsTenant = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+const B2COnly = ({ children }: { children: JSX.Element }) => {
+  const { user, loading, initializing, isB2B, appRole } = useAuth();
+  const { isOwner, canManage, loading: tenantLoading, realLoadDone } = useTenant();
+
+  const authResolved = !initializing && !loading && realLoadDone;
+  const isEffectivelyB2B = authResolved && (isB2B || appRole === "admin" || isOwner || canManage);
+  const isB2BByMeta = user?.user_metadata?.account_type === "b2b";
+
+  if (initializing || loading) return <Loading />;
+  if (tenantLoading) return <Loading />;
+  if (!realLoadDone) return <Loading />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (isEffectivelyB2B || isB2BByMeta) return <Navigate to="/feed" replace />;
+
+  return children;
+};
+
 const NeedsAccess = ({ children }: { children: JSX.Element }) => {
   const { user, loading, initializing } = useAuth();
 
@@ -235,7 +252,7 @@ const App = () => (
                     <Route path="/groups/b2c" element={<Protected><GroupsPageB2C /></Protected>} />
                     <Route path="/groups/member/:groupId" element={<Protected><GroupDetailB2C /></Protected>} />
                     <Route path="/groups/:groupId" element={<Protected><GroupDetail /></Protected>} />
-                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
+                    <Route path="/profile" element={<Protected><B2COnly><Profile /></B2COnly></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="/blocked" element={<BlockedPage />} />
                     <Route path="*" element={<Navigate to="/feed" replace />} />

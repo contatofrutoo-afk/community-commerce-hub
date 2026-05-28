@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -8,24 +8,46 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, Building2, Upload, MapPin, Copy, ExternalLink, Link2 } from "lucide-react";
+import { LogOut, Upload, MapPin, Copy, ExternalLink, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
+const LoadingSpinner = () => (
+  <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-t-brand border-brand/20 rounded-full animate-spin" />
+      <span className="text-sm text-muted-foreground">Carregando...</span>
+    </div>
+  </div>
+);
+
 export default function Profile() {
-  const { user, signOut, isB2B, appRole } = useAuth();
-  const { tenant, isOwner, canManage, refresh } = useTenant();
+  const { user, signOut, isB2B, appRole, initializing, loading: authLoading } = useAuth();
+  const { tenant, isOwner, canManage, refresh, loading: tenantLoading, realLoadDone } = useTenant();
 
   const nav = useNavigate();
 
-  useEffect(() => {
-    if (isB2B || appRole === "admin" || isOwner || canManage) {
-      const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
-      nav(communityPath, { replace: true });
-    }
-  }, [isB2B, appRole, isOwner, canManage, tenant?.slug, nav]);
-  
-  // Mostrar para B2B, admin ou owner/admin de comunidade
-  const canShare = isB2B || appRole === "admin" || isOwner || canManage;
+  // Determina se é admin/B2B assim que qualquer flag estiver disponível
+  const isAdminUser = isB2B || appRole === "admin" || isOwner || canManage;
+  const isB2BByMetadata = user?.user_metadata?.account_type === "b2b";
+
+  // Redirect imediato via Navigate se já for B2B/admin (síncrono, sem flash)
+  if (!initializing && !authLoading && realLoadDone && (isAdminUser || isB2BByMetadata)) {
+    const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
+    return <Navigate to={communityPath} replace />;
+  }
+
+  // Enquanto ainda está carregando auth ou tenant, mostra spinner
+  if (initializing || authLoading || tenantLoading || !realLoadDone) {
+    return <LoadingSpinner />;
+  }
+
+  // Se já resolveu e é B2B/admin, redireciona
+  if (isAdminUser || isB2BByMetadata) {
+    const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
+    return <Navigate to={communityPath} replace />;
+  }
+
+  const canShare = false; // B2C não compartilha comunidade via /profile
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");

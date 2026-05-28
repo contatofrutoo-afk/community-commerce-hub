@@ -15,7 +15,7 @@ const PAGE = 8;
 
 export default function Feed() {
   const { tenant, realLoadDone } = useTenant();
-  const { user, isB2B } = useAuth();
+  const { user, isB2B, appRole } = useAuth();
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -229,7 +229,8 @@ export default function Feed() {
   );
 
   // B2B sem tenant → criar marca
-  if (!tenant && isB2B) {
+  const isEffectivelyB2B = isB2B || appRole === "admin" || user?.user_metadata?.account_type === "b2b";
+  if (!tenant && isEffectivelyB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
@@ -315,7 +316,7 @@ export default function Feed() {
               <Video className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
               <h2 className="font-display text-3xl mb-2">Sua comunidade ainda não possui conteúdo</h2>
               <p className="text-muted-foreground">Os conteúdos aparecerão aqui assim que forem publicados.</p>
-              {isB2B && (
+              {isEffectivelyB2B && (
                 <Button 
                   size="lg" 
                   onClick={() => nav("/create")}

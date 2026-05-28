@@ -42,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userState, setUserState] = useState<UserState | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const [redirected, setRedirected] = useState(false);
+  const metadataRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.warn("[AuthContext] Safety timeout fired - forcing init to finish");
         setLoading(false);
         setInitializing(false);
-        setAppRole(prev => prev === null ? "b2c" : prev);
+        setAppRole(prev => prev === null ? (metadataRef.current === "b2b" ? "b2b" : "b2c") : prev);
       }
     }, 8_000);
 
@@ -62,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setSession(data.session);
         setUser(data.session?.user ?? null);
+        metadataRef.current = data.session?.user?.user_metadata?.account_type ?? null;
         
         if (!data.session) {
           clearTimeout(authTimeout);
@@ -137,6 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // would trigger unnecessary re-renders in TenantContext and other consumers.
         if (s) {
           setSession(s);
+          metadataRef.current = s.user?.user_metadata?.account_type ?? metadataRef.current;
           // Re-check role on token refresh to prevent stale appRole over long sessions
           try {
             const [memsRes, uRolesRes] = await Promise.all([
@@ -200,6 +203,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setSession(s);
       setUser(s?.user ?? null);
+      metadataRef.current = s?.user?.user_metadata?.account_type ?? metadataRef.current;
       setRedirected(false);
 
       if (s?.user) {
@@ -208,7 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const signInTimeout = setTimeout(() => {
             if (isMounted) {
               setLoading(false);
-              setAppRole(prev => prev === null ? "b2c" : prev);
+              setAppRole(prev => prev === null ? (metadataRef.current === "b2b" ? "b2b" : "b2c") : prev);
             }
           }, 8_000);
           try {

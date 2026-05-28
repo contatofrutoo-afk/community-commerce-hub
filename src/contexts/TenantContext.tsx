@@ -26,10 +26,10 @@ type TenantCtx = {
   refresh: (overrideUserId?: string) => Promise<void>;
 };
 
-const Ctx = createContext<TenantCtx>({
-  tenant: null, tenants: [], isOwner: false, canManage: false, blocked: false, loading: true, realLoadDone: false,
-  selectTenant: () => {}, refresh: async (_uid?: string) => {}, realLoadDone: false,
-});
+  const Ctx = createContext<TenantCtx>({
+    tenant: null, tenants: [], isOwner: false, canManage: false, blocked: false, loading: true, realLoadDone: false,
+    selectTenant: () => {}, refresh: async (_uid?: string) => {},
+  });
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
