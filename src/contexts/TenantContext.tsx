@@ -68,10 +68,12 @@ const [loading, setLoading] = useState(true);
 
     const safetyTimeout = setTimeout(() => {
       if (loadingRef.current) {
+        console.warn("[TenantContext] Safety timeout fired - forcing loading to finish");
         loadingRef.current = false;
         setLoading(false);
+        setRealLoadDone(true);
       }
-    }, 20_000);
+    }, 8_000);
 
     try {
     const { data: mems } = await supabase

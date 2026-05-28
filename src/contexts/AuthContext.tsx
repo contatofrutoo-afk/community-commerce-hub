@@ -48,10 +48,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const authTimeout = setTimeout(() => {
       if (isMounted) {
+        console.warn("[AuthContext] Safety timeout fired - forcing init to finish");
         setLoading(false);
         setInitializing(false);
+        setAppRole(prev => prev === null ? "b2c" : prev);
       }
-    }, 15_000);
+    }, 8_000);
 
     const initAuth = async () => {
       try {
@@ -69,18 +71,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         try {
-          const { data: mems } = await supabase
-            .from("memberships")
-            .select("tenant_id, role")
-            .eq("user_id", data.session.user.id);
+          const [memsRes, uRolesRes] = await Promise.all([
+            supabase
+              .from("memberships")
+              .select("tenant_id, role")
+              .eq("user_id", data.session.user.id),
+            supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", data.session.user.id)
+          ]);
           
           if (!isMounted) return;
+          
+          const mems = memsRes.data;
+          const uRoles = uRolesRes.data;
+          const dbRole = uRoles && uRoles.length > 0 ? (uRoles[0].role as AppRole) : null;
           
           const roles = (mems ?? []).map((m: any) => m.role);
           const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
           const newRole: AppRole | null = isOwnerOrAdmin 
             ? (roles.includes("admin") ? "admin" : "b2b") 
-            : (data.session.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
+            : (dbRole || (data.session.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c"));
           
           setAppRole(newRole);
           setUserState({
@@ -127,16 +139,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSession(s);
           // Re-check role on token refresh to prevent stale appRole over long sessions
           try {
-            const { data: mems } = await supabase
-              .from("memberships")
-              .select("tenant_id, role")
-              .eq("user_id", s.user.id);
+            const [memsRes, uRolesRes] = await Promise.all([
+              supabase
+                .from("memberships")
+                .select("tenant_id, role")
+                .eq("user_id", s.user.id),
+              supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", s.user.id)
+            ]);
             if (isMounted) {
+              const mems = memsRes.data;
+              const uRoles = uRolesRes.data;
+              const dbRole = uRoles && uRoles.length > 0 ? (uRoles[0].role as AppRole) : null;
+              
               const roles = (mems ?? []).map((m: any) => m.role);
               const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
               const refreshedRole: AppRole | null = isOwnerOrAdmin
                 ? (roles.includes("admin") ? "admin" : "b2b")
-                : (s.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
+                : (dbRole || (s.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c"));
               setAppRole(refreshedRole);
               setUserState({
                 isB2B: refreshedRole === "b2b" || refreshedRole === "admin",
@@ -184,21 +206,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (_evt === "SIGNED_IN") {
           setLoading(true);
           const signInTimeout = setTimeout(() => {
-            if (isMounted) setLoading(false);
-          }, 15_000);
+            if (isMounted) {
+              setLoading(false);
+              setAppRole(prev => prev === null ? "b2c" : prev);
+            }
+          }, 8_000);
           try {
-            const { data: mems } = await supabase
-              .from("memberships")
-              .select("tenant_id, role")
-              .eq("user_id", s.user.id);
+            const [memsRes, uRolesRes] = await Promise.all([
+              supabase
+                .from("memberships")
+                .select("tenant_id, role")
+                .eq("user_id", s.user.id),
+              supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", s.user.id)
+            ]);
 
             if (!isMounted) return;
+
+            const mems = memsRes.data;
+            const uRoles = uRolesRes.data;
+            const dbRole = uRoles && uRoles.length > 0 ? (uRoles[0].role as AppRole) : null;
 
             const roles = (mems ?? []).map((m: any) => m.role);
             const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
             const newRole: AppRole | null = isOwnerOrAdmin
               ? (roles.includes("admin") ? "admin" : "b2b")
-              : (s.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
+              : (dbRole || (s.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c"));
 
             setAppRole(newRole);
             setUserState({
@@ -230,10 +265,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshAppRole = useCallback(async () => {
     if (!user) return;
     try {
-      const { data: mems } = await supabase
-        .from("memberships")
-        .select("tenant_id, role")
-        .eq("user_id", user.id);
+      const [memsRes, uRolesRes] = await Promise.all([
+        supabase
+          .from("memberships")
+          .select("tenant_id, role")
+          .eq("user_id", user.id),
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+      ]);
+
+      const mems = memsRes.data;
+      const uRoles = uRolesRes.data;
+      const dbRole = uRoles && uRoles.length > 0 ? (uRoles[0].role as AppRole) : null;
 
       const roles = (mems ?? []).map((m) => m.role);
       const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
@@ -242,7 +287,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isOwnerOrAdmin) {
         newRole = roles.includes("admin") ? "admin" : "b2b";
       } else {
-        newRole = (user?.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
+        newRole = dbRole || (user?.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
       }
 
       setAppRole(newRole);
