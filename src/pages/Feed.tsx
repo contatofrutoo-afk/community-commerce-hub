@@ -14,7 +14,7 @@ import { Plus, Play, Video } from "lucide-react";
 const PAGE = 8;
 
 export default function Feed() {
-  const { tenant } = useTenant();
+  const { tenant, realLoadDone } = useTenant();
   const { user, isB2B } = useAuth();
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
@@ -159,7 +159,11 @@ export default function Feed() {
   }, [tenant?.id]);
 
   useEffect(() => {
-    if (!tenant) {
+    // Só define initialLoadDone=true quando tenant está definitivo
+    // (existe ou realLoadDone=true confirmando ausência). Impede flash
+    // de UI "sem tenant" enquanto tenant ainda está carregando.
+    if (!tenant && !realLoadDone) return;
+    if (!tenant && realLoadDone) {
       setInitialLoadDone(true);
       return;
     }
@@ -167,7 +171,7 @@ export default function Feed() {
     loadingRef.current = false;
     setDone(false); setActiveIdx(0);
     loadPosts(0);
-  }, [loadPosts]);
+  }, [loadPosts, realLoadDone]);
 
   // Refresh on query param
   useEffect(() => {

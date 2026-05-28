@@ -123,12 +123,16 @@ const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
   const { user, initializing } = useAuth();
-  const { blocked } = useTenant();
+  const { blocked, realLoadDone } = useTenant();
 
-  // Aguarda o Supabase restaurar a sessão antes de decidir rota — previne
-  // o redirect prematuro para /auth durante page refresh (causa do flicker).
+  // 1. Aguarda o Supabase restaurar a sessão — previne redirect prematuro p/ /auth
   if (initializing) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
+
+  // 2. Usuário autenticado: só renderiza filhos depois do tenant estar resolvido.
+  //    Impede Feed de receber tenant=null temporário e mostrar UI errada (B2C p/ B2B).
+  if (!realLoadDone) return <Loading />;
+
   if (blocked) return <Navigate to="/blocked" replace />;
 
   return children;
