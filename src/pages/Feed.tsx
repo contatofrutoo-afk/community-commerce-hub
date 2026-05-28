@@ -8,7 +8,7 @@ import FeedItem, { Post } from "@/components/feed/FeedItem";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import FeedLayout from "@/components/layout/FeedLayout";
-import CreateBrandDialog from "@/components/CreateBrandDialog";
+
 import { Plus, Play, Video } from "lucide-react";
 
 const PAGE = 8;
@@ -24,7 +24,6 @@ export default function Feed() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [showCreate, setShowCreate] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Safety timeout: impede "Carregando…" eterno. Desliga-se após a primeira
@@ -228,38 +227,9 @@ export default function Feed() {
     </div>
   );
 
-  // B2B sem tenant → criar marca
-  const isEffectivelyB2B = isB2B || appRole === "admin" || user?.user_metadata?.account_type === "b2b";
-  if (!tenant && isEffectivelyB2B) {
-    return (
-      <div className="min-h-[100dvh] flex flex-col bg-background">
-        <TopBar />
-        <main className="flex-1 grid place-items-center px-6">
-          <div className="max-w-sm w-full text-center">
-            <div className="h-20 w-20 mx-auto rounded-full bg-brand grid place-items-center mb-6 shadow-elevated">
-              <Video className="h-10 w-10 text-primary-foreground" />
-            </div>
-            <h1 className="font-display text-4xl mb-3">Crie sua marca</h1>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Publique vídeos, construa comunidade e converta em resultados.
-            </p>
-            <Button
-              size="lg"
-              onClick={() => setShowCreate(true)}
-              className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full h-14 text-lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Criar marca
-            </Button>
-          </div>
-        </main>
-        <CreateBrandDialog open={showCreate} onOpenChange={setShowCreate} />
-      </div>
-    );
-  }
-
   // B2C sem tenant → explorar
-  if (!tenant) {
+  const isEffectivelyB2B = isB2B || appRole === "admin" || user?.user_metadata?.account_type === "b2b";
+  if (!tenant && !isEffectivelyB2B) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />
