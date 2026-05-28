@@ -122,11 +122,13 @@ const CommunityCreate = lazy(() => import("./pages/auth/CommunityCreate"));
 const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, loading: authLoading, initializing, isB2C, appRole, refreshAppRole } = useAuth();
+  const { user, loading: authLoading, initializing, appRole, refreshAppRole } = useAuth();
   const { loading: tenantLoading, tenant, blocked, realLoadDone } = useTenant();
   const [forceRender, setForceRender] = useState(false);
   const appRoleStuckRef = useRef<number>(0);
   const appRoleFallbackRef = useRef(false);
+  const everReadyRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setForceRender(true), 30_000);
@@ -135,10 +137,27 @@ const Protected = ({ children }: { children: JSX.Element }) => {
 
   if (forceRender) return children;
 
+  // Critical guards — always enforce even after everReady
+  if (!user) {
+    everReadyRef.current = false;
+    userIdRef.current = null;
+    return <Navigate to="/auth" replace />;
+  }
+  if (blocked) return <Navigate to="/blocked" replace />;
+
+  // Detect user change — reset everReady only when a different user logs in
+  if (user.id !== userIdRef.current) {
+    everReadyRef.current = false;
+    userIdRef.current = user.id;
+  }
+
+  // After first successful render, skip all non-critical guards entirely
+  if (everReadyRef.current) return children;
+
+  // Auth guards — only on first pass
   if (initializing) return <Loading />;
   if (authLoading) return <Loading />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (user && appRole === null) {
+  if (appRole === null) {
     if (appRoleStuckRef.current === 0) {
       appRoleStuckRef.current = Date.now();
     } else if (Date.now() - appRoleStuckRef.current > 10_000) {
@@ -146,19 +165,19 @@ const Protected = ({ children }: { children: JSX.Element }) => {
         appRoleFallbackRef.current = true;
         refreshAppRole();
       }
+      everReadyRef.current = true;
       return children;
     }
     return <Loading />;
   }
   appRoleStuckRef.current = 0;
   appRoleFallbackRef.current = false;
-  if (tenantLoading && !realLoadDone) return <Loading />;
-  if (user && !realLoadDone) return <Loading />;
-  if (blocked) return <Navigate to="/blocked" replace />;
-  if (!tenant) {
-    return children;
-  }
 
+  // Tenant guards — only on first pass
+  if (tenantLoading && !realLoadDone) return <Loading />;
+  if (!realLoadDone) return <Loading />;
+
+  everReadyRef.current = true;
   return children;
 };
 

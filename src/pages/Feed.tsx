@@ -26,6 +26,7 @@ export default function Feed() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   // Safety timeout: impede "Carregando…" eterno
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,6 +94,7 @@ export default function Feed() {
         setDone(true);
       }
       setPosts((p) => offset === 0 ? postsWithCtas : [...p, ...postsWithCtas]);
+      hasLoadedOnce.current = true;
     } catch (err) {
       console.error("[Feed] Error loading posts:", err);
     } finally {
@@ -161,9 +163,9 @@ export default function Feed() {
     }
     doneRef.current = false;
     loadingRef.current = false;
-    setPosts([]); setDone(false); setActiveIdx(0);
+    setDone(false); setActiveIdx(0);
     loadPosts(0);
-  }, [tenant?.id, loadPosts]);
+  }, [loadPosts]);
 
   // Refresh on query param
   useEffect(() => {
@@ -171,7 +173,7 @@ export default function Feed() {
     if (t && tenant) {
       doneRef.current = false;
       loadingRef.current = false;
-      setPosts([]); setDone(false);
+      setDone(false);
       loadPosts(0);
     }
   }, [searchParams.get("t"), tenant?.id, loadPosts]);
@@ -209,6 +211,12 @@ export default function Feed() {
       delete (c as any)?.__observer;
     };
   }, [posts.length]);
+
+  useEffect(() => {
+    if (hasLoadedOnce.current && !initialLoadDone) {
+      setInitialLoadDone(true);
+    }
+  }, [initialLoadDone]);
 
   if (!initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
