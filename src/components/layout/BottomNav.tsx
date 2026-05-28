@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users, Folder } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, LayoutGrid, BarChart3, Bell, Plus, Users, Folder, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function BottomNav() {
   const { pathname } = useLocation();
   const { isB2B, isB2C, user, appRole } = useAuth();
-  const { isOwner, canManage } = useTenant();
+  const { tenant, isOwner, canManage } = useTenant();
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
@@ -28,7 +28,8 @@ export default function BottomNav() {
     ...(showAdminItems ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
     ...(showAdminItems ? [{ to: "/groups", icon: Folder, label: "Grupos" }] : []),
     ...(!showAdminItems && isB2C ? [{ to: "/groups/b2c", icon: Folder, label: "Grupos" }] : []),
-    { to: "/profile", icon: User, label: "Perfil" },
+    ...(showAdminItems && tenant?.slug ? [{ to: `/m/${tenant.slug}`, icon: Building2, label: "Comunidade" }] : []),
+    ...(!showAdminItems ? [{ to: "/profile", icon: User, label: "Perfil" }] : []),
   ];
 
   useEffect(() => {

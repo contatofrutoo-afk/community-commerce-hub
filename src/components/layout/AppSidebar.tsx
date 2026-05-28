@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, MessageSquare, MessageCircle, User, BarChart3, Bell, Plus, Users, Folder } from "lucide-react";
+import { Home, MessageSquare, MessageCircle, User, BarChart3, Bell, Plus, Users, Folder, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -8,7 +8,7 @@ import Logo from "@/components/Logo";
 export default function AppSidebar() {
   const { pathname } = useLocation();
   const { isB2B, isB2C, appRole } = useAuth();
-  const { isOwner, canManage } = useTenant();
+  const { tenant, isOwner, canManage } = useTenant();
 
   const showAdminItems = isB2B || appRole === "admin" || isOwner || canManage;
 
@@ -22,7 +22,8 @@ export default function AppSidebar() {
     ...(showAdminItems ? [{ to: "/members", icon: Users, label: "Membros" }] : []),
     ...(showAdminItems ? [{ to: "/groups", icon: Folder, label: "Grupos" }] : []),
     ...(!showAdminItems && isB2C ? [{ to: "/groups/b2c", icon: Folder, label: "Grupos" }] : []),
-    { to: "/profile", icon: User, label: "Perfil" },
+    ...(showAdminItems && tenant?.slug ? [{ to: `/m/${tenant.slug}`, icon: Building2, label: "Comunidade" }] : []),
+    ...(!showAdminItems ? [{ to: "/profile", icon: User, label: "Perfil" }] : []),
   ];
 
   const isActive = (to: string) =>

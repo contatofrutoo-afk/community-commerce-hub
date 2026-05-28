@@ -19,9 +19,10 @@ export default function Profile() {
 
   useEffect(() => {
     if (isB2B || appRole === "admin" || isOwner || canManage) {
-      nav("/feed", { replace: true });
+      const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
+      nav(communityPath, { replace: true });
     }
-  }, [isB2B, appRole, isOwner, canManage, nav]);
+  }, [isB2B, appRole, isOwner, canManage, tenant?.slug, nav]);
   
   // Mostrar para B2B, admin ou owner/admin de comunidade
   const canShare = isB2B || appRole === "admin" || isOwner || canManage;
