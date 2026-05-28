@@ -15,7 +15,8 @@ const PAGE = 8;
 
 export default function Feed() {
   const { tenant } = useTenant();
-  const { user, isB2B } = useAuth();
+  const { user, isB2B, appRole, refreshAppRole } = useAuth();
+  const roleRefreshRef = useRef(false);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -201,37 +202,46 @@ export default function Feed() {
 
   if (!initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
-  // B2B sem tenant → criar marca
-  if (!tenant && isB2B) {
-    return (
-      <div className="min-h-[100dvh] flex flex-col bg-background">
-        <TopBar />
-        <main className="flex-1 grid place-items-center px-6">
-          <div className="max-w-sm w-full text-center">
-            <div className="h-20 w-20 mx-auto rounded-full bg-brand grid place-items-center mb-6 shadow-elevated">
-              <Video className="h-10 w-10 text-primary-foreground" />
-            </div>
-            <h1 className="font-display text-4xl mb-3">Crie sua marca</h1>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Publique vídeos, construa comunidade e converta em resultados.
-            </p>
-            <Button
-              size="lg"
-              onClick={() => setShowCreate(true)}
-              className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full h-14 text-lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Criar marca
-            </Button>
-          </div>
-        </main>
-        <CreateBrandDialog open={showCreate} onOpenChange={setShowCreate} />
-      </div>
-    );
-  }
-
-  // B2C sem tenant → explorar
   if (!tenant) {
+    // Se o role ainda nao foi determinado, tenta forcar refresh
+    if (!appRole) {
+      if (!roleRefreshRef.current) {
+        roleRefreshRef.current = true;
+        refreshAppRole();
+      }
+      return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+    }
+
+    // B2B sem tenant → criar marca
+    if (isB2B) {
+      return (
+        <div className="min-h-[100dvh] flex flex-col bg-background">
+          <TopBar />
+          <main className="flex-1 grid place-items-center px-6">
+            <div className="max-w-sm w-full text-center">
+              <div className="h-20 w-20 mx-auto rounded-full bg-brand grid place-items-center mb-6 shadow-elevated">
+                <Video className="h-10 w-10 text-primary-foreground" />
+              </div>
+              <h1 className="font-display text-4xl mb-3">Crie sua marca</h1>
+              <p className="text-muted-foreground mb-8 text-lg">
+                Publique vídeos, construa comunidade e converta em resultados.
+              </p>
+              <Button
+                size="lg"
+                onClick={() => setShowCreate(true)}
+                className="w-full bg-brand text-primary-foreground hover:opacity-90 rounded-full h-14 text-lg"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Criar marca
+              </Button>
+            </div>
+          </main>
+          <CreateBrandDialog open={showCreate} onOpenChange={setShowCreate} />
+        </div>
+      );
+    }
+
+    // B2C sem tenant → explorar
     return (
       <div className="min-h-[100dvh] flex flex-col bg-background">
         <TopBar />

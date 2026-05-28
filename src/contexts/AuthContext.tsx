@@ -125,6 +125,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // would trigger unnecessary re-renders in TenantContext and other consumers.
         if (s) {
           setSession(s);
+          // Re-check role on token refresh to prevent stale appRole over long sessions
+          try {
+            const { data: mems } = await supabase
+              .from("memberships")
+              .select("tenant_id, role")
+              .eq("user_id", s.user.id);
+            if (isMounted) {
+              const roles = (mems ?? []).map((m: any) => m.role);
+              const isOwnerOrAdmin = roles.includes("owner") || roles.includes("admin");
+              const refreshedRole: AppRole | null = isOwnerOrAdmin
+                ? (roles.includes("admin") ? "admin" : "b2b")
+                : (s.user.user_metadata?.account_type === "b2b" ? "b2b" : "b2c");
+              setAppRole(refreshedRole);
+              setUserState({
+                isB2B: refreshedRole === "b2b" || refreshedRole === "admin",
+                hasCommunity: isOwnerOrAdmin,
+                hasJoinedCommunities: mems && mems.length > 0,
+              });
+            }
+          } catch (err) {
+            console.error("Error refreshing memberships on token refresh:", err);
+            if (isMounted) {
+              const metaRole = s.user.user_metadata?.account_type;
+              setAppRole(metaRole === "b2b" ? "b2b" : "b2c");
+            }
+          }
         } else {
           // Token refresh failed — session is invalid.
           // Clear user + session to avoid inconsistent state where user exists
