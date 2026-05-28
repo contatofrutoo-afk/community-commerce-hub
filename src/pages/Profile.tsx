@@ -16,6 +16,12 @@ export default function Profile() {
   const { tenant, isOwner, canManage, refresh } = useTenant();
 
   const nav = useNavigate();
+
+  useEffect(() => {
+    if (isB2B || appRole === "admin" || isOwner || canManage) {
+      nav("/feed", { replace: true });
+    }
+  }, [isB2B, appRole, isOwner, canManage, nav]);
   
   // Mostrar para B2B, admin ou owner/admin de comunidade
   const canShare = isB2B || appRole === "admin" || isOwner || canManage;
@@ -218,7 +224,7 @@ export default function Profile() {
           </section>
         )}
 
-        <Button variant="ghost" onClick={async () => { await signOut(); nav("/"); }} className="w-full text-destructive">
+        <Button variant="ghost" onClick={async () => { await signOut(); nav("/auth"); }} className="w-full text-destructive">
           <LogOut className="h-4 w-4 mr-2" />Sair
         </Button>
       </div>

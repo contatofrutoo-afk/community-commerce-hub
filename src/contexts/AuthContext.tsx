@@ -90,7 +90,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         } catch (err) {
           console.error("Error fetching memberships:", err);
-          if (isMounted) setAppRole("b2c");
+          if (isMounted) {
+            const metaRole = data.session.user.user_metadata?.account_type;
+            setAppRole(metaRole === "b2b" ? "b2b" : "b2c");
+          }
         } finally {
           if (isMounted) {
             clearTimeout(authTimeout);
@@ -179,7 +182,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           } catch (err) {
             console.error("Error fetching memberships on auth change:", err);
-            if (isMounted) setAppRole("b2c");
+            if (isMounted) {
+              const metaRole = s.user.user_metadata?.account_type;
+              setAppRole(metaRole === "b2b" ? "b2b" : "b2c");
+            }
           } finally {
             clearTimeout(signInTimeout);
             if (isMounted) setLoading(false);
@@ -215,10 +221,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setAppRole(newRole);
 
-      const hasCommunity = isOwnerOrAdmin;
       setUserState({
-        isB2B: hasCommunity,
-        hasCommunity,
+        isB2B: newRole === "b2b" || newRole === "admin",
+        hasCommunity: isOwnerOrAdmin,
         hasJoinedCommunities: mems && mems.length > 0,
       });
     } catch (err) {
