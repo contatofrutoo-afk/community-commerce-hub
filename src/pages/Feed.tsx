@@ -16,7 +16,8 @@ const PAGE = 8;
 export default function Feed() {
   const { tenant } = useTenant();
   const { user, isB2B, appRole, refreshAppRole } = useAuth();
-  const roleRefreshRef = useRef(false);
+  const roleRefreshFired = useRef(false);
+  const [roleFallback, setRoleFallback] = useState(false);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -200,16 +201,29 @@ export default function Feed() {
     };
   }, [posts.length]);
 
+  // Timeout unico para role pendente → forca redirect apos 8s
+  useEffect(() => {
+    if (appRole || !tenant) return;
+    const t = setTimeout(() => setRoleFallback(true), 8000);
+    return () => clearTimeout(t);
+  }, [appRole, tenant]);
+
   if (!initialLoadDone) return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
 
   if (!tenant) {
-    // Se o role ainda nao foi determinado, tenta forcar refresh
-    if (!appRole) {
-      if (!roleRefreshRef.current) {
-        roleRefreshRef.current = true;
+    // Role ainda nao determinado → tenta refresh + loading
+    if (!appRole && !roleFallback) {
+      if (!roleRefreshFired.current) {
+        roleRefreshFired.current = true;
         refreshAppRole();
       }
       return <div className="grid h-screen place-items-center text-muted-foreground">Carregando…</div>;
+    }
+
+    // Role indeterminado apos timeout → tela de login
+    if (roleFallback && !appRole) {
+      nav("/auth", { replace: true });
+      return null;
     }
 
     // B2B sem tenant → criar marca
