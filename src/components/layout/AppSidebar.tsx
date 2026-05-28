@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 
 export default function AppSidebar() {
   const { pathname } = useLocation();
-  const { isB2B, isB2C, appRole, initializing, loading: authLoading } = useAuth();
+  const { user, isB2B, isB2C, appRole, initializing, loading: authLoading } = useAuth();
   const { tenant, isOwner, canManage, loading: tenantLoading, realLoadDone } = useTenant();
 
   // Só decide os itens de nav após auth e tenant estarem resolvidos,
