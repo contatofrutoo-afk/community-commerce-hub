@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,10 @@ export default function AuthB2B() {
   const [signup, setSignup] = useState({ name: "", email: "", password: "" });
   const [login, setLogin] = useState({ email: "", password: "" });
 
+  if (user && !initializing && !authLoading) return <Navigate to="/feed" replace />;
+
   useEffect(() => {
-    if (user) {
-      nav("/feed", { replace: true });
-    }
+    if (user) nav("/feed", { replace: true });
   }, [user, nav]);
 
   if (initializing || authLoading) {
@@ -40,8 +40,6 @@ export default function AuthB2B() {
       </main>
     );
   }
-
-  if (user) return null;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();

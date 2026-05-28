@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,24 +39,25 @@ export default function Auth() {
     }
   }, []);
 
-  useEffect(() => {
-    if (user && !authLoading && !initializing && loading === false && appRole !== null) {
-      const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
-      const pendingShare = localStorage.getItem("weaze:pending_share");
-      if (pendingSlug) {
-        nav(`/c/${pendingSlug}`, { replace: true });
-      } else if (pendingShare) {
-        try {
-          const { tenantId, postId } = JSON.parse(pendingShare);
-          nav(`/compartilhar/${tenantId}/${postId}`, { replace: true });
-        } catch {
-          nav("/feed", { replace: true });
-        }
-      } else {
-        nav("/feed", { replace: true });
-      }
+  // Redirect at render level — antes do Loading para evitar flash da UI de auth
+  const isLoggedIn = user && !authLoading && !initializing && appRole !== null;
+  const redirectPath = (() => {
+    if (!isLoggedIn) return null;
+    const pendingSlug = localStorage.getItem("weaze:pending_invite_slug") || sessionStorage.getItem("weaze:pending_invite_slug");
+    if (pendingSlug) return `/c/${pendingSlug}`;
+    const pendingShare = localStorage.getItem("weaze:pending_share");
+    if (pendingShare) {
+      try { const { tenantId, postId } = JSON.parse(pendingShare); return `/compartilhar/${tenantId}/${postId}`; } catch {}
     }
-  }, [user, authLoading, initializing, loading, appRole, nav]);
+    return "/feed";
+  })();
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (redirectPath) nav(redirectPath, { replace: true });
+  }, [isLoggedIn, redirectPath, nav]);
+
+  if (redirectPath) return <Navigate to={redirectPath} replace />;
 
   if (initializing || authLoading || (user && appRole === null)) {
     return (
