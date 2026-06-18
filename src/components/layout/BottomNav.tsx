@@ -143,7 +143,8 @@ export default function BottomNav() {
                     className={cn(
                       "h-5 w-5 flex-shrink-0",
                       special && "h-6 w-6",
-                      active && "text-primary-custom"
+                      active && "text-primary-custom",
+                      to === "/notifications" && !active && "text-white"
                     )}
                     strokeWidth={active ? 2.2 : 1.8}
                   />
