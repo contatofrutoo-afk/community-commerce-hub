@@ -255,7 +255,7 @@ const App = () => (
                     <Route path="/groups/b2c" element={<Protected><GroupsPageB2C /></Protected>} />
                     <Route path="/groups/member/:groupId" element={<Protected><GroupDetailB2C /></Protected>} />
                     <Route path="/groups/:groupId" element={<Protected><GroupDetail /></Protected>} />
-                    <Route path="/profile" element={<Protected><B2COnly><Profile /></B2COnly></Protected>} />
+                    <Route path="/profile" element={<Protected><Profile /></Protected>} />
                     <Route path="/atendimento" element={<Protected><B2BOnly><Atendimento /></B2BOnly></Protected>} />
                     <Route path="/offline" element={<Offline />} />
                     <Route path="/blocked" element={<BlockedPage />} />

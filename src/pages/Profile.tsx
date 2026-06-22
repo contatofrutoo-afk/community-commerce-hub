@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { compressImage } from "@/lib/compressImage";
 import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -23,30 +24,13 @@ const LoadingSpinner = () => (
 );
 
 export default function Profile() {
-  const { user, signOut, isB2B, appRole, initializing, loading: authLoading } = useAuth();
-  const { tenant, isOwner, canManage, refresh, loading: tenantLoading, realLoadDone } = useTenant();
+  const { user, signOut } = useAuth();
+  const { tenant, isOwner, canManage, refresh, loading: tenantLoading } = useTenant();
 
   const nav = useNavigate();
 
-  // Determina se é admin/B2B assim que qualquer flag estiver disponível
-  const isAdminUser = isB2B || appRole === "admin" || isOwner || canManage;
-  const isB2BByMetadata = user?.user_metadata?.account_type === "b2b";
-
-  // Redirect imediato via Navigate se já for B2B/admin (síncrono, sem flash)
-  if (!initializing && !authLoading && realLoadDone && (isAdminUser || isB2BByMetadata)) {
-    const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
-    return <Navigate to={communityPath} replace />;
-  }
-
-  // Enquanto ainda está carregando auth ou tenant, mostra spinner
-  if (initializing || authLoading || tenantLoading || !realLoadDone) {
+  if (tenantLoading) {
     return <LoadingSpinner />;
-  }
-
-  // Se já resolveu e é B2B/admin, redireciona
-  if (isAdminUser || isB2BByMetadata) {
-    const communityPath = tenant?.slug ? `/m/${tenant.slug}` : "/feed";
-    return <Navigate to={communityPath} replace />;
   }
 
   const [name, setName] = useState("");
@@ -55,10 +39,6 @@ export default function Profile() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tenantLogo, setTenantLogo] = useState<string | null>(null);
-  const [tenantLogoFile, setTenantLogoFile] = useState<File | null>(null);
-  const tenantFileRef = useRef<HTMLInputElement>(null);
-  
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("");
@@ -67,50 +47,27 @@ export default function Profile() {
   const [supportType, setSupportType] = useState<SupportType>("duvida");
   
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
     setAvatarFile(f);
-    setAvatar(URL.createObjectURL(f));
-  };
-
-  const handleTenantLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error("Arquivo deve ser imagem"); return; }
-    setTenantLogoFile(f);
-    setTenantLogo(URL.createObjectURL(f));
+    try {
+      const dataUrl = await compressImage(f);
+      setAvatar(dataUrl);
+    } catch {
+      setAvatar(URL.createObjectURL(f));
+    }
   };
 
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile || !user) return null;
     try {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `${user.id}/avatar.${ext}`;
-      const { error } = await supabase.storage.from("public").upload(path, avatarFile, { upsert: true });
-      if (error) { toast.error(`Erro ao upload: ${error.message}`); return null; }
-      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
-      const avatarUrl = urlData.publicUrl;
-      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id);
-      setAvatar(avatarUrl);
-      return avatarUrl;
+      const dataUrl = await compressImage(avatarFile);
+      await supabase.from("profiles").update({ avatar_url: dataUrl }).eq("user_id", user.id);
+      setAvatar(dataUrl);
+      return dataUrl;
     } catch (e: any) { toast.error(e.message); return null; }
-  };
-
-  const uploadTenantLogo = async (): Promise<boolean> => {
-    if (!tenantLogoFile || !tenant) return false;
-    try {
-      const ext = tenantLogoFile.name.split(".").pop();
-      const path = `${tenant.id}/logo.${ext}`;
-      const { error } = await supabase.storage.from("public").upload(path, tenantLogoFile, { upsert: true });
-      if (error) { toast.error(`Erro ao upload: ${error.message}`); return false; }
-      const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
-      const logoUrl = urlData.publicUrl;
-      await supabase.from("tenants").update({ logo_url: logoUrl }).eq("id", tenant.id);
-      setTenantLogo(logoUrl);
-      return true;
-    } catch (e: any) { toast.error(e.message); return false; }
   };
 
   useEffect(() => {
@@ -132,10 +89,9 @@ export default function Profile() {
     if (!user) return;
     setLoading(true);
 
-    let uploadedAvatarUrl: string | null = null;
     if (avatarFile) {
-      uploadedAvatarUrl = await uploadAvatar();
-      if (!uploadedAvatarUrl) { setLoading(false); return; }
+      const uploaded = await uploadAvatar();
+      if (!uploaded) { setLoading(false); return; }
       setAvatarFile(null);
     }
 
@@ -149,9 +105,8 @@ export default function Profile() {
     if (error) { setLoading(false); toast.error(error.message); return; }
 
     if (tenant && (isOwner || canManage)) {
-      const tenantUpdate: Record<string, string> = { name: name.trim() };
-      if (uploadedAvatarUrl) tenantUpdate.logo_url = uploadedAvatarUrl;
-      await supabase.from("tenants").update(tenantUpdate).eq("id", tenant.id);
+      const { error: tenantErr } = await supabase.from("tenants").update({ name: name.trim() }).eq("id", tenant.id);
+      if (tenantErr) console.error("Erro ao atualizar tenant:", tenantErr);
       await refresh();
     }
 
