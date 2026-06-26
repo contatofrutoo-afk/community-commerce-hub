@@ -44,7 +44,7 @@ export default function Feed() {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select("id, tenant_id, author_id, type, media_url, thumbnail_url, description, created_at")
+        .select("id, tenant_id, author_id, type, media_url, thumbnail_url, description, created_at, profiles(name, avatar_url)")
         .eq("tenant_id", tenant.id)
         .order("created_at", { ascending: false })
         .range(offset, offset + PAGE - 1);

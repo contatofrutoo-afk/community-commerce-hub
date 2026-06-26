@@ -114,6 +114,7 @@ const Topics = lazy(() => import("./pages/Topics"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Lives = lazy(() => import("./pages/admin/Lives"));
 const InviteLinks = lazy(() => import("./pages/admin/InviteLinks"));
+const BusinessConfig = lazy(() => import("./pages/admin/Config"));
 const Offline = lazy(() => import("./pages/Offline"));
 const InviteLanding = lazy(() => import("./pages/InviteLanding"));
 const ShareLanding = lazy(() => import("./pages/ShareLanding"));
@@ -239,6 +240,7 @@ const App = () => (
                     <Route path="/metrics/tenants" element={<Protected><AdminTenants /></Protected>} />
                     <Route path="/metrics/content" element={<Protected><AdminContent /></Protected>} />
                     <Route path="/metrics/invites" element={<Protected><InviteLinks /></Protected>} />
+                    <Route path="/metrics/config" element={<Protected><BusinessConfig /></Protected>} />
                     <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
                     <Route path="/create" element={<Protected><CreatePost /></Protected>} />
                     

@@ -579,9 +579,18 @@ export default function FeedItem({ post, active, onDelete, onEdit }: { post: Pos
         className="absolute left-0 right-0 px-5 z-10 max-w-md"
         style={{ bottom: "calc(9.5rem + 5.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
-        {post.profiles?.name && (
-          <p className="font-semibold text-sm mb-2 drop-shadow-md">@{post.profiles.name}</p>
-        )}
+        <div className="flex items-center gap-2 mb-2">
+          {post.profiles?.avatar_url ? (
+            <img src={post.profiles.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30" />
+          ) : tenant?.logo_url ? (
+            <img src={tenant.logo_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30" />
+          ) : null}
+          {post.profiles?.name ? (
+            <p className="font-semibold text-sm drop-shadow-md">@{post.profiles.name}</p>
+          ) : tenant?.name ? (
+            <p className="font-semibold text-sm drop-shadow-md">{tenant.name}</p>
+          ) : null}
+        </div>
         {/* Interaction prompt - highlighted question to encourage interaction */}
         {post.interaction_prompt && (
           <p className="text-sm font-medium text-primary-custom bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg mb-3 drop-shadow-md">

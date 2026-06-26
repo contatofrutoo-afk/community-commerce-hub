@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BarChart3, DollarSign, Filter, Users, Building2, FileText, LogOut, Link2, MessageSquare } from "lucide-react";
+import { ArrowLeft, BarChart3, DollarSign, Filter, Users, Building2, FileText, LogOut, Link2, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -14,6 +14,7 @@ const items = [
   { to: "/metrics/tenants", icon: Building2, label: "Tenants" },
   { to: "/metrics/content", icon: FileText, label: "Conteúdo" },
   { to: "/metrics/invites", icon: Link2, label: "Convites" },
+  { to: "/metrics/config", icon: Settings, label: "Configurações" },
 ];
 
 export default function AdminLayout() {
