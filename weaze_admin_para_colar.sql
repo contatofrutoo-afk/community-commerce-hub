@@ -29,10 +29,10 @@ ALTER TABLE public.admin_settings
   ADD COLUMN IF NOT EXISTS blocked_message text DEFAULT 'Seu acesso à plataforma encontra-se temporariamente bloqueado. Para mais informações entre em contato com o administrador da WEAZE.',
   ADD COLUMN IF NOT EXISTS admin_contact text DEFAULT '';
 
--- 2. Company admin — estende tenants com informações de gestão WEAZE
+-- 2. Company admin — estende companies com informações de gestão WEAZE
 CREATE TABLE IF NOT EXISTS public.company_admin (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE UNIQUE,
+  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE UNIQUE,
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'blocked', 'trial', 'cancelled')),
   plan_type text NOT NULL DEFAULT 'Mensal' CHECK (plan_type IN ('Mensal', 'Anual', 'Promocional', 'Personalizado')),
   monthly_fee numeric NOT NULL DEFAULT 237,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.company_admin (
 -- 3. Histórico de pagamentos
 CREATE TABLE IF NOT EXISTS public.company_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
   amount numeric NOT NULL,
   payment_date date NOT NULL,
   payment_method text NOT NULL DEFAULT 'PIX',
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.company_payments (
 -- 4. Histórico de licenças
 CREATE TABLE IF NOT EXISTS public.company_licenses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
   plan_type text NOT NULL DEFAULT 'Mensal' CHECK (plan_type IN ('Mensal', 'Anual', 'Promocional', 'Personalizado')),
   monthly_fee numeric NOT NULL DEFAULT 237,
   start_date date NOT NULL,
@@ -113,8 +113,8 @@ GRANT ALL ON public.company_payments TO service_role;
 GRANT ALL ON public.company_licenses TO service_role;
 
 -- 7. Trigger para updated_at em company_admin
--- Usa update_updated_at_column() que já existe na migration inicial
+-- Usa touch_updated_at() que existe na base companies
 DROP TRIGGER IF EXISTS company_admin_updated ON public.company_admin;
 CREATE TRIGGER company_admin_updated
   BEFORE UPDATE ON public.company_admin
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();

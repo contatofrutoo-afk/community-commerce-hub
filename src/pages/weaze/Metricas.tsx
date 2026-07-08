@@ -38,7 +38,7 @@ export default function WeazeMetricas() {
         { count: totalPosts },
         { count: totalInteractions },
         { data: adminRows },
-        { data: tenantsData },
+        { data: companiesData },
         { data: todayCheckins },
       ] = await Promise.all([
         supabase.from("b2c_customers").select("*", { count: "exact", head: true }),
@@ -47,7 +47,7 @@ export default function WeazeMetricas() {
         supabase.from("feed_posts").select("*", { count: "exact", head: true }),
         supabase.from("customer_interactions").select("*", { count: "exact", head: true }),
         supabase.from("company_admin").select("*"),
-        supabase.from("tenants").select("id, name", { count: "exact", head: true }),
+        supabase.from("companies").select("id, name", { count: "exact", head: true }),
         supabase.from("checkins").select("id").gte("start_time", today),
       ]);
 
@@ -71,7 +71,7 @@ export default function WeazeMetricas() {
         predictedRevenue: totalMonthly,
         recurringRevenue: paidMonthly,
         blockedCount,
-        inactiveCount: Math.max(0, (tenantsData?.length ?? 0) - (adminRows ?? []).filter((a: any) => a.status === "active" || a.status === "trial").length),
+        inactiveCount: Math.max(0, (companiesData?.length ?? 0) - (adminRows ?? []).filter((a: any) => a.status === "active" || a.status === "trial").length),
         nearDueCount,
       });
       setLoading(false);

@@ -33,12 +33,12 @@ export default function WeazeEmpresas() {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
-      const { data: tenants } = await supabase.from("tenants").select("id, name, slug, created_at, mrr, city");
+      const { data: companies } = await supabase.from("companies").select("id, name, slug, created_at, mrr, city");
       const { data: adminRows } = await supabase.from("company_admin").select("*");
 
       const adminMap = new Map((adminRows ?? []).map((r: any) => [r.company_id, r]));
 
-      const merged = (tenants ?? []).map((t: any) => {
+      const merged = (companies ?? []).map((t: any) => {
         const a = adminMap.get(t.id);
         return {
           id: t.id,

@@ -52,7 +52,7 @@ export default function WeazeEmpresaFicha() {
     if (!isAdmin || !id) return;
     (async () => {
       setLoading(true);
-      const { data: tenantData } = await supabase.from("tenants").select("*").eq("id", id).single();
+      const { data: tenantData } = await supabase.from("companies").select("*").eq("id", id).single();
       if (!tenantData) { nav("/weaze/empresas"); return; }
       setTenant(tenantData);
 

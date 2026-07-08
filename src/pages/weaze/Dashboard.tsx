@@ -49,14 +49,14 @@ export default function WeazeDashboard() {
       const thisWeekEnd = new Date(now.getTime() + 7 * 86400_000).toISOString().slice(0, 10);
       const todayStr = now.toISOString().slice(0, 10);
 
-      const [{ data: tenants }, { data: adminRows }] = await Promise.all([
-        supabase.from("tenants").select("id, name, created_at, mrr"),
+      const [{ data: companies }, { data: adminRows }] = await Promise.all([
+        supabase.from("companies").select("id, name, created_at, mrr"),
         supabase.from("company_admin").select("*"),
       ]);
 
       const adminMap = new Map((adminRows ?? []).map((r: any) => [r.company_id, r]));
 
-      const total = tenants?.length ?? 0;
+      const total = companies?.length ?? 0;
       let active = 0, blocked = 0, trial = 0, cancelled = 0;
       let monthlyRev = 0;
       let dueThisWeek = 0, overdue = 0;
@@ -79,14 +79,14 @@ export default function WeazeDashboard() {
         }
       });
 
-      const newThisMonth = tenants?.filter((t: any) => t.created_at >= startOfMonth).length ?? 0;
+      const newThisMonth = companies?.filter((t: any) => t.created_at >= startOfMonth).length ?? 0;
 
       const topCompanies: { name: string; posts: number; checkins: number }[] = [];
 
       const inactiveCompanies: string[] = [];
       if (activeCompanyIds.length > 0) {
         const { data: activeTenantData } = await supabase
-          .from("tenants")
+          .from("companies")
           .select("id, name")
           .in("id", activeCompanyIds);
 

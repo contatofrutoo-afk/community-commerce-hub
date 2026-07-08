@@ -16,16 +16,16 @@ export default function WeazeLicencas() {
       setLoading(true);
       const { data: licenseData } = await supabase
         .from("company_licenses")
-        .select("*, tenants!inner(name)")
+        .select("*, companies!inner(name)")
         .order("created_at", { ascending: false });
 
       const { data: adminData } = await supabase
         .from("company_admin")
-        .select("company_id, plan_type, monthly_fee, status, next_due_date, tenants!inner(name)");
+        .select("company_id, plan_type, monthly_fee, status, next_due_date, companies!inner(name)");
 
       const currentLicenses = (adminData ?? []).map((a: any) => ({
         id: a.company_id,
-        companyName: a.tenants?.name ?? "?",
+        companyName: a.companies?.name ?? "?",
         planType: a.plan_type,
         monthlyFee: a.monthly_fee,
         status: a.status === "active" ? "active" : a.status === "trial" ? "active" : a.status,
@@ -35,7 +35,7 @@ export default function WeazeLicencas() {
 
       const historicLicenses = (licenseData ?? []).map((l: any) => ({
         id: l.id,
-        companyName: l.tenants?.name ?? "?",
+        companyName: l.companies?.name ?? "?",
         planType: l.plan_type,
         monthlyFee: l.monthly_fee,
         status: l.status,

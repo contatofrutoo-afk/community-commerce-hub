@@ -25,7 +25,7 @@ export default function WeazeFinanceiro() {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
-      const { data: adminRows } = await supabase.from("company_admin").select("company_id, monthly_fee, payment_status, next_due_date, tenants!inner(name)");
+      const { data: adminRows } = await supabase.from("company_admin").select("company_id, monthly_fee, payment_status, next_due_date, companies!inner(name)");
       const { data: payments } = await supabase.from("company_payments").select("*, company_id").order("created_at", { ascending: false }).limit(50);
 
       let totalReceivable = 0;
