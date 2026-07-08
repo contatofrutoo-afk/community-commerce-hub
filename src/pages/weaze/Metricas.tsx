@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { cn } from "@/lib/utils";
 
 export default function WeazeMetricas() {
@@ -38,7 +38,7 @@ export default function WeazeMetricas() {
         { count: totalPosts },
         { count: totalInteractions },
         { data: adminRows },
-        { data: companiesData },
+        { count: totalCompanies },
         { data: todayCheckins },
       ] = await Promise.all([
         supabase.from("b2c_customers").select("*", { count: "exact", head: true }),
@@ -71,7 +71,7 @@ export default function WeazeMetricas() {
         predictedRevenue: totalMonthly,
         recurringRevenue: paidMonthly,
         blockedCount,
-        inactiveCount: Math.max(0, (companiesData?.length ?? 0) - (adminRows ?? []).filter((a: any) => a.status === "active" || a.status === "trial").length),
+        inactiveCount: Math.max(0, (totalCompanies ?? 0) - (adminRows ?? []).filter((a: any) => a.status === "active" || a.status === "trial").length),
         nearDueCount,
       });
       setLoading(false);

@@ -50,34 +50,60 @@ export default function WeazeEmpresaFicha() {
 
   useEffect(() => {
     if (!isAdmin || !id) return;
+    let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data: tenantData } = await supabase.from("companies").select("*").eq("id", id).single();
-      if (!tenantData) { nav("/weaze/empresas"); return; }
-      setTenant(tenantData);
+      try {
+        const { data: tenantData } = await supabase.from("companies").select("*").eq("id", id).single();
+        if (cancelled) return;
+        if (!tenantData) { nav("/weaze/empresas"); return; }
+        setTenant(tenantData);
 
-      const { data: adminData } = await supabase.from("company_admin").select("*").eq("company_id", id).single();
-      const { data: paymentData } = await supabase.from("company_payments").select("*").eq("company_id", id).order("created_at", { ascending: false });
+        let adminData: any = null;
+        try {
+          const res = await supabase.from("company_admin").select("*").eq("company_id", id).single();
+          adminData = res.data;
+        } catch {
+          // Tabela company_admin pode não existir ainda
+        }
 
-      if (adminData) {
-        setAdmin(adminData);
-        setForm({
-          status: adminData.status,
-          planType: adminData.plan_type,
-          monthlyFee: Number(adminData.monthly_fee),
-          nextDueDate: adminData.next_due_date ?? "",
-          lastPaymentDate: adminData.last_payment_date ?? "",
-          paymentMethod: adminData.payment_method,
-          paymentStatus: adminData.payment_status,
-          internalNotes: adminData.internal_notes ?? "",
-        });
-      } else {
-        const { data: settings } = await supabase.from("admin_settings").select("default_plan_value").single();
-        setForm((prev) => ({ ...prev, monthlyFee: Number(settings?.default_plan_value ?? 237) }));
+        let paymentData: any[] = [];
+        try {
+          const res = await supabase.from("company_payments").select("*").eq("company_id", id).order("created_at", { ascending: false });
+          paymentData = res.data ?? [];
+        } catch {
+          // Tabela company_payments pode não existir ainda
+        }
+
+        if (adminData) {
+          setAdmin(adminData);
+          setForm({
+            status: adminData.status,
+            planType: adminData.plan_type,
+            monthlyFee: Number(adminData.monthly_fee),
+            nextDueDate: adminData.next_due_date ?? "",
+            lastPaymentDate: adminData.last_payment_date ?? "",
+            paymentMethod: adminData.payment_method,
+            paymentStatus: adminData.payment_status,
+            internalNotes: adminData.internal_notes ?? "",
+          });
+        } else {
+          try {
+            const { data: settings } = await supabase.from("admin_settings").select("default_plan_value").single();
+            if (!cancelled) setForm((prev) => ({ ...prev, monthlyFee: Number(settings?.default_plan_value ?? 237) }));
+          } catch {
+            // admin_settings pode não existir ainda
+          }
+        }
+        if (!cancelled) {
+          setPayments(paymentData);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) setLoading(false);
       }
-      setPayments(paymentData ?? []);
-      setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [isAdmin, id]);
 
   async function handleSave() {
@@ -202,7 +228,7 @@ export default function WeazeEmpresaFicha() {
             </div>
             <div>
               <Label>Responsável</Label>
-              <p className="text-sm">{tenant.created_by ?? "—"}</p>
+              <p className="text-sm">{tenant.responsible ?? "—"}</p>
             </div>
             <div>
               <Label>Telefone</Label>
@@ -210,7 +236,7 @@ export default function WeazeEmpresaFicha() {
             </div>
             <div>
               <Label>Email</Label>
-              <p className="text-sm break-all">{tenant.created_by ?? "—"}</p>
+              <p className="text-sm break-all">{tenant.email_principal ?? tenant.responsible_email ?? "—"}</p>
             </div>
             <div>
               <Label>Cidade</Label>

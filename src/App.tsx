@@ -142,12 +142,16 @@ const Protected = ({ children }: { children: JSX.Element }) => {
     if (!tenant || isAdmin) { setCompanyBlocked(false); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("company_admin")
-        .select("status")
-        .eq("company_id", tenant.id)
-        .single();
-      if (!cancelled && data?.status === "blocked") setCompanyBlocked(true);
+      try {
+        const { data } = await supabase
+          .from("company_admin")
+          .select("status")
+          .eq("company_id", tenant.id)
+          .single();
+        if (!cancelled && data?.status === "blocked") setCompanyBlocked(true);
+      } catch {
+        // Tabela company_admin pode não existir ainda — ignora
+      }
     })();
     return () => { cancelled = true; };
   }, [tenant?.id, isAdmin]);

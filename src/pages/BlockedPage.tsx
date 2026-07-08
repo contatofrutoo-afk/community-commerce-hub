@@ -13,20 +13,24 @@ const BlockedPage = () => {
   useEffect(() => {
     if (!tenant) return;
     (async () => {
-      const { data: admin } = await supabase
-        .from("company_admin")
-        .select("status")
-        .eq("company_id", tenant.id)
-        .single();
-
-      if (admin?.status === "blocked") {
-        setIsCompanyBlock(true);
-        const { data: settings } = await supabase
-          .from("admin_settings")
-          .select("blocked_message, admin_contact")
+      try {
+        const { data: admin } = await supabase
+          .from("company_admin")
+          .select("status")
+          .eq("company_id", tenant.id)
           .single();
-        setMessage(settings?.blocked_message ?? "");
-        setContact(settings?.admin_contact ?? "");
+
+        if (admin?.status === "blocked") {
+          setIsCompanyBlock(true);
+          const { data: settings } = await supabase
+            .from("admin_settings")
+            .select("blocked_message, admin_contact")
+            .single();
+          setMessage(settings?.blocked_message ?? "");
+          setContact(settings?.admin_contact ?? "");
+        }
+      } catch {
+        // Tabela pode não existir — fallback para bloqueio normal
       }
     })();
   }, [tenant?.id]);

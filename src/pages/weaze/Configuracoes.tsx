@@ -25,13 +25,17 @@ export default function WeazeConfiguracoes() {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
-      const { data } = await supabase.from("admin_settings").select("*").single();
-      if (data) {
-        setForm({
-          defaultPlanValue: Number(data.default_plan_value ?? 237),
-          blockedMessage: data.blocked_message ?? "",
-          adminContact: data.admin_contact ?? "",
-        });
+      try {
+        const { data } = await supabase.from("admin_settings").select("*").single();
+        if (data) {
+          setForm({
+            defaultPlanValue: Number(data.default_plan_value ?? 237),
+            blockedMessage: data.blocked_message ?? "",
+            adminContact: data.admin_contact ?? "",
+          });
+        }
+      } catch {
+        // Tabela admin_settings pode não existir ainda
       }
       setLoading(false);
     })();

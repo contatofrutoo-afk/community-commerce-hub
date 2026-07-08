@@ -5,6 +5,18 @@
 -- Não quebra funcionalidades existentes.
 -- ============================================================
 
+-- 0. Garante que a função touch_updated_at existe
+-- (migration original pode não ter sido executada neste banco)
+CREATE OR REPLACE FUNCTION public.touch_updated_at()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+
+-- 0b. Garante que o valor 'admin' existe no enum app_role
+DO $$ BEGIN
+  ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'admin';
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- 1. Admin settings (cria a tabela caso ainda não exista)
 CREATE TABLE IF NOT EXISTS public.admin_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,34 +90,53 @@ ALTER TABLE public.company_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.company_licenses ENABLE ROW LEVEL SECURITY;
 
 -- Company admin: apenas super admin (role='admin') vê e gerencia
+-- Usa subquery direta com role::text para evitar dependência do enum
 DROP POLICY IF EXISTS "Admin vê company_admin" ON public.company_admin;
 CREATE POLICY "Admin vê company_admin" ON public.company_admin
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Admin gerencia company_admin" ON public.company_admin;
 CREATE POLICY "Admin gerencia company_admin" ON public.company_admin
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 -- Company payments: apenas super admin
 DROP POLICY IF EXISTS "Admin vê company_payments" ON public.company_payments;
 CREATE POLICY "Admin vê company_payments" ON public.company_payments
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Admin gerencia company_payments" ON public.company_payments;
 CREATE POLICY "Admin gerencia company_payments" ON public.company_payments
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 -- Company licenses: apenas super admin
 DROP POLICY IF EXISTS "Admin vê company_licenses" ON public.company_licenses;
 CREATE POLICY "Admin vê company_licenses" ON public.company_licenses
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 DROP POLICY IF EXISTS "Admin gerencia company_licenses" ON public.company_licenses;
 CREATE POLICY "Admin gerencia company_licenses" ON public.company_licenses
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+  FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role::text = 'admin')
+  );
 
 -- 6. Grants para service_role
 GRANT ALL ON public.company_admin TO service_role;
@@ -113,7 +144,6 @@ GRANT ALL ON public.company_payments TO service_role;
 GRANT ALL ON public.company_licenses TO service_role;
 
 -- 7. Trigger para updated_at em company_admin
--- Usa touch_updated_at() que existe na base companies
 DROP TRIGGER IF EXISTS company_admin_updated ON public.company_admin;
 CREATE TRIGGER company_admin_updated
   BEFORE UPDATE ON public.company_admin
