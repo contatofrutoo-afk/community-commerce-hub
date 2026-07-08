@@ -80,32 +80,32 @@ ALTER TABLE public.company_licenses ENABLE ROW LEVEL SECURITY;
 -- Company admin: apenas super admin (role='admin') vê e gerencia
 DROP POLICY IF EXISTS "Admin vê company_admin" ON public.company_admin;
 CREATE POLICY "Admin vê company_admin" ON public.company_admin
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS "Admin gerencia company_admin" ON public.company_admin;
 CREATE POLICY "Admin gerencia company_admin" ON public.company_admin
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- Company payments: apenas super admin
 DROP POLICY IF EXISTS "Admin vê company_payments" ON public.company_payments;
 CREATE POLICY "Admin vê company_payments" ON public.company_payments
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS "Admin gerencia company_payments" ON public.company_payments;
 CREATE POLICY "Admin gerencia company_payments" ON public.company_payments
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- Company licenses: apenas super admin
 DROP POLICY IF EXISTS "Admin vê company_licenses" ON public.company_licenses;
 CREATE POLICY "Admin vê company_licenses" ON public.company_licenses
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS "Admin gerencia company_licenses" ON public.company_licenses;
 CREATE POLICY "Admin gerencia company_licenses" ON public.company_licenses
-  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- 6. Grants para service_role
 GRANT ALL ON public.company_admin TO service_role;
