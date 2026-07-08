@@ -8,11 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const statusColor: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  active: "default",
-  trial: "secondary",
-  blocked: "destructive",
-  cancelled: "outline",
+const statusBadgeClass: Record<string, string> = {
+  active: "bg-green-100 text-green-800 border-green-300 hover:bg-green-200",
+  trial: "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200",
+  blocked: "bg-red-100 text-red-800 border-red-300 hover:bg-red-200",
+  cancelled: "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200",
 };
 
 const statusLabel: Record<string, string> = {
@@ -104,7 +104,7 @@ export default function WeazeEmpresas() {
                   <div>{r.plan}</div>
                   <div className="font-mono">R$ {Number(r.monthlyFee).toLocaleString("pt-BR")}</div>
                 </div>
-                <Badge variant={statusColor[r.status] ?? "outline"} className="shrink-0">
+                <Badge className={cn("shrink-0 border", statusBadgeClass[r.status] ?? "bg-gray-100 text-gray-800")}>
                   {statusLabel[r.status] ?? r.status}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />

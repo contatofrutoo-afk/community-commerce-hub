@@ -142,13 +142,14 @@ export default function WeazeEmpresaFicha() {
     }
   }
 
-  async function toggleBlock(block: boolean) {
-    setForm((prev) => ({ ...prev, status: block ? "blocked" : "active" }));
+  async function updateStatus(newStatus: string) {
+    if (newStatus === form.status || !id) return;
+    setForm((prev) => ({ ...prev, status: newStatus }));
     setSaving(true);
     try {
       const payload: any = {
         company_id: id,
-        status: block ? "blocked" : "active",
+        status: newStatus,
         plan_type: form.planType,
         monthly_fee: form.monthlyFee,
         next_due_date: form.nextDueDate || null,
@@ -156,8 +157,8 @@ export default function WeazeEmpresaFicha() {
         payment_method: form.paymentMethod,
         payment_status: form.paymentStatus,
         internal_notes: form.internalNotes,
-        blocked_at: block ? new Date().toISOString() : null,
-        blocked_reason: block ? "Bloqueado manualmente pela WEAZE" : "",
+        blocked_at: newStatus === "blocked" ? new Date().toISOString() : null,
+        blocked_reason: newStatus === "blocked" ? "Bloqueado manualmente pela WEAZE" : "",
       };
 
       if (admin) {
@@ -166,23 +167,27 @@ export default function WeazeEmpresaFicha() {
         await supabase.from("company_admin").insert(payload);
       }
 
-      toast.success(block ? "Acesso bloqueado!" : "Acesso liberado!");
+      toast.success(
+        newStatus === "active" ? "Empresa ativada!" :
+        newStatus === "blocked" ? "Acesso bloqueado!" :
+        newStatus === "trial" ? "Status alterado para Teste" : "Empresa cancelada"
+      );
+
       const { data: refresh } = await supabase.from("company_admin").select("*").eq("company_id", id).single();
       if (refresh) {
         setAdmin(refresh);
-        setForm((prev) => ({
-          ...prev,
-          status: refresh.status,
-          blocked_at: refresh.blocked_at,
-          blocked_reason: refresh.blocked_reason,
-        }));
+        setForm((prev) => ({ ...prev, blocked_at: refresh.blocked_at, blocked_reason: refresh.blocked_reason }));
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Erro");
-      setForm((prev) => ({ ...prev, status: block ? "active" : "blocked" }));
+      toast.error(err.message ?? "Erro ao atualizar status");
+      setForm((prev) => ({ ...prev, status: form.status }));
     } finally {
       setSaving(false);
     }
+  }
+
+  async function toggleBlock(block: boolean) {
+    await updateStatus(block ? "blocked" : "active");
   }
 
   if (!isAdmin) return null;
@@ -199,8 +204,18 @@ export default function WeazeEmpresaFicha() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl">{tenant.name}</h1>
-          <p className="text-sm text-muted-foreground">{tenant.city ?? "—"} · {tenant.slug}</p>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl">{tenant.name}</h1>
+            <span className={cn("text-xs font-semibold px-2.5 py-0.5 rounded-full border",
+              form.status === "active" ? "bg-green-50 text-green-700 border-green-300" :
+              form.status === "blocked" ? "bg-red-50 text-red-700 border-red-300" :
+              form.status === "trial" ? "bg-yellow-50 text-yellow-700 border-yellow-300" :
+              "bg-gray-50 text-gray-600 border-gray-300"
+            )}>
+              {statusOptions.find(s => s.value === form.status)?.label ?? form.status}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">{tenant.city ?? "—"} · {tenant.slug}</p>
         </div>
         <div className="flex gap-2">
           {isBlocked ? (
@@ -320,26 +335,27 @@ export default function WeazeEmpresaFicha() {
         <CardHeader><CardTitle className="font-display text-base">Status</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {statusOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setForm((prev) => ({ ...prev, status: opt.value }))}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm border transition-colors",
-                  form.status === opt.value
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-background text-muted-foreground border-input hover:border-foreground"
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {statusOptions.map((opt) => {
+              const active = form.status === opt.value;
+              const colorClass = opt.value === "active" ? "border-green-500 text-green-700 bg-green-50" :
+                opt.value === "blocked" ? "border-red-500 text-red-700 bg-red-50" :
+                opt.value === "trial" ? "border-yellow-500 text-yellow-700 bg-yellow-50" :
+                "border-gray-400 text-gray-600 bg-gray-50";
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => updateStatus(opt.value)}
+                  disabled={saving || form.status === opt.value}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm border font-medium transition-colors",
+                    active ? colorClass : "bg-background text-muted-foreground border-input hover:border-foreground"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Status atual: <Badge variant={statusOptions.find((s) => s.value === form.status)?.color === "default" ? "default" : form.status === "trial" ? "secondary" : form.status === "blocked" ? "destructive" : "outline"}>
-              {statusOptions.find((s) => s.value === form.status)?.label}
-            </Badge>
-          </p>
         </CardContent>
       </Card>
 
