@@ -98,6 +98,15 @@ const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
 const AdminFunnel = lazy(() => import("./pages/admin/Funnel"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 
+const WeazeLayout = lazy(() => import("./pages/weaze/WeazeLayout"));
+const WeazeDashboard = lazy(() => import("./pages/weaze/Dashboard"));
+const WeazeEmpresas = lazy(() => import("./pages/weaze/Empresas"));
+const WeazeEmpresaFicha = lazy(() => import("./pages/weaze/EmpresaFicha"));
+const WeazeFinanceiro = lazy(() => import("./pages/weaze/Financeiro"));
+const WeazeLicencas = lazy(() => import("./pages/weaze/Licencas"));
+const WeazeMetricas = lazy(() => import("./pages/weaze/Metricas"));
+const WeazeConfiguracoes = lazy(() => import("./pages/weaze/Configuracoes"));
+
 const Requests = lazy(() => import("./pages/Requests"));
 const Members = lazy(() => import("./pages/Members"));
 const GroupsPage = lazy(() => import("./pages/GroupsPage"));
@@ -125,18 +134,29 @@ const CommunityFeedEmpty = lazy(() => import("./pages/CommunityFeedEmpty"));
 const Atendimento = lazy(() => import("./pages/Atendimento"));
 
 const Protected = ({ children }: { children: JSX.Element }) => {
-  const { user, initializing } = useAuth();
-  const { blocked, realLoadDone } = useTenant();
+  const { user, initializing, isAdmin } = useAuth();
+  const { blocked, realLoadDone, tenant } = useTenant();
+  const [companyBlocked, setCompanyBlocked] = useState(false);
 
-  // 1. Aguarda o Supabase restaurar a sessão — previne redirect prematuro p/ /auth
+  useEffect(() => {
+    if (!tenant || isAdmin) { setCompanyBlocked(false); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("company_admin")
+        .select("status")
+        .eq("company_id", tenant.id)
+        .single();
+      if (!cancelled && data?.status === "blocked") setCompanyBlocked(true);
+    })();
+    return () => { cancelled = true; };
+  }, [tenant?.id, isAdmin]);
+
   if (initializing) return <Loading />;
   if (!user) return <Navigate to="/auth" replace />;
-
-  // 2. Usuário autenticado: só renderiza filhos depois do tenant estar resolvido.
-  //    Impede Feed de receber tenant=null temporário e mostrar UI errada (B2C p/ B2B).
   if (!realLoadDone) return <Loading />;
-
   if (blocked) return <Navigate to="/blocked" replace />;
+  if (companyBlocked) return <Navigate to="/blocked" replace />;
 
   return children;
 };
@@ -242,6 +262,18 @@ const App = () => (
                     <Route path="/metrics/invites" element={<Protected><InviteLinks /></Protected>} />
                     <Route path="/metrics/config" element={<Protected><BusinessConfig /></Protected>} />
                     <Route path="/admin" element={<Protected><AdminGlobal /></Protected>} />
+
+                    {/* WEAZE Super Admin */}
+                    <Route path="/weaze" element={<Protected><WeazeLayout /></Protected>}>
+                      <Route index element={<WeazeDashboard />} />
+                      <Route path="empresas" element={<WeazeEmpresas />} />
+                      <Route path="empresas/:id" element={<WeazeEmpresaFicha />} />
+                      <Route path="financeiro" element={<WeazeFinanceiro />} />
+                      <Route path="licencas" element={<WeazeLicencas />} />
+                      <Route path="metricas" element={<WeazeMetricas />} />
+                      <Route path="configuracoes" element={<WeazeConfiguracoes />} />
+                    </Route>
+
                     <Route path="/create" element={<Protected><CreatePost /></Protected>} />
                     
                     <Route path="/conversas" element={<Protected><Topics /></Protected>} />
