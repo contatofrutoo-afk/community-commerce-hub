@@ -1,10 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
-import { getAccessStatus, requestAccess, AccessStatus } from "@/lib/communityAccess";
-import { Building2, Users, MessageCircle, Calendar, ArrowRight, ArrowLeft, Clock, XCircle, CheckCircle } from "lucide-react";
+import {
+  getAccessStatus,
+  requestAccess,
+  AccessStatus,
+} from "@/lib/communityAccess";
+import {
+  Building2,
+  Users,
+  MessageCircle,
+  Calendar,
+  ArrowRight,
+  ArrowLeft,
+  Clock,
+  XCircle,
+  CheckCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -23,7 +37,7 @@ export default function CommunityPage() {
   const navigate = useNavigate();
   const { user, isB2B } = useAuth();
   const { refresh, selectTenant } = useTenant();
-  
+
   const enterCommunity = async () => {
     try {
       if (tenant) {
@@ -40,7 +54,7 @@ export default function CommunityPage() {
       navigate("/feed");
     }
   };
-  
+
   const getSlugFromUrl = () => {
     if (slug && slug.trim()) return slug.trim();
     const params = new URLSearchParams(location.search);
@@ -146,7 +160,7 @@ export default function CommunityPage() {
     })();
   }, [communitySlug, isB2B, user]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!loading && accessStatus === "approved" && tenant && user) {
       let cancelled = false;
 
@@ -162,7 +176,7 @@ useEffect(() => {
           selectTenant(tenant.id, true);
 
           // Give React one tick to propagate the tenant change
-          await new Promise(r => setTimeout(r, 0));
+          await new Promise((r) => setTimeout(r, 0));
 
           if (!cancelled) navigate("/feed", { replace: true });
         } catch {
@@ -170,9 +184,46 @@ useEffect(() => {
         }
       })();
 
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
   }, [loading, accessStatus, tenant, user, navigate, selectTenant, refresh]);
+
+  // ── Auto check-in silencioso ──────────────────────────────────
+  // Registra presença toda vez que o cliente acessa via QR / link.
+  // A RPC auto_checkin ignora se já houve check-in há menos de 4 h.
+  const checkinFired = useRef(false);
+  useEffect(() => {
+    if (checkinFired.current) return;
+    if (!user || !tenant) return;
+    if (accessStatus !== "approved" && !isB2B) return;
+
+    checkinFired.current = true;
+
+    const params = new URLSearchParams(location.search);
+    const tableId = params.get("t") ?? params.get("table") ?? "";
+    const tableName = params.get("tn") ?? params.get("tableName") ?? "";
+    const source = tableId ? "mesa" : "link";
+    const fullName =
+      user.user_metadata?.full_name ??
+      user.user_metadata?.name ??
+      user.email ??
+      "Cliente";
+
+    supabase
+      .rpc("auto_checkin", {
+        p_company_id: tenant.id,
+        p_auth_user_id: user.id,
+        p_customer_name: fullName,
+        p_table_id: tableId,
+        p_table_name: tableName,
+        p_source: source,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("[auto_checkin]", error.message);
+      });
+  }, [accessStatus, isB2B, tenant, user, location.search]);
 
   const handleRequestAccess = async () => {
     if (!communitySlug || !user || !tenant) {
@@ -182,10 +233,7 @@ useEffect(() => {
     setRequesting(true);
 
     try {
-      const result = await requestAccess(
-        tenant.id,
-        user.id,
-      );
+      const result = await requestAccess(tenant.id, user.id);
 
       if (result.success) {
         setAccessStatus("pending");
@@ -200,7 +248,7 @@ useEffect(() => {
     setRequesting(false);
   };
 
-if (loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -217,7 +265,9 @@ if (loading) {
         <div className="text-center max-w-md px-4">
           <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h1 className="text-2xl font-bold mb-2">Comunidade não encontrada</h1>
-          <p className="text-muted-foreground mb-6">{error || "Esta comunidade não existe ou foi removida."}</p>
+          <p className="text-muted-foreground mb-6">
+            {error || "Esta comunidade não existe ou foi removida."}
+          </p>
           <Button asChild>
             <a href="/">Ir para página inicial</a>
           </Button>
@@ -237,7 +287,10 @@ if (loading) {
           <p className="text-green-800">
             Você é membro de <strong>{tenant.name}</strong>!
           </p>
-          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={enterCommunity}>
+          <Button
+            className="w-full bg-brand text-primary-foreground hover:opacity-90"
+            onClick={enterCommunity}
+          >
             Entrar na Comunidade
           </Button>
         </div>
@@ -249,10 +302,10 @@ if (loading) {
         <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
           <h2 className="font-semibold text-lg">Bem-vindo à comunidade!</h2>
           <p className="text-muted-foreground">
-            Junte-se a {tenant.name} para ter acesso a conteúdo exclusivo, eventos, 
-            promoções e muito mais.
+            Junte-se a {tenant.name} para ter acesso a conteúdo exclusivo,
+            eventos, promoções e muito mais.
           </p>
-          
+
           <div className="grid grid-cols-2 gap-3 py-4">
             <div className="bg-muted/50 rounded-xl p-4 text-center">
               <Users className="h-6 w-6 mx-auto mb-2 text-brand" />
@@ -276,8 +329,13 @@ if (loading) {
             </div>
           </div>
 
-          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" asChild>
-            <a href={`/auth?redirect=/c?slug=${tenant.slug}`}>Entrar na comunidade</a>
+          <Button
+            className="w-full bg-brand text-primary-foreground hover:opacity-90"
+            asChild
+          >
+            <a href={`/auth?redirect=/c?slug=${tenant.slug}`}>
+              Entrar na comunidade
+            </a>
           </Button>
         </div>
       );
@@ -291,14 +349,14 @@ if (loading) {
             <h2 className="font-semibold text-lg">Solicitação enviada</h2>
           </div>
           <p className="text-amber-800">
-            A marca precisa aprovar seu acesso. Você será notificado assim que for liberado.
+            A marca precisa aprovar seu acesso. Você será notificado assim que
+            for liberado.
           </p>
           <div className="bg-white/50 rounded-xl p-4 text-center">
             <p className="text-sm text-amber-700">
               Você pode voltar mais tarde para verificar o status.
             </p>
           </div>
-          
         </div>
       );
     }
@@ -311,12 +369,12 @@ if (loading) {
             <h2 className="font-semibold text-lg">Acesso Recusado</h2>
           </div>
           <p className="text-red-800">
-            Seu acesso à <strong>{tenant.name}</strong> não foi aprovado neste momento.
+            Seu acesso à <strong>{tenant.name}</strong> não foi aprovado neste
+            momento.
           </p>
           <p className="text-sm text-red-600">
             Entre em contato diretamente com a marca para mais informações.
           </p>
-          
         </div>
       );
     }
@@ -332,7 +390,8 @@ if (loading) {
             Você não tem acesso a <strong>{tenant.name}</strong>.
           </p>
           <p className="text-sm text-orange-600">
-            Para mais informações, entre em contato com o administrador da comunidade.
+            Para mais informações, entre em contato com o administrador da
+            comunidade.
           </p>
         </div>
       );
@@ -348,7 +407,10 @@ if (loading) {
           <p className="text-green-800">
             Você é membro de <strong>{tenant.name}</strong>!
           </p>
-          <Button className="w-full bg-brand text-primary-foreground hover:opacity-90" onClick={enterCommunity}>
+          <Button
+            className="w-full bg-brand text-primary-foreground hover:opacity-90"
+            onClick={enterCommunity}
+          >
             Entrar na Comunidade
           </Button>
         </div>
@@ -359,11 +421,12 @@ if (loading) {
       <div className="bg-card rounded-3xl border border-border p-6 space-y-4 shadow-soft">
         <h2 className="font-semibold text-lg">Solicitar Entrada</h2>
         <p className="text-muted-foreground">
-          Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo exclusivo.
+          Solicite acesso a <strong>{tenant.name}</strong> para receber conteúdo
+          exclusivo.
         </p>
-        
-        <Button 
-          className="w-full bg-brand text-primary-foreground hover:opacity-90" 
+
+        <Button
+          className="w-full bg-brand text-primary-foreground hover:opacity-90"
           onClick={handleRequestAccess}
           disabled={requesting}
         >
@@ -377,19 +440,33 @@ if (loading) {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <Button variant="ghost" onClick={() => navigate("/feed")} className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/feed")}
+            className="mb-4"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
           </Button>
           <div className="h-24 w-24 rounded-3xl bg-brand mx-auto mb-4 grid place-items-center text-primary-foreground text-3xl font-bold overflow-hidden">
             {tenant.logo_url ? (
-              <img src={tenant.logo_url} alt={tenant.name} className="w-full h-full object-cover" />
+              <img
+                src={tenant.logo_url}
+                alt={tenant.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <Building2 className="h-12 w-12" />
             )}
           </div>
-          <h1 className="text-3xl font-display font-bold mb-2">{tenant.name}</h1>
-          {tenant.bio && <p className="text-muted-foreground mb-2">{tenant.bio}</p>}
-          {tenant.city && <p className="text-sm text-muted-foreground">{tenant.city}</p>}
+          <h1 className="text-3xl font-display font-bold mb-2">
+            {tenant.name}
+          </h1>
+          {tenant.bio && (
+            <p className="text-muted-foreground mb-2">{tenant.bio}</p>
+          )}
+          {tenant.city && (
+            <p className="text-sm text-muted-foreground">{tenant.city}</p>
+          )}
         </div>
 
         {renderContent()}
