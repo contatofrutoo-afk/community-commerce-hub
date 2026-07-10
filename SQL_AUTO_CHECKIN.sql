@@ -1,9 +1,8 @@
 -- ============================================================
--- AUTO CHECK-IN: registra presença do cliente logado ao
--- acessar link/QR code da comunidade
+-- AUTO CHECK-IN — Cole no SQL Editor do Supabase e rode tudo
 -- ============================================================
 
--- 1. Tabela b2c_customers
+-- 1. Tabela b2c_customers (clientes do estabelecimento)
 CREATE TABLE IF NOT EXISTS public.b2c_customers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -48,7 +47,8 @@ ALTER TABLE public.checkins ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Colaboradores veem clientes da empresa" ON public.b2c_customers;
 CREATE POLICY "Colaboradores veem clientes da empresa"
-  ON public.b2c_customers FOR SELECT TO authenticated USING (true);
+  ON public.b2c_customers FOR SELECT TO authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "Colaboradores editam clientes da empresa" ON public.b2c_customers;
 CREATE POLICY "Colaboradores editam clientes da empresa"
@@ -65,7 +65,8 @@ CREATE POLICY "Checkin pode atualizar clientes"
 
 DROP POLICY IF EXISTS "Colaboradores veem checkins da empresa" ON public.checkins;
 CREATE POLICY "Colaboradores veem checkins da empresa"
-  ON public.checkins FOR SELECT TO authenticated USING (true);
+  ON public.checkins FOR SELECT TO authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "Colaboradores editam checkins da empresa" ON public.checkins;
 CREATE POLICY "Colaboradores editam checkins da empresa"
@@ -102,6 +103,7 @@ BEGIN
   v_table_id   := nullif(p_table_id, '');
   v_table_name := nullif(p_table_name, '');
 
+  -- Upsert do cliente vinculado ao auth_user
   INSERT INTO public.b2c_customers (tenant_id, auth_user_id, name, whatsapp, total_visits)
   VALUES (p_tenant_id, p_auth_user_id, p_customer_name, '', 1)
   ON CONFLICT (tenant_id, auth_user_id) DO UPDATE
@@ -110,6 +112,7 @@ BEGIN
         total_visits  = b2c_customers.total_visits + 1
   RETURNING id INTO v_customer_id;
 
+  -- Verifica último check-in
   SELECT start_time INTO v_last_checkin
   FROM public.checkins
   WHERE tenant_id = p_tenant_id
@@ -117,16 +120,19 @@ BEGIN
   ORDER BY start_time DESC
   LIMIT 1;
 
+  -- Cooldown 4h — se já tem check-in recente, não duplica
   IF v_last_checkin IS NOT NULL AND (v_now - v_last_checkin) < v_cooldown THEN
     RETURN false;
   END IF;
 
+  -- Day of week
   v_dow := CASE EXTRACT(dow FROM v_now)
     WHEN 0 THEN 'Domingo' WHEN 1 THEN 'Segunda' WHEN 2 THEN 'Terca'
     WHEN 3 THEN 'Quarta'  WHEN 4 THEN 'Quinta'  WHEN 5 THEN 'Sexta'
     WHEN 6 THEN 'Sabado'  ELSE ''
   END;
 
+  -- Cria check-in
   INSERT INTO public.checkins (
     tenant_id, customer_id, customer_name,
     table_id, table_name,
@@ -143,4 +149,5 @@ BEGIN
 END;
 $$;
 
+-- 5. Permissões
 GRANT EXECUTE ON FUNCTION public.auto_checkin(uuid, uuid, text, text, text, text) TO authenticated;
