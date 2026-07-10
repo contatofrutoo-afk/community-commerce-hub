@@ -1,31 +1,49 @@
 -- ============================================================
--- AUTO CHECK-IN — Cole no SQL Editor do Supabase
+-- AUTO CHECK-IN — Cole no SQL Editor do Supabase e rode
 -- ============================================================
 
--- 1. Adiciona coluna auth_user_id na tabela b2c_customers (se nao existir)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'b2c_customers' AND column_name = 'auth_user_id'
-  ) THEN
-    ALTER TABLE public.b2c_customers ADD COLUMN auth_user_id uuid;
-  END IF;
-END $$;
+-- 1. Cria tabela b2c_customers (se nao existir)
+CREATE TABLE IF NOT EXISTS public.b2c_customers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL,
+  auth_user_id uuid,
+  name text NOT NULL,
+  whatsapp text DEFAULT '',
+  avatar_url text,
+  first_visit_at timestamptz NOT NULL DEFAULT now(),
+  last_visit_at timestamptz NOT NULL DEFAULT now(),
+  last_visit_form text,
+  last_visit_table text,
+  total_visits integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_b2c_company ON public.b2c_customers(company_id);
 
 -- 2. Index unico: um cliente auth por empresa
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'idx_b2c_unique_auth_user'
-  ) THEN
-    CREATE UNIQUE INDEX idx_b2c_unique_auth_user
-      ON public.b2c_customers(company_id, auth_user_id)
-      WHERE auth_user_id IS NOT NULL;
-  END IF;
-END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_b2c_unique_auth_user
+  ON public.b2c_customers(company_id, auth_user_id)
+  WHERE auth_user_id IS NOT NULL;
 
--- 3. RPC: auto_checkin
+-- 3. Garante que checkins existe
+CREATE TABLE IF NOT EXISTS public.checkins (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL,
+  customer_id uuid,
+  customer_name text NOT NULL,
+  table_id text,
+  table_name text,
+  visit_context text NOT NULL DEFAULT 'Sozinho',
+  people_count integer NOT NULL DEFAULT 1,
+  origin text NOT NULL DEFAULT 'link',
+  start_time timestamptz NOT NULL DEFAULT now(),
+  day_of_week text NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkins_company_time ON public.checkins(company_id, start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_checkins_customer ON public.checkins(customer_id);
+
+-- 4. RPC: auto_checkin
 CREATE OR REPLACE FUNCTION public.auto_checkin(
   p_company_id    uuid,
   p_auth_user_id  uuid,
@@ -51,7 +69,6 @@ BEGIN
   v_table_id   := nullif(p_table_id, '');
   v_table_name := nullif(p_table_name, '');
 
-  -- Upsert do cliente vinculado ao auth_user
   INSERT INTO public.b2c_customers (company_id, auth_user_id, name, whatsapp, total_visits)
   VALUES (p_company_id, p_auth_user_id, p_customer_name, '', 1)
   ON CONFLICT (company_id, auth_user_id) DO UPDATE
@@ -60,7 +77,6 @@ BEGIN
         total_visits  = b2c_customers.total_visits + 1
   RETURNING id INTO v_customer_id;
 
-  -- Verifica ultimo check-in
   SELECT start_time INTO v_last_checkin
   FROM public.checkins
   WHERE company_id = p_company_id
@@ -68,19 +84,16 @@ BEGIN
   ORDER BY start_time DESC
   LIMIT 1;
 
-  -- Cooldown 4h
   IF v_last_checkin IS NOT NULL AND (v_now - v_last_checkin) < v_cooldown THEN
     RETURN false;
   END IF;
 
-  -- Day of week
   v_dow := CASE EXTRACT(dow FROM v_now)
     WHEN 0 THEN 'Domingo' WHEN 1 THEN 'Segunda' WHEN 2 THEN 'Terca'
     WHEN 3 THEN 'Quarta'  WHEN 4 THEN 'Quinta'  WHEN 5 THEN 'Sexta'
     WHEN 6 THEN 'Sabado'  ELSE ''
   END;
 
-  -- Cria check-in
   INSERT INTO public.checkins (
     company_id, customer_id, customer_name,
     table_id, table_name,
