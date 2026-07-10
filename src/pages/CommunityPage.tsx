@@ -213,7 +213,7 @@ export default function CommunityPage() {
 
     supabase
       .rpc("auto_checkin", {
-        p_tenant_id: tenant.id,
+        p_company_id: tenant.id,
         p_auth_user_id: user.id,
         p_customer_name: fullName,
         p_table_id: tableId,
