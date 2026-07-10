@@ -2,7 +2,17 @@
 -- AUTO CHECK-IN — Cole no SQL Editor do Supabase e rode
 -- ============================================================
 
--- 1. Cria tabela b2c_customers (se nao existir)
+-- 1. Adiciona colunas faltantes na tabela checkins
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS customer_name text NOT NULL DEFAULT '';
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS table_id text;
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS table_name text;
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS visit_context text NOT NULL DEFAULT 'Sozinho';
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS people_count integer NOT NULL DEFAULT 1;
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS origin text NOT NULL DEFAULT 'link';
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS start_time timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.checkins ADD COLUMN IF NOT EXISTS day_of_week text NOT NULL DEFAULT '';
+
+-- 2. Cria tabela b2c_customers (se nao existir)
 CREATE TABLE IF NOT EXISTS public.b2c_customers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL,
@@ -20,26 +30,11 @@ CREATE TABLE IF NOT EXISTS public.b2c_customers (
 
 CREATE INDEX IF NOT EXISTS idx_b2c_company ON public.b2c_customers(company_id);
 
--- 2. Index unico: um cliente auth por empresa
 CREATE UNIQUE INDEX IF NOT EXISTS idx_b2c_unique_auth_user
   ON public.b2c_customers(company_id, auth_user_id)
   WHERE auth_user_id IS NOT NULL;
 
--- 3. Garante que checkins existe
-CREATE TABLE IF NOT EXISTS public.checkins (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid NOT NULL,
-  customer_id uuid,
-  customer_name text NOT NULL,
-  table_id text,
-  table_name text,
-  visit_context text NOT NULL DEFAULT 'Sozinho',
-  people_count integer NOT NULL DEFAULT 1,
-  origin text NOT NULL DEFAULT 'link',
-  start_time timestamptz NOT NULL DEFAULT now(),
-  day_of_week text NOT NULL DEFAULT ''
-);
-
+-- 3. Index para performance
 CREATE INDEX IF NOT EXISTS idx_checkins_company_time ON public.checkins(company_id, start_time DESC);
 CREATE INDEX IF NOT EXISTS idx_checkins_customer ON public.checkins(customer_id);
 
