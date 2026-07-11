@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "b2b" | "b2c";
 
+const SESSION_DURATION_MS = 7 * 60 * 60 * 1000; // 7 hours
+const SESSION_WARNING_MS = 5 * 60 * 1000; // 5 minutes before expiry
+const SESSION_TIMESTAMP_KEY = "weaze:login_timestamp";
+const CHECK_INTERVAL_MS = 60 * 1000; // check every 60 seconds
+
 type UserState = {
   isB2B: boolean;
   hasCommunity: boolean;
@@ -24,6 +29,8 @@ type AuthCtx = {
   signOut: () => Promise<void>;
   clearRedirect: () => void;
   refreshAppRole: () => void;
+  sessionExpiresAt: number | null;
+  sessionWarning: boolean;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -31,6 +38,7 @@ const Ctx = createContext<AuthCtx>({
   appRole: null, isB2B: false, isB2C: false, isAdmin: false,
   userState: null, redirectTo: null,
   signOut: async () => {}, clearRedirect: () => {}, refreshAppRole: () => {},
+  sessionExpiresAt: null, sessionWarning: false,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -42,6 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userState, setUserState] = useState<UserState | null>(null);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const [redirected, setRedirected] = useState(false);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+  const [sessionWarning, setSessionWarning] = useState(false);
   const metadataRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -127,6 +137,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     initAuth();
 
+    // --- Session timeout (7h absolute) ---
+    const calculateSessionExpiry = () => {
+      const stored = localStorage.getItem(SESSION_TIMESTAMP_KEY);
+      if (!stored) return null;
+      return Number(stored) + SESSION_DURATION_MS;
+    };
+
+    const checkSessionTimeout = () => {
+      const expiresAt = calculateSessionExpiry();
+      if (!expiresAt) return;
+      const now = Date.now();
+      setSessionExpiresAt(expiresAt);
+      setSessionWarning(now >= expiresAt - SESSION_WARNING_MS && now < expiresAt);
+      if (now >= expiresAt) {
+        console.warn("[AuthContext] Session expired (7h limit) — signing out");
+        localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+        supabase.auth.signOut();
+      }
+    };
+
+    const initialExpiry = calculateSessionExpiry();
+    if (initialExpiry) {
+      setSessionExpiresAt(initialExpiry);
+      const now = Date.now();
+      if (now >= initialExpiry) {
+        localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+        supabase.auth.signOut();
+      } else {
+        setSessionWarning(now >= initialExpiry - SESSION_WARNING_MS);
+      }
+    }
+
+    const sessionCheckInterval = setInterval(checkSessionTimeout, CHECK_INTERVAL_MS);
+
     const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, s) => {
       if (!isMounted) return;
 
@@ -192,6 +236,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (_evt === "SIGNED_OUT") {
+        localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+        setSessionExpiresAt(null);
+        setSessionWarning(false);
         setUser(null);
         setSession(null);
         setAppRole(null);
@@ -208,6 +255,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (s?.user) {
         if (_evt === "SIGNED_IN") {
+          // Set session timestamp on fresh login
+          if (!localStorage.getItem(SESSION_TIMESTAMP_KEY)) {
+            localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
+          }
+          const expiry = calculateSessionExpiry();
+          if (expiry) {
+            setSessionExpiresAt(expiry);
+            setSessionWarning(Date.now() >= expiry - SESSION_WARNING_MS);
+          }
           setLoading(true);
           const signInTimeout = setTimeout(() => {
             if (isMounted) {
@@ -263,7 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => { isMounted = false; clearTimeout(authTimeout); sub.subscription.unsubscribe(); };
+    return () => { isMounted = false; clearTimeout(authTimeout); clearInterval(sessionCheckInterval); sub.subscription.unsubscribe(); };
   }, []);
 
   const refreshAppRole = useCallback(async () => {
@@ -331,6 +387,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, appRole, redirected]);
 
   const signOut = async () => {
+    localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+    setSessionExpiresAt(null);
+    setSessionWarning(false);
     setRedirected(false);
     setRedirectTo(null);
     setAppRole(null);
@@ -355,6 +414,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signOut,
         clearRedirect,
         refreshAppRole,
+        sessionExpiresAt,
+        sessionWarning,
       }}
     >
       {children}

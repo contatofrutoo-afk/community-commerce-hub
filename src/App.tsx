@@ -7,6 +7,7 @@ import { Suspense, lazy, useState, useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import OnboardingTour from "@/components/OnboardingTour";
+import SessionTimeoutGuard from "@/components/SessionTimeoutGuard";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppEntrance from "@/components/AppEntrance";
 import TopBar from "@/components/layout/TopBar";
@@ -231,6 +232,7 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<Loading />}>
             <AuthProvider>
+              <SessionTimeoutGuard />
               <TenantProvider>
                 <OnboardingTour />
                 <AppEntrance>
