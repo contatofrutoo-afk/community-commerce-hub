@@ -139,9 +139,8 @@ CREATE POLICY "checkins_insert_auth" ON public.checkins
   FOR INSERT TO authenticated
   WITH CHECK (true);
 
--- 8. mark_payment_informed atomico
+-- 8. mark_payment_informed atomico (chamado pelo usuario dono, sem company_id)
 CREATE OR REPLACE FUNCTION public.mark_payment_informed(
-  _company_id uuid,
   _method text DEFAULT 'PIX'
 )
 RETURNS void
@@ -149,7 +148,19 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  _company_id uuid;
 BEGIN
+  SELECT ca.company_id INTO _company_id
+  FROM public.company_admin ca
+  JOIN public.user_roles ur ON ur.user_id = auth.uid()
+  WHERE ca.company_id IS NOT NULL
+  LIMIT 1;
+
+  IF _company_id IS NULL THEN
+    RAISE EXCEPTION 'Empresa nao encontrada para o usuario logado';
+  END IF;
+
   UPDATE public.companies
   SET
     payment_status      = 'paid',
@@ -160,17 +171,18 @@ BEGIN
   WHERE id = _company_id;
 
   INSERT INTO public.company_payments (company_id, amount, payment_date, payment_method, status, notes)
-  SELECT _company_id, monthly_fee, CURRENT_DATE, _method, 'paid', 'Pagamento registrado via admin'
+  SELECT _company_id, monthly_fee, CURRENT_DATE, _method, 'paid', 'Pagamento informado pelo cliente'
   FROM public.companies WHERE id = _company_id;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.mark_payment_informed(uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_payment_informed(text) TO authenticated;
 
--- 9. admin_set_company_status atomico
+-- 9. admin_set_company_status atomico (aceita _reason como no frontend)
 CREATE OR REPLACE FUNCTION public.admin_set_company_status(
   _company_id uuid,
-  _new_status text
+  _new_status text,
+  _reason text DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -186,6 +198,7 @@ BEGIN
   SET
     status            = _new_status,
     blocked_at        = CASE WHEN _new_status = 'bloqueado' THEN now() ELSE blocked_at END,
+    blocked_reason    = COALESCE(_reason, blocked_reason),
     last_payment_date = CASE WHEN _new_status = 'ativo' THEN CURRENT_DATE ELSE last_payment_date END,
     next_due_date     = CASE WHEN _new_status = 'ativo' THEN (CURRENT_DATE + interval '1 month')::date ELSE next_due_date END,
     payment_status    = CASE WHEN _new_status = 'ativo' THEN 'paid' ELSE payment_status END
@@ -193,7 +206,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.admin_set_company_status(uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_company_status(uuid, text, text) TO authenticated;
 
 -- 10. delete_company cascade seguro
 CREATE OR REPLACE FUNCTION public.delete_company(
